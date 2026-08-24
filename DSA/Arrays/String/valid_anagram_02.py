@@ -5,10 +5,3 @@ def isAnagram(s, t):
     counter_t = Counter(t)
 
     return counter_s == counter_t
-
-s = "anagram"
-t = "nagaram"
-
-res = isAnagram(s,t)
-
-print(res)
