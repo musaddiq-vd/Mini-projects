@@ -14,5 +14,4 @@ def isAnagram(s, t):
     # Same character frequencies = anagram
     return s_dict == t_dict
 
-
 #Length check → character frequency count → both dictionaries compare → same means Anagram.
