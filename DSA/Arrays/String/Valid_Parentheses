@@ -1,0 +1,28 @@
+def isValid(s):
+    stack = []
+
+    for char in s:
+
+        # Opening bracket → push into stack
+        if char == '(' or char == '{' or char == '[':
+            stack.append(char)
+
+        # Closing bracket
+        else:
+            # No opening bracket available
+            if len(stack) == 0:
+                return False
+
+            # Check if brackets match
+            if ((stack[-1] == '(' and char == ')') or
+                (stack[-1] == '{' and char == '}') or
+                (stack[-1] == '[' and char == ']')):
+
+                # Match → remove opening bracket
+                stack.pop()
+            else:
+                # Mismatch
+                return False
+
+    # Stack empty → valid
+    return len(stack) == 0
