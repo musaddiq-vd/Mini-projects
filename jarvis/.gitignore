@@ -1,0 +1,25 @@
+# Secrets and personal data (Jarvis stores these in JARVIS_HOME, but just in case)
+.env
+.env.*
+config.json
+memory.json
+state.json
+*.secret.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
