@@ -76,6 +76,8 @@ class Settings:
     theme_color: str = "#00d4ff"  # custom accent; a theme's own accent when it matches a theme
     theme_name: str = "Jarvis Blue"
     theme_mode: str = "dark"  # dark | light | auto (light by day, dark at night)
+    theme_second: str = ""  # your own second colour (glows, gradients); "" = the theme's
+    follow_wallpaper: bool = False  # take the colours from the desktop wallpaper, and follow it when it changes
     allow_interrupt: bool = False  # talk over Jarvis (needs headphones)
     morning_briefing: bool = True  # greet + weather + news on the first start of the day
     proactive: bool = True  # friendly check-in after a long quiet spell

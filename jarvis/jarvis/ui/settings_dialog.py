@@ -130,7 +130,7 @@ class SettingsDialog(QDialog):
         self.theme_name = QComboBox()
         self.theme_name.addItems(list(THEMES))
         self.theme_name.setCurrentText(self.result_settings.theme_name)
-        self.theme_name.currentTextChanged.connect(lambda name: self._set_color(THEMES[name][0]))
+        self.theme_name.currentTextChanged.connect(self._theme_picked)
         form.addRow("Style", self.theme_name)
         self.theme_mode = QComboBox()
         for m, label in zip(MODES, ("🌙  Night (dark)", "☀  Day (light)", "🌓  Auto - day by day, night by night")):
@@ -157,6 +157,28 @@ class SettingsDialog(QDialog):
         self.color_label = QLabel()
         v.addWidget(self.color_label)
         self._set_color(self.color)
+        second_row = QHBoxLayout()
+        second_row.addWidget(QLabel("Second colour"))
+        self.second = valid_color(self.result_settings.theme_second) if self.result_settings.theme_second else ""
+        self.second_btn = QPushButton()
+        self.second_btn.setFixedSize(34, 34)
+        self.second_btn.setToolTip("The second colour of glows and gradients")
+        self.second_btn.clicked.connect(self._pick_second)
+        second_row.addWidget(self.second_btn)
+        match = QPushButton("🎨  Match my wallpaper")
+        match.setToolTip("Take both colours from your desktop wallpaper")
+        match.clicked.connect(self._match_wallpaper)
+        second_row.addWidget(match)
+        reset = QPushButton("Reset")
+        reset.setToolTip("Back to the theme's own colours")
+        reset.clicked.connect(self._reset_colors)
+        second_row.addWidget(reset)
+        second_row.addStretch()
+        v.addLayout(second_row)
+        self.follow_wall = QCheckBox("Follow my wallpaper - update the colours when it changes")
+        self.follow_wall.setChecked(self.result_settings.follow_wallpaper)
+        v.addWidget(self.follow_wall)
+        self._show_second()
         v.addSpacing(12)
         v.addWidget(QLabel("Orb", objectName="section"))
         self.orb_face = QCheckBox("Show the AI face on the core (LED eyes, voice waveform, feelings)")
@@ -208,10 +230,43 @@ class SettingsDialog(QDialog):
         v.addStretch()
         return w
 
+    def _theme_picked(self, name: str) -> None:
+        self._set_color(THEMES[name][0])
+        self.second = ""  # a new theme brings its own second colour
+        if hasattr(self, "second_btn"):
+            self._show_second()
+
     def _set_color(self, color: str) -> None:
         self.color = valid_color(color)
         self.color_label.setText(f"Selected: {self.color}")
         self.color_label.setStyleSheet(f"color:{self.color}; font-weight:700;")
+
+    def _show_second(self) -> None:
+        shown = self.second or THEMES.get(self.theme_name.currentText(), THEMES["Jarvis Blue"])[1]
+        self.second_btn.setStyleSheet(f"background:{shown}; border-radius:17px; border:2px solid #222;")
+
+    def _pick_second(self) -> None:
+        c = QColorDialog.getColor(QColor(self.second or "#6a5cff"), self, "Second colour")
+        if c.isValid():
+            self.second = c.name()
+            self._show_second()
+
+    def _match_wallpaper(self) -> None:
+        from jarvis.ui.wallcolors import from_wallpaper
+
+        colors = from_wallpaper()
+        if colors is None:
+            self.color_label.setText("Couldn't read your wallpaper (a solid colour or a slideshow?)")
+            return
+        self._set_color(colors[0])
+        self.second = colors[1]
+        self._show_second()
+
+    def _reset_colors(self) -> None:
+        self._set_color(THEMES.get(self.theme_name.currentText(), THEMES["Jarvis Blue"])[0])
+        self.second = ""
+        self.follow_wall.setChecked(False)
+        self._show_second()
 
     def _pick_color(self) -> None:
         c = QColorDialog.getColor(QColor(self.color), self, "Accent colour")
@@ -473,6 +528,8 @@ class SettingsDialog(QDialog):
         s.live_model = self.live_model.text().strip() or Settings().live_model
         s.text_model = self.text_model.text().strip() or Settings().text_model
         s.theme_color = self.color
+        s.theme_second = self.second
+        s.follow_wallpaper = self.follow_wall.isChecked()
         s.theme_name = self.theme_name.currentText()
         s.theme_mode = self.theme_mode.currentData() or "dark"
         s.input_device = self.mic.currentData() or ""

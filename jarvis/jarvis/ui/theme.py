@@ -95,12 +95,13 @@ def readable(accent: str) -> str:
     return c.name()
 
 
-def apply(theme_name: str, mode: str, accent: str) -> str:
+def apply(theme_name: str, mode: str, accent: str, second: str = "") -> str:
     """Switch palette; returns the stylesheet to set on the QApplication."""
     global P, BG, PANEL_2, TEXT, MUTED, SECOND, ACCENT
     P = LIGHT if resolve_mode(mode) == "light" else DARK
     BG, PANEL_2, TEXT, MUTED = P.bg, P.panel2, P.text, P.muted
-    SECOND = THEMES.get(theme_name, THEMES["Jarvis Blue"])[1]
+    own = second and QColor(second).isValid()
+    SECOND = valid_color(second) if own else THEMES.get(theme_name, THEMES["Jarvis Blue"])[1]
     ACCENT = valid_color(accent)
     return stylesheet(ACCENT)
 

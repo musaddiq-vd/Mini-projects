@@ -935,6 +935,14 @@ class MainWindow(QMainWindow):
         elif action == "theme" and theme_name in theme.THEMES:
             s.theme_name = theme_name
             s.theme_color = theme.THEMES[theme_name][0]  # the theme's own accent
+        elif action == "wallpaper_theme":
+            from jarvis.ui.wallcolors import from_wallpaper
+
+            colors = from_wallpaper()
+            if colors is None:
+                self.toast("🎨", "Couldn't read the wallpaper's colours.", WARN, 4)
+                return
+            s.theme_color, s.theme_second = colors
         elif action == "avatar" and opts.get("avatar"):
             from jarvis.ui.avatars import AVATARS
 
@@ -1017,9 +1025,31 @@ class MainWindow(QMainWindow):
         self.toast("🌓", label, self.accent, 2.5)
 
     def _check_auto_theme(self) -> None:
-        """In auto mode, switch when the sun 'sets' or 'rises'."""
+        """In auto mode, switch when the sun 'sets' or 'rises'; follow a new wallpaper's colours if asked."""
         if self.app.settings.theme_mode == "auto" and theme.resolve_mode("auto") != self._applied_mode:
             self._apply_theme()
+        self._follow_wallpaper()
+
+    _wallpaper_sig = ""
+
+    def _follow_wallpaper(self, force: bool = False) -> bool:
+        """Take the wallpaper's colours when it changed (only with 'follow my wallpaper' on)."""
+        s = self.app.settings
+        if not s.follow_wallpaper:
+            return False
+        from jarvis.ui import wallcolors
+
+        sig = wallcolors.signature(wallcolors.wallpaper_path())
+        if not sig or (sig == self._wallpaper_sig and not force):
+            return False
+        self._wallpaper_sig = sig
+        colors = wallcolors.from_wallpaper()
+        if colors is None or (s.theme_color, s.theme_second) == colors:
+            return False
+        s.theme_color, s.theme_second = colors
+        save_settings(s)
+        self._apply_theme()
+        return True
 
     _applied_mode = "dark"
 
@@ -1121,7 +1151,7 @@ class MainWindow(QMainWindow):
         s = self.app.settings
         self.accent = theme.accent_for(s.theme_name, s.theme_color)
         self._applied_mode = theme.resolve_mode(s.theme_mode)
-        QApplication.instance().setStyleSheet(theme.apply(s.theme_name, s.theme_mode, self.accent))
+        QApplication.instance().setStyleSheet(theme.apply(s.theme_name, s.theme_mode, self.accent, s.theme_second))
         if hasattr(self, "mode_btn"):
             self.mode_btn.setText({"dark": "🌙", "light": "☀", "auto": "🌓"}.get(s.theme_mode, "🌙"))
             self.mode_btn.setToolTip(f"Theme: {s.theme_mode} - click to switch (dark → light → auto)")
@@ -1626,7 +1656,8 @@ class MainWindow(QMainWindow):
             return False
         changed = apply_settings(self.app.settings, dialog.result_settings)
         save_settings(self.app.settings)
-        if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face", "avatar"}:
+        if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face", "avatar",
+                      "theme_second"}:
             self._apply_theme()
         if changed & {"desktop_widget", "widget_corner", "widget_screen", "theme_color", "theme_name"}:
             self.apply_desktop_widget()
