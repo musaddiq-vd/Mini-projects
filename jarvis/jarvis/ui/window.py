@@ -1005,14 +1005,25 @@ class MainWindow(QMainWindow):
             self._show_window()
             return
         if self.mini is None:
+            from jarvis.ui.mini import next_up
+
             self.mini = MiniWindow(self.accent, self.app.settings.orb_face, self._show_window, [
                 ("Wake / Sleep", self._toggle_sleep), ("Mute / Unmute", self.mute_btn.toggle),
-                ("Quit", self.close)])
+                ("Quit", self.close)], send=self._send, upcoming=lambda: next_up(self.app))
+            for who, text in self._recent_for_mini():
+                self.mini.add_message(who, text)
             self.mini.orb.set_state(self._last_state or "connecting")
             self.orb.orbs.append(self.mini.orb)
         self.mini.orb._timer.start(16)
         self.hide()
         self.mini.show_at_saved_place()
+
+    def _recent_for_mini(self) -> list[tuple[str, str]]:
+        history = self.app.history
+        if not history:
+            return []
+        return [(i.get("role", ""), i.get("text", "")) for i in history.recent(6)
+                if i.get("role") in ("user", "assistant")]
 
     def _leave_mini(self) -> None:
         if self.mini and self.mini.isVisible():
@@ -1118,9 +1129,13 @@ class MainWindow(QMainWindow):
             self._on_state(data["state"])
         elif kind == "user":
             self._add_bubble("You", data["text"], mine=True)
+            if self.mini:
+                self.mini.add_message("user", data["text"])
             self._react_to_user(data["text"])
         elif kind == "assistant":
             self._add_bubble(self.app.settings.assistant_name, data["text"], typewriter=True)
+            if self.mini:
+                self.mini.add_message("assistant", data["text"])
             if self._joke_pending:
                 self._joke_pending = False
                 self._emote("wink")
