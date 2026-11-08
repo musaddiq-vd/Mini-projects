@@ -89,6 +89,8 @@ class Settings:
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
     power_up_wake: bool = True  # big power-up animation + sound when Jarvis wakes
+    desktop_widget: bool = False  # a small Jarvis card on the wallpaper
+    widget_corner: str = "top_right"  # top_right | top_left | bottom_right | bottom_left
     currency: str = "₹"  # for the expense tracker
     # Private iCal links (read-only calendar sync). Secret like passwords: encrypted on disk, never logged.
     calendar_urls: list[str] = field(default_factory=list)

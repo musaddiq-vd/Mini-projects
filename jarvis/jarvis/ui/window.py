@@ -534,6 +534,8 @@ class MainWindow(QMainWindow):
         self._shortcuts()
         self._apply_theme()
         self._restore_history()
+        if app.settings.desktop_widget:
+            QTimer.singleShot(400, self.apply_desktop_widget)
         self.practice_btn.setText(f"🎓  {app.state.get('practice_target', 'English')} Practice")
         if not app.settings.effective_api_key and app.practice_on:
             QTimer.singleShot(0, lambda: self.set_practice(True))
@@ -785,6 +787,9 @@ class MainWindow(QMainWindow):
         self._clock_timer.start(1000)
         self._update_clock()
 
+    def _toggle_desktop_widget(self) -> None:
+        self.ui_command("widget_off" if self.app.settings.desktop_widget else "widget_on")
+
     def _build_tray(self) -> None:
         self.tray = None
         if not QSystemTrayIcon.isSystemTrayAvailable():
@@ -792,6 +797,7 @@ class MainWindow(QMainWindow):
         self.tray = QSystemTrayIcon(self)
         menu = QMenu()
         for text, fn in (("Show", self._show_window), ("Mini mode", self.toggle_mini),
+                         ("Desktop widget on / off", self._toggle_desktop_widget),
                          ("Wake / Sleep", self._toggle_sleep),
                          ("Mute / Unmute", self.mute_btn.toggle), ("Open logs folder", self._open_logs),
                          ("Quit", self.close)):
@@ -909,6 +915,14 @@ class MainWindow(QMainWindow):
     def ui_command(self, action: str, theme_name: str = "", opts: dict | None = None) -> None:
         s = self.app.settings
         opts = opts or {}
+        if action in ("widget_on", "widget_off"):
+            s.desktop_widget = action == "widget_on"
+            corner = opts.get("place", "")
+            if corner in ("top_right", "top_left", "bottom_right", "bottom_left"):
+                s.widget_corner = corner
+            save_settings(s)
+            self.apply_desktop_widget()
+            return
         if action in ("minimize", "maximize", "move", "glide", "place", "bigger", "smaller", "stop"):
             self._window_motion(action, opts)
             return
@@ -1018,6 +1032,25 @@ class MainWindow(QMainWindow):
         self.hide()
         self.mini.show_at_saved_place()
 
+    def apply_desktop_widget(self) -> None:
+        """Show, move or hide the desktop widget to match the settings."""
+        s = self.app.settings
+        if not s.desktop_widget:
+            if self.desk is not None:
+                self.desk.hide_from_desktop()
+            return
+        if self.desk is None:
+            from jarvis.ui.desktop_widget import DesktopWidget
+
+            self.desk = DesktopWidget(self.app, self.accent, s.orb_face, s.widget_corner)
+            self.desk.orb.set_state(self._last_state or "connecting")
+            self.orb.orbs.append(self.desk.orb)
+        self.desk.set_accent(self.accent)
+        self.desk.place(s.widget_corner)
+        self.desk.show_on_desktop()
+
+    desk = None
+
     def _recent_for_mini(self) -> list[tuple[str, str]]:
         history = self.app.history
         if not history:
@@ -1084,6 +1117,8 @@ class MainWindow(QMainWindow):
         self.orb.set_face(self.app.settings.orb_face)
         if self.mini:
             self.mini.set_accent(self.accent)
+        if self.desk is not None:
+            self.desk.set_accent(self.accent)
         self.stats.accent = self.accent
         self.background.set_accent(self.accent)
         for glow in self._glows:
@@ -1533,6 +1568,8 @@ class MainWindow(QMainWindow):
         save_settings(self.app.settings)
         if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face"}:
             self._apply_theme()
+        if changed & {"desktop_widget", "widget_corner", "theme_color", "theme_name"}:
+            self.apply_desktop_widget()
         if "history_days" in changed and self.app.history:
             self.app.history.prune(self.app.settings.history_days)
         if self.assistant is not None and "power_up_wake" in changed:
@@ -1574,6 +1611,8 @@ class MainWindow(QMainWindow):
         """The app doesn't quit on its own (mini mode hides this window), so quit explicitly."""
         self._quitting = True
         self.reminders.close_all()
+        if self.desk is not None:
+            self.desk.close()
         if self.mini:
             self.mini.close()
         QTimer.singleShot(0, QApplication.instance().quit)

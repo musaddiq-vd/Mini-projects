@@ -165,6 +165,17 @@ class SettingsDialog(QDialog):
         self.power_up = QCheckBox("Power-up animation and sound when Jarvis wakes up")
         self.power_up.setChecked(self.result_settings.power_up_wake)
         v.addWidget(self.power_up)
+        desk_row = QHBoxLayout()
+        self.desk_widget = QCheckBox("Desktop widget on the wallpaper (time, what's next, habits)")
+        self.desk_widget.setChecked(self.result_settings.desktop_widget)
+        desk_row.addWidget(self.desk_widget, 1)
+        self.desk_corner = QComboBox()
+        for key, text in (("top_right", "Top right"), ("top_left", "Top left"),
+                          ("bottom_right", "Bottom right"), ("bottom_left", "Bottom left")):
+            self.desk_corner.addItem(text, key)
+        self.desk_corner.setCurrentIndex(max(0, self.desk_corner.findData(self.result_settings.widget_corner)))
+        desk_row.addWidget(self.desk_corner)
+        v.addLayout(desk_row)
         v.addStretch()
         return w
 
@@ -441,6 +452,8 @@ class SettingsDialog(QDialog):
         s.sound_volume = self.sfx_volume.value()
         s.orb_face = self.orb_face.isChecked()
         s.power_up_wake = self.power_up.isChecked()
+        s.desktop_widget = self.desk_widget.isChecked()
+        s.widget_corner = self.desk_corner.currentData() or "top_right"
         s.morning_briefing = self.briefing.isChecked()
         s.proactive = self.proactive.isChecked()
         s.proactive_minutes = self.proactive_minutes.value()

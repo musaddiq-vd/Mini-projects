@@ -7,7 +7,7 @@ from jarvis.tools import tool
 THEME_NAMES = ["Jarvis Blue", "Neon Pink", "Emerald", "Sunset", "Royal Purple", "Mono"]
 ACTIONS = ["night_mode", "day_mode", "auto_mode", "theme", "mini_mode", "full_window", "show_help",
            "show_achievements", "clear_chat", "dashboard", "minimize", "maximize", "move", "glide", "place",
-           "bigger", "smaller", "stop"]
+           "bigger", "smaller", "stop", "widget_on", "widget_off"]
 DIRECTIONS = ["up", "down", "left", "right"]
 PLACES = ["top_left", "top_right", "bottom_left", "bottom_right", "center", "left_half", "right_half", "top",
           "bottom", "left", "right"]
@@ -20,6 +20,7 @@ SAID = {
     "dashboard": "Here's your dashboard.", "minimize": "Minimized - I'm still listening.",
     "maximize": "Full screen.", "move": "Moved.", "glide": "Moving - say stop when it's right.",
     "place": "Done.", "bigger": "A bit bigger.", "smaller": "A bit smaller.", "stop": "Stopped.",
+    "widget_on": "The desktop widget is on your wallpaper.", "widget_off": "Desktop widget removed.",
 }
 
 
@@ -33,7 +34,9 @@ SAID = {
     "dark mode use dark_mode instead. "
     "Your window by voice: minimize ('apni window minimize karo'), maximize, move (direction + amount: "
     "'thoda neeche jao'), glide (keep moving in a direction until the user says stop - then call stop_moving), "
-    "place (a corner/side: 'right corner me jao', 'beech me aao', left_half/right_half), bigger/smaller.",
+    "place (a corner/side: 'right corner me jao', 'beech me aao', left_half/right_half), bigger/smaller. "
+    "widget_on / widget_off: the small Jarvis card on the desktop wallpaper ('desktop widget lagao / hatao'); "
+    "place also moves it when given with action widget_on.",
     {"action": {"type": "string", "enum": ACTIONS},
      "theme": {"type": "string", "enum": THEME_NAMES, "description": "only with action=theme"},
      "page": {"type": "string", "enum": PAGES, "description": "only with action=dashboard"},
