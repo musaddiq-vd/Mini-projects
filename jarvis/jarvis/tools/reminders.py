@@ -66,15 +66,36 @@ def _fmt(due: float) -> str:
     return d.strftime("%I:%M %p").lstrip("0") + day
 
 
+REPEATS = ("daily", "weekdays")
+
+
+def next_repeat(due: float, repeat: str, now: float | None = None) -> float:
+    """The next time a repeating reminder should ring after `due` (always in the future)."""
+    now = now or time.time()
+    d = datetime.fromtimestamp(due)
+    while True:
+        d += timedelta(days=1)
+        if repeat == "weekdays" and d.weekday() >= 5:
+            continue
+        if d.timestamp() > now:
+            return d.timestamp()
+
+
 def _schedule(ctx, rid: int, due: float, message: str, missed_due: float | None = None) -> None:
     def fire():
         with _lock:
             _timers.pop(rid, None)
             items = _load(ctx)
-            items.pop(rid, None)
+            item = items.pop(rid, None)
+            repeat = (item or {}).get("repeat", "")
+            if item and repeat in REPEATS:  # repeating: book the next one
+                item["due"] = next_repeat(item["due"], repeat)
+                items[rid] = item
             _save(ctx, items)
         late = f" (it was due at {_fmt(missed_due)} while I was off)" if missed_due else ""
         ctx.notify(f"Reminder: {message}{late}")
+        if item and repeat in REPEATS:
+            _schedule(ctx, rid, item["due"], message)
 
     timer = threading.Timer(max(0.0, due - time.time()), fire)
     timer.daemon = True
@@ -91,6 +112,7 @@ def restore_reminders(ctx, missed_delay: float = 6.0) -> int:
         if rid in _timers:
             continue
         if r["due"] <= now:  # came due while Jarvis was closed: tell it right after start
+            # (a repeating one is told once; fire() then books its next time)
             _schedule(ctx, rid, now + missed_delay, r["message"], missed_due=r["due"])
         else:
             _schedule(ctx, rid, r["due"], r["message"])
@@ -104,10 +126,19 @@ def restore_reminders(ctx, missed_delay: float = 6.0) -> int:
     "('at' like '18:30', '6:30 pm', '7 am'). Reminders are kept even if Jarvis is restarted.",
     {"message": {"type": "string"},
      "minutes": {"type": "number", "description": "remind after this many minutes"},
-     "at": {"type": "string", "description": "clock time instead of minutes, e.g. '18:30' or '6:30 pm'"}},
+     "at": {"type": "string", "description": "clock time instead of minutes, e.g. '18:30' or '6:30 pm'"},
+     "repeat": {"type": "string", "enum": ["once", "daily", "weekdays"],
+                "description": "'daily' for every day ('roz', 'har din'), 'weekdays' for Mon-Fri; needs 'at'"}},
     required=["message"],
 )
-def set_reminder(ctx, message: str, minutes: float | None = None, at: str | None = None):
+def set_reminder(ctx, message: str, minutes: float | None = None, at: str | None = None, repeat: str = ""):
+    repeat = (repeat or "").lower().strip()
+    if repeat in {"once", "none", "no"}:
+        repeat = ""
+    if repeat and repeat not in REPEATS:
+        return {"error": "repeat must be 'daily' or 'weekdays'."}
+    if repeat and not at:
+        return {"error": "A repeating reminder needs a clock time ('at')."}
     if at:
         when = parse_clock(at)
         if when is None:
@@ -125,15 +156,18 @@ def set_reminder(ctx, message: str, minutes: float | None = None, at: str | None
         rid = max(items, default=0) + 1
         while rid in _timers:
             rid += 1
-        items[rid] = {"id": rid, "due": due, "message": message}
+        if repeat == "weekdays" and datetime.fromtimestamp(due).weekday() >= 5:
+            due = next_repeat(due, repeat)
+        items[rid] = {"id": rid, "due": due, "message": message, "repeat": repeat}
         _save(ctx, items)
     _schedule(ctx, rid, due, message)
-    return f"Reminder #{rid} set for {_fmt(due)}."
+    every = {"daily": " and every day after that", "weekdays": " and every weekday after that"}.get(repeat, "")
+    return f"Reminder #{rid} set for {_fmt(due)}{every}."
 
 
 @tool("list_reminders", "List reminders that are still waiting.")
 def list_reminders(ctx):
-    items = [{"id": r["id"], "at": _fmt(r["due"]), "message": r["message"]}
+    items = [{"id": r["id"], "at": _fmt(r["due"]), "message": r["message"], "repeat": r.get("repeat") or "once"}
              for r in sorted(_load(ctx).values(), key=lambda r: r["due"])]
     return {"reminders": items} if items else "No reminders."
 

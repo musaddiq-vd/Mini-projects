@@ -10,12 +10,23 @@ from pathlib import Path
 from jarvis.config import Settings, home_dir, load_settings
 from jarvis.confirm import ConfirmGate, console_ask
 from jarvis.events import Events
+from jarvis.history import ChatHistory
 from jarvis.memory import MemoryStore
 from jarvis.state import StateStore
 from jarvis.tools import ToolContext, ToolRegistry, build_registry
 from jarvis.undo import UndoStack
 
 REPO_PLUGINS = Path(__file__).resolve().parent.parent / "plugins"
+
+
+_STATE_FOR_PROMPT: list = []  # set by create_app so the prompt can name saved routines
+
+
+def _routines_line(settings: Settings) -> str:
+    from jarvis.tools.routines import routine_names
+
+    names = routine_names(_STATE_FOR_PROMPT[0]) if _STATE_FOR_PROMPT else []
+    return f"Saved routines: {', '.join(names)}." if names else ""
 
 
 def system_prompt(settings: Settings, memory: MemoryStore) -> str:
@@ -48,6 +59,14 @@ How to act:
 - "Screenshot lo / take a screenshot / screenshot kholo/dikhao": call take_screenshot - it saves the
   file, opens it in the photo viewer and shows it in this window. To open any file, image or folder
   call open_file. Never say you can't open or show files.
+- Timers: set_timer ("5 minute ka timer"). Focus/pomodoro: focus_mode. Reminders: set_reminder with
+  minutes or a clock time 'at'; repeat='daily'/'weekdays' for "roz/har din".
+- Notes and to-dos: add_note / list_notes / complete_note / delete_note ("list mein daal do",
+  "meri list batao", "milk ho gaya").
+- Routines: when the user says a routine's name, call run_routine and then do its steps. To make one
+  ("jab main X bolu to ... karna"), call save_routine. {_routines_line(settings)}
+- "What did I ask yesterday / humne kya baat ki thi": call search_chat_history.
+- When the user thanks you or says something kind, be warm in return.
 - When the user tells you something lasting about themselves (name, city, language, people, phone
   numbers of contacts as contact_<name>), save it with `remember`.
 - Before saying you don't know something personal, try `recall_memory`.
@@ -74,6 +93,7 @@ class Jarvis:
     ctx: ToolContext
     events: Events
     state: StateStore
+    history: ChatHistory | None = None
 
     def prompt(self) -> str:
         return system_prompt(self.settings, self.memory)
@@ -84,7 +104,11 @@ def create_app(settings: Settings | None = None, ask=console_ask, notify=print) 
     home = home_dir()
     memory = MemoryStore(home / "memory.json")
     state = StateStore(home / "state.json")
+    _STATE_FOR_PROMPT[:] = [state]
     events = Events()
     registry = build_registry([REPO_PLUGINS, home / "plugins"])
     ctx = ToolContext(settings, memory, UndoStack(), ConfirmGate(ask), notify, state=state, events=events)
-    return Jarvis(settings, memory, registry, ctx, events, state)
+    history = ChatHistory(home / "history.jsonl")
+    events.subscribe(lambda kind, data: history.add(kind, data.get("text", ""))
+                     if kind in {"user", "assistant"} else None)
+    return Jarvis(settings, memory, registry, ctx, events, state, history)

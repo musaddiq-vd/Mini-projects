@@ -27,6 +27,7 @@ from jarvis.app import Jarvis, create_app
 from jarvis.config import home_dir, load_settings, save_settings
 from jarvis.history import ChatHistory
 from jarvis.logs import log_dir, on_crash, setup_logging
+from jarvis.ui.fx import AnimatedBackground, ToastHost, Typewriter, add_glow, grow_in
 from jarvis.ui.hotkey import HOTKEY_TEXT, GlobalHotkey
 from jarvis.ui.mini import MiniWindow, OrbGroup
 from jarvis.ui.orb import Orb
@@ -45,17 +46,22 @@ QUICK_ACTIONS = [
     ("🖥  Screen", "What's on my screen?"),
     ("🌦  Weather", "What's the weather today?"),
     ("📰  News", "Give me today's top news in two lines."),
-    ("📊  System", "How is my computer doing? CPU, RAM and battery."),
-    ("⏰  Reminders", "What reminders do I have?"),
+    ("📝  My list", "What's on my to-do list, and do I have any reminders or timers?"),
+    ("⏱  5 min", "Set a 5 minute timer."),
     ("😄  Joke", "Tell me a short joke."),
 ]
+
+THANKS_WORDS = ("thank", "thanks", "shukriya", "dhanyavad", "dhanyawad", "love you", "awesome", "great job",
+                "well done", "you're the best", "nice work", "शुक्रिया", "धन्यवाद", "شکریہ")
+JOKE_WORDS = ("joke", "mazak", "mazaak", "chutkula", "funny", "मज़ाक", "चुटकुला")
 
 TOOL_ICONS = {
     "open": "🚀", "close": "✖", "volume": "🔊", "brightness": "☀", "media": "🎵", "play": "▶",
     "screenshot": "📸", "screen": "👁", "camera": "📷", "weather": "🌦", "search": "🔎", "news": "📰", "remind": "⏰",
     "remember": "🧠", "recall": "🧠", "memory": "🧠", "file": "📁", "folder": "📁", "whatsapp": "💬",
     "message": "💬", "email": "✉", "code": "💻", "type": "⌨", "key": "⌨", "clipboard": "📋",
-    "power": "⏻", "wifi": "📶", "time": "🕒", "system": "📊", "undo": "↩", "sleep": "💤", "window": "🪟",
+    "power": "⏻", "wifi": "📶", "timer": "⏱", "focus": "🎯", "note": "📝", "routine": "🔁",
+    "history": "🗂", "time": "🕒", "system": "📊", "undo": "↩", "sleep": "💤", "window": "🪟",
 }
 
 
@@ -267,6 +273,7 @@ class ChatView(QScrollArea):
         self.setWidget(inner)
         self._anims: list[QPropertyAnimation] = []
         self._stick = True
+        self.animate = True  # off while old history is put back
         self.verticalScrollBar().rangeChanged.connect(self._on_range)
         self.verticalScrollBar().valueChanged.connect(self._on_scroll)
 
@@ -291,6 +298,8 @@ class ChatView(QScrollArea):
             old = self.col.takeAt(1).widget()
             if old:
                 old.deleteLater()
+        if self.animate:
+            grow_in(row)
         effect = QGraphicsOpacityEffect(row)
         row.setGraphicsEffect(effect)
         anim = QPropertyAnimation(effect, b"opacity", self)
@@ -313,7 +322,8 @@ class ChatView(QScrollArea):
                       default=0)
         label.setMinimumWidth(min(longest + 6, max_width))
 
-    def add_message(self, who: str, text: str, mine: bool, when: datetime | None = None) -> None:
+    def add_message(self, who: str, text: str, mine: bool, when: datetime | None = None,
+                    typewriter: bool = False) -> None:
         bubble = QFrame(objectName="bubbleMe" if mine else "bubbleAi")
         v = QVBoxLayout(bubble)
         v.setContentsMargins(12, 8, 12, 10)
@@ -336,6 +346,8 @@ class ChatView(QScrollArea):
         bubble.setMaximumWidth(width)
         bubble.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
         self._add_row(bubble, "right" if mine else "left")
+        if typewriter and self.animate:
+            msg._typewriter = Typewriter(msg, text)
 
     def add_tool(self, name: str, args: dict, result: dict) -> None:
         ok = "error" not in result
@@ -377,7 +389,11 @@ class ChatView(QScrollArea):
 
     def toPlainText(self) -> str:  # noqa: N802 - same name as QTextBrowser
         """All shown text, top to bottom."""
-        return "\n".join(label.text() for label in self.widget().findChildren(QLabel))
+        def full(label: QLabel) -> str:  # a message still typing itself out counts in full
+            writer = getattr(label, "_typewriter", None)
+            return writer.text if writer else label.text()
+
+        return "\n".join(full(label) for label in self.widget().findChildren(QLabel))
 
     def clear(self) -> None:
         while self.col.count() > 1:
@@ -396,7 +412,7 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._last_state = ""
         self.accent = valid_color(app.settings.theme_color)
-        self.history = ChatHistory(home_dir() / "history.jsonl")
+        self.history = app.history or ChatHistory(home_dir() / "history.jsonl")  # saved by the core
         self.mini: MiniWindow | None = None
         self.hotkey: GlobalHotkey | None = None
         bridge.hotkey.connect(self._on_hotkey)
@@ -422,7 +438,9 @@ class MainWindow(QMainWindow):
 
     # -- layout -------------------------------------------------------------------
     def _build(self) -> None:
-        root = QWidget(objectName="root")
+        root = AnimatedBackground(self.accent)
+        root.setObjectName("root")
+        self.background = root
         outer = QHBoxLayout(root)
         outer.setContentsMargins(16, 16, 16, 16)
         outer.setSpacing(16)
@@ -547,6 +565,10 @@ class MainWindow(QMainWindow):
         rv.addLayout(row)
         outer.addWidget(right, 6)
         self.setCentralWidget(root)
+        self.toasts = ToastHost(root)
+        self._glows = [add_glow(b, self.accent, 20 if b.objectName() != "chip" else 14)
+                       for b in root.findChildren(QPushButton)]
+        self._glows.append(add_glow(self.input, self.accent, 18))
 
         self._clock_timer = QTimer(self)
         self._clock_timer.timeout.connect(self._update_clock)
@@ -663,6 +685,9 @@ class MainWindow(QMainWindow):
         if self.mini:
             self.mini.set_accent(self.accent)
         self.stats.accent = self.accent
+        self.background.set_accent(self.accent)
+        for glow in self._glows:
+            glow.set_color(self.accent)
         name = self.app.settings.assistant_name
         self.title.setText(name.upper())
         self.setWindowTitle(name)
@@ -701,10 +726,23 @@ class MainWindow(QMainWindow):
             self._on_state(data["state"])
         elif kind == "user":
             self._add_bubble("You", data["text"], mine=True)
-            self.history.add("user", data["text"])
+            self._react_to_user(data["text"])
         elif kind == "assistant":
-            self._add_bubble(self.app.settings.assistant_name, data["text"])
-            self.history.add("assistant", data["text"])
+            self._add_bubble(self.app.settings.assistant_name, data["text"], typewriter=True)
+            if self._joke_pending:
+                self._joke_pending = False
+                self._emote("wink")
+        elif kind == "timer":
+            self.orb.set_timer(data["id"], data["ends"], data["total"], data.get("label", ""))
+        elif kind == "timer_end":
+            self.orb.end_timer(data["id"])
+            if data.get("done"):
+                self._emote("surprised")
+                self.orb.flash()
+                self.toast("⏱", f"{data.get('label') or 'Timer'} - time's up!", OK, 8)
+                if self.tray and not self.isActiveWindow():
+                    self.tray.showMessage(self.app.settings.assistant_name,
+                                          f"⏱ {data.get('label') or 'Timer'} - time's up!")
         elif kind == "caption":
             self._on_caption(data.get("who", ""), data.get("text", ""))
         elif kind == "tool_start":
@@ -714,6 +752,10 @@ class MainWindow(QMainWindow):
             result = data.get("result", {})
             ok = "error" not in result
             self.orb.pulse(ok)
+            if not ok:
+                self._emote("sad")
+            elif data["name"] == "complete_note":
+                self._emote("wink")
             self.orb.action(f"{'✓' if ok else '✗'}  {pretty_tool(data['name'])}", OK if ok else DANGER)
             self.chat.add_tool(data["name"], data.get("args", {}), result)
             image = result.get("image") if ok else None
@@ -722,11 +764,35 @@ class MainWindow(QMainWindow):
                 self.chat.add_image(image, f"🖼  {caption}  ·  click to open", self.accent)
         elif kind == "crash":
             self._add_system(f"⚠ Something went wrong: {data['text']}  (details in the log: tray → Open logs folder)")
+            self.toast("⚠", "Something went wrong - details are in the log.", DANGER)
         elif kind == "log":
             text = data["text"]
             self._add_system(text)
+            if text.startswith("🔔"):
+                self.toast("🔔", text[1:].strip(), WARN, 8)
+            elif text.startswith("✓ Reconnected"):
+                self.toast("📶", "Back online.", OK)
+            elif text.startswith("[connection lost]") and not self._offline_toast:
+                self._offline_toast = True
+                self.toast("📡", "Connection lost - reconnecting...", WARN)
+            if text.startswith("✓ Reconnected"):
+                self._offline_toast = False
             if text.startswith("🔔") and self.tray and not self.isActiveWindow():
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
+
+    _joke_pending = False
+    _offline_toast = False
+
+    def _emote(self, kind: str) -> None:
+        self.orb.emote(kind)
+        self.app.events.emit("emote", feeling=kind)  # sound effects listen for this
+
+    def _react_to_user(self, text: str) -> None:
+        low = text.lower()
+        if any(w in low for w in THANKS_WORDS):
+            self._emote("love")
+        if any(w in low for w in JOKE_WORDS):
+            self._joke_pending = True
 
     def _on_state(self, state: str) -> None:
         prev, self._last_state = self._last_state, state
@@ -776,10 +842,14 @@ class MainWindow(QMainWindow):
 
     _caption_live = False
 
-    def _add_bubble(self, who: str, text: str, mine: bool = False) -> None:
+    def _add_bubble(self, who: str, text: str, mine: bool = False, typewriter: bool = False) -> None:
         if not text or text.startswith("(system"):
             return  # app-generated instructions are not shown as user messages
-        self.chat.add_message(who, text, mine)
+        self.chat.add_message(who, text, mine, typewriter=typewriter)
+
+    def toast(self, icon: str, text: str, color: str, seconds: float = 4.5) -> None:
+        if self.isVisible() and not self.isMinimized():
+            self.toasts.show(icon, text, color, seconds)
 
     def _add_system(self, text: str) -> None:
         self.chat.add_system(text)
@@ -793,11 +863,13 @@ class MainWindow(QMainWindow):
         if not items:
             return
         name = self.app.settings.assistant_name
+        self.chat.animate = False
         for item in items:
             mine = item["role"] == "user"
             self.chat.add_message("You" if mine else name, item["text"], mine,
                                   when=datetime.fromtimestamp(item.get("t", 0) or 0))
         self.chat.add_system("──────  earlier conversation  ·  Ctrl+L clears it  ──────")
+        self.chat.animate = True
 
     # -- controls ---------------------------------------------------------------
     def _send_typed(self) -> None:

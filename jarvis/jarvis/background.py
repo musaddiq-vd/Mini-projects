@@ -82,7 +82,14 @@ class BackgroundServices:
                 + ". Keep it under six short sentences, in the user's language.")
 
     # -- loops ---------------------------------------------------------------
+    def _focusing(self) -> bool:
+        from jarvis.tools.timers import focus_active
+
+        return focus_active(self.app.ctx)
+
     def _alert(self, key: str, text: str) -> None:
+        if self._focusing() and key != "battery":  # stay quiet in focus mode (low battery still matters)
+            return
         now = time.monotonic()
         if now - self._last_alert.get(key, -ALERT_COOLDOWN) >= ALERT_COOLDOWN:
             self._last_alert[key] = now
@@ -141,7 +148,7 @@ class BackgroundServices:
 
     def _proactive_loop(self) -> None:
         while not self._stop.wait(60):
-            if not self.s.proactive or self.sleeping:
+            if not self.s.proactive or self.sleeping or self._focusing():
                 continue
             idle = time.monotonic() - self.last_activity
             if idle >= self.s.proactive_minutes * 60 and 9 <= datetime.now().hour < 22:

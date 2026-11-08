@@ -45,8 +45,16 @@ def stylesheet(accent: str) -> str:
     soft = f"rgba({a.red()},{a.green()},{a.blue()},40)"
     mid = f"rgba({a.red()},{a.green()},{a.blue()},110)"
     return f"""
-    QWidget {{ background: {BG}; color: {TEXT}; font-family: 'Segoe UI', 'Inter', sans-serif; font-size: 13px; }}
-    QFrame#panel {{ background: {PANEL}; border: 1px solid {soft}; border-radius: 14px; }}
+    QWidget {{ background: transparent; color: {TEXT}; font-family: 'Segoe UI', 'Inter', sans-serif; font-size: 13px; }}
+    QMainWindow, QDialog, QMessageBox, QMenu {{ background: {BG}; }}
+    QMenu {{ border: 1px solid {soft}; padding: 6px; border-radius: 8px; }}
+    QMenu::item {{ padding: 6px 18px; border-radius: 6px; }}
+    QMenu::item:selected {{ background: {mid}; }}
+    QToolTip {{ background: {PANEL_2}; color: {TEXT}; border: 1px solid {soft}; padding: 6px; border-radius: 6px; }}
+    QFrame#panel {{
+        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(20,32,44,190), stop:1 rgba(10,17,24,200));
+        border: 1px solid {soft}; border-top: 1px solid {mid}; border-radius: 16px;
+    }}
     QLabel#title {{ color: {accent}; font-size: 20px; font-weight: 700; letter-spacing: 4px; background: transparent; }}
     QLabel#state {{ color: {accent}; font-size: 12px; font-weight: 600; letter-spacing: 3px; background: transparent; }}
     QLabel#muted {{ color: {MUTED}; font-size: 11px; background: transparent; }}
@@ -60,7 +68,8 @@ def stylesheet(accent: str) -> str:
     QPushButton {{
         background: {PANEL_2}; border: 1px solid {soft}; border-radius: 8px; padding: 8px 14px; color: {TEXT};
     }}
-    QPushButton:hover {{ border: 1px solid {accent}; }}
+    QPushButton:hover {{ border: 1px solid {accent}; background: {soft}; }}
+    QPushButton:pressed {{ background: {mid}; padding-top: 9px; padding-bottom: 7px; }}
     QPushButton:checked {{ background: {mid}; border: 1px solid {accent}; }}
     QPushButton#primary {{ background: {accent}; color: {BG}; font-weight: 700; border: none; }}
     QPushButton#danger {{ background: {DANGER}; color: white; font-weight: 700; border: none; }}

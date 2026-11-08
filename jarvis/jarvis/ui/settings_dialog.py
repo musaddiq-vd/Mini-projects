@@ -110,7 +110,7 @@ class SettingsDialog(QDialog):
         self._set_color(self.color)
         v.addSpacing(12)
         v.addWidget(QLabel("Orb", objectName="section"))
-        self.orb_face = QCheckBox("Give the orb a cute animated face (eyes blink, sleep, smile)")
+        self.orb_face = QCheckBox("Show the AI face on the core (LED eyes, voice waveform, feelings)")
         self.orb_face.setChecked(self.result_settings.orb_face)
         v.addWidget(self.orb_face)
         v.addStretch()

@@ -13,7 +13,10 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 ### The window
 | | |
 |---|---|
-| 🔵 **Living orb with a face** | Anime-style eyes that blink and look around, smile and blush while talking, close with floating "Z z z" while asleep, look up while working. Spectrum ring, ripples when you speak, radar sweep while connecting, a flash on wake-up and a pulse + floating label for every action. |
+| 💖 **Feelings** | LED heart eyes and floating hearts when you say thanks, a wink after a joke, tilted dim visors with a tear when something fails, surprised rings when a timer rings. |
+| ⏱️ **Timer rings** | Every running timer is a countdown ring around the orb with a label; it blinks in the last seconds and an alarm plays. |
+| 🧠 **AI core** | A glass sphere with a rotating hex lattice, a scan line and glowing LED visor eyes that blink and glance around. Talking turns them into happy arcs with a live voice waveform for a mouth; working shows scanner lights sweeping in the visors; asleep they dim with floating "Z z z". Around it: a neural ring of nodes that light up with sound, a spectrum ring, ripples when you speak, a radar sweep while connecting, a flash on wake-up and a pulse + floating label for every action. |
+| ✨ **Motion** | Boot animation ("INITIALIZING") on start, a slowly drifting aurora + grid background, glass panels, buttons and the message box glow on hover/focus, chat rows grow and fade in, Jarvis's replies type themselves out, toast cards slide in for reminders, timers and connection changes. |
 | 🎙️ **Live captions** | What you say and what Jarvis says appear under the orb as it happens. |
 | 🔊 **Sound effects** | Startup, wake, sleep, action, success, error, reminder and confirm sounds - synthesised, no files. Volume in Settings. |
 | 💬 **Conversation panel** | Chat bubbles with timestamps that fade in, a chip for every action (✓ / ✗), image thumbnails (click to open) and a "working on it" indicator. |
@@ -48,7 +51,11 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | Code | "Write a Python snake game in a folder called snake" — creates the files and opens VS Code · explain/review a code file |
 | Games | Open Steam / Epic downloads, library or store |
 | Memory | Remembers your name, city, people, preferences, contacts · "What do you know about me?" |
-| Reminders | "Remind me in 20 minutes to call mom" · "Shaam 6:30 baje chai ki yaad dilana" - kept across restarts; one that came due while Jarvis was closed is told when it starts |
+| Timers & focus | "5 minute ka timer lagao" · "Timer for 30 seconds for the eggs" · "Focus mode 25 minutes" (pomodoro: no check-ins or alerts until it ends) |
+| To-do & notes | "Milk aur bread list mein daal do" · "Meri list batao" · "Milk ho gaya" · "Note karo: wifi password router pe hai" · undo works |
+| Routines | "Save a routine called work mode: open VS Code, open Chrome, play lofi" - then just say "work mode" |
+| Past chats | "Kal maine kya poocha tha?" · "What did we say about the Goa trip?" |
+| Reminders | "Remind me in 20 minutes to call mom" · "Roz subah 9 baje vitamins ki yaad dilana" (daily / weekdays) · "Shaam 6:30 baje chai ki yaad dilana" - kept across restarts; one that came due while Jarvis was closed is told when it starts |
 | Undo | "Undo" reverses file changes, brightness, dark mode, clipboard and saved memories |
 
 ### On its own
@@ -118,7 +125,7 @@ Settings live in `~/.jarvis/config.json` (or the `JARVIS_HOME` folder), **never 
 | `morning_briefing`, `proactive`, `proactive_minutes`, `hardware_alerts` | Background features |
 | `allowed_roots` | Folders the file tools may use; empty = your home folder |
 
-Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` (also reminders) · chat history: `~/.jarvis/history.jsonl` · logs: `~/.jarvis/logs/`.
+Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` (also reminders, notes, routines) · chat history: `~/.jarvis/history.jsonl` · logs: `~/.jarvis/logs/`.
 
 ---
 
@@ -164,11 +171,11 @@ jarvis/
 │   ├── voicecmd.py       # "Jarvis" wakes it, "so jao" puts it to sleep
 │   ├── sfx.py            # synthesised sound effects
 │   ├── logs.py           # log file + crash capture
-│   ├── history.py        # saved chat history
+│   ├── history.py        # saved chat history (written by the core, every mode)
 │   ├── audio.py · wake.py · net.py
 │   ├── config.py · memory.py · state.py · undo.py · confirm.py
 │   ├── tools/            # built-in tools, one file per area
-│   └── ui/               # PyQt6 window, orb, settings
+│   └── ui/               # PyQt6 window, orb + aiface (the AI core), fx (animations, toasts), mini, settings
 ├── plugins/              # your own tools
 ├── tests/                # pytest suite
 └── jarvis_launcher.pyw    # start without a console

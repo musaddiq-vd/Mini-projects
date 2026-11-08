@@ -1,10 +1,10 @@
-"""The animated orb: a living HUD with a cute face that reacts to everything Jarvis does.
+"""The animated orb: a living AI core in a HUD that reacts to everything Jarvis does.
 
-- listening: open eyes that look around and blink, ripples when you talk
-- speaking: happy eyes, a moving mouth, blush, a ring of spectrum bars
-- thinking / working: eyes look up, satellites orbit, a dashed ring spins
-- sleeping: eyes closed, slow breathing, floating "Z z z"
-- connecting: radar sweep
+- listening: LED visor eyes breathe with your voice, ripples when you talk
+- speaking: happy LED arcs, a live voice waveform, a ring of spectrum bars, glowing neural ring
+- thinking / working: scanner lights in the visors, satellites orbit, a dashed ring spins
+- sleeping: dim eyes, slow breathing, floating "Z z z"
+- connecting / start-up: radar sweep and a boot animation (rings unfold, "INITIALIZING")
 - flash() on wake-up, pulse() after an action, action("text") floats a label
 """
 
@@ -19,6 +19,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
 from PyQt6.QtGui import QColor, QConicalGradient, QFont, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
+from jarvis.ui import aiface
 from jarvis.ui.theme import DANGER, OK, state_color
 
 N_BARS = 72
@@ -43,6 +44,11 @@ class Orb(QWidget):
         self.zzz: list[list] = []  # [age, drift]
         self._zzz_timer = 0.0
         self.flash_t = 0.0
+        self.boot = 0.0  # 0 -> 1 during the start-up animation
+        self.emotion = ""  # love | sad | wink | surprised, for a few seconds
+        self.emotion_until = 0.0
+        self.hearts: list[list] = []  # [age, x drift]
+        self.timers: dict[int, tuple[float, float, str]] = {}  # id -> (ends, total, label)
         self.blink_at = time.monotonic() + 2.5
         self.look = QPointF(0, 0)
         self.look_target = QPointF(0, 0)
@@ -65,6 +71,25 @@ class Orb(QWidget):
 
     def set_face(self, on: bool) -> None:
         self.face = on
+
+    def emote(self, kind: str, seconds: float = 2.6) -> None:
+        """Show a feeling for a moment: love, sad, wink or surprised."""
+        self.emotion = kind
+        self.emotion_until = time.monotonic() + seconds
+        if kind == "love":
+            self.hearts += [[-k * 0.12, random.uniform(-0.6, 0.6)] for k in range(5)]
+
+    def set_timer(self, tid: int, ends: float, total: float, label: str = "") -> None:
+        self.timers[tid] = (ends, total, label)
+
+    def end_timer(self, tid: int) -> None:
+        self.timers.pop(tid, None)
+
+    def _feeling(self) -> str:
+        if self.emotion and time.monotonic() < self.emotion_until:
+            return self.emotion
+        self.emotion = ""
+        return ""
 
     def flash(self) -> None:
         """Wake-up burst."""
@@ -134,8 +159,14 @@ class Orb(QWidget):
         for z in self.zzz:
             z[0] += dt / 3.0
         self.zzz = [z for z in self.zzz if z[0] < 1.0]
+        for hrt in self.hearts:
+            hrt[0] += dt / 2.0
+        self.hearts = [hrt for hrt in self.hearts if hrt[0] < 1.0]
+        now_wall = time.time()
+        self.timers = {k: v for k, v in self.timers.items() if v[0] > now_wall - 1}
 
         self.flash_t = max(0.0, self.flash_t - dt * 1.6)
+        self.boot = min(1.0, self.boot + dt / 1.8)
 
         # eyes wander a little
         self._look_change -= dt
@@ -161,6 +192,10 @@ class Orb(QWidget):
         color = state_color(self.state, self.accent)
         breathing = 0.05 * math.sin(self.t * 1.6) if self.state == "sleeping" else 0.015 * math.sin(self.t * 2.4)
         r = base * (1 + self.level * 0.22 + breathing + self.flash_t * 0.12)
+        boot = 1 - (1 - self.boot) ** 3  # ease-out
+        if boot < 1:
+            r *= 0.35 + 0.65 * boot
+            p.setOpacity(0.15 + 0.85 * boot)
 
         self._stars(p, w, h - wave_h, color)
         self._glow(p, cx, cy, r, color, w, h - wave_h)
@@ -169,6 +204,7 @@ class Orb(QWidget):
             self._radar(p, cx, cy, r, color)
         self._arcs(p, cx, cy, r, color)
         self._spectrum(p, cx, cy, r, color)
+        aiface.draw_neural_ring(p, self, cx, cy, r, color)
         self._ticks(p, cx, cy, r, color)
         if self.state == "thinking":
             self._satellites(p, cx, cy, r, color)
@@ -177,9 +213,22 @@ class Orb(QWidget):
         if self.face:
             self._face(p, cx, cy, core_r, color)
         self._zzzs(p, cx, cy, core_r)
+        self._hearts(p, cx, cy, core_r)
+        self._timer_rings(p, cx, cy, r)
         self._floaters(p, cx, min(cy + r * 2.0, h - wave_h - 14))
         self._wave(p, w, h, wave_h, color)
+        if self.boot < 1:
+            self._boot_text(p, cx, cy + r * 1.95, color)
         p.end()
+
+    def _boot_text(self, p, cx, y, color) -> None:
+        p.setOpacity(1.0)
+        text = "INITIALIZING" + "." * (int(self.t * 4) % 4)
+        p.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        c = QColor(color)
+        c.setAlpha(int(255 * (1 - self.boot ** 4)))
+        p.setPen(c)
+        p.drawText(QRectF(cx - 120, y - 10, 240, 20), Qt.AlignmentFlag.AlignCenter, text)
 
     def _stars(self, p, w, h, color) -> None:
         p.setPen(Qt.PenStyle.NoPen)
@@ -286,99 +335,67 @@ class Orb(QWidget):
                               4 - trail * 0.5, 4 - trail * 0.5)
 
     def _core(self, p, cx, cy, cr, color) -> None:
-        core = QRadialGradient(QPointF(cx - cr * 0.25, cy - cr * 0.3), cr * 1.3)
-        c1 = QColor(color).lighter(170 + int(80 * self.flash_t))
-        c2 = QColor(color)
-        c2.setAlpha(210)
-        c3 = QColor(color).darker(260)
-        c3.setAlpha(235)
-        core.setColorAt(0.0, c1)
-        core.setColorAt(0.5, c2)
-        core.setColorAt(1.0, c3)
-        p.setPen(QPen(QColor(color).lighter(150), 2))
-        p.setBrush(core)
-        p.drawEllipse(QPointF(cx, cy), cr, cr)
-        # glossy highlight
-        hl = QColor(255, 255, 255, 50)
-        p.setPen(Qt.PenStyle.NoPen)
-        p.setBrush(hl)
-        p.drawEllipse(QPointF(cx - cr * 0.35, cy - cr * 0.45), cr * 0.28, cr * 0.16)
+        aiface.draw_core(p, self, cx, cy, cr, color)
 
     def _face(self, p, cx, cy, cr, color) -> None:
-        dark = QColor(color).darker(400)
-        dark.setAlpha(235)
-        state = self.state
-        ex = cr * 0.34
-        ey = cy - cr * 0.08
-        ew, eh = cr * 0.17, cr * 0.30
-        look = QPointF(self.look.x() * cr * 0.08, self.look.y() * cr * 0.08)
-
         now = time.monotonic()
         if now > self.blink_at + 0.14:
-            self.blink_at = now + random.uniform(2.0, 5.5)
-        blinking = self.blink_at <= now <= self.blink_at + 0.14
+            self.blink_at = now + random.uniform(2.5, 6.0)
+        blinking = self.blink_at <= now <= self.blink_at + 0.12
+        feeling = self._feeling() if self.state not in {"sleeping", "offline"} else ""
+        aiface.draw_face(p, self, cx, cy, cr, color, feeling, blinking)
 
-        line = QPen(dark, max(2.0, cr * 0.06))
-        line.setCapStyle(Qt.PenCapStyle.RoundCap)
+    @staticmethod
+    def _heart_path(c: QPointF, size: float) -> QPainterPath:
+        return aiface.heart_path(c, size)
 
-        for side in (-1, 1):
-            center = QPointF(cx + side * ex, ey) + look
-            if state in {"sleeping", "offline", "connecting"} or blinking:
-                # closed eyes: gentle downward curves
-                path = QPainterPath()
-                path.moveTo(center.x() - ew, center.y())
-                path.quadTo(center.x(), center.y() + eh * 0.55, center.x() + ew, center.y())
-                p.setPen(line)
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawPath(path)
-            elif state == "speaking" and self.level > 0.25:
-                # happy ^ ^ eyes
-                path = QPainterPath()
-                path.moveTo(center.x() - ew, center.y() + eh * 0.2)
-                path.quadTo(center.x(), center.y() - eh * 0.7, center.x() + ew, center.y() + eh * 0.2)
-                p.setPen(line)
-                p.setBrush(Qt.BrushStyle.NoBrush)
-                p.drawPath(path)
-            else:
-                # big anime eyes with sparkles
-                h = eh * (1.12 if self.flash_t > 0.2 else 1.0)
-                p.setPen(Qt.PenStyle.NoPen)
-                p.setBrush(dark)
-                p.drawEllipse(center, ew, h)
-                p.setBrush(QColor(255, 255, 255, 230))
-                p.drawEllipse(center + QPointF(-ew * 0.3, -h * 0.4), ew * 0.38, ew * 0.38)
-                p.setBrush(QColor(255, 255, 255, 150))
-                p.drawEllipse(center + QPointF(ew * 0.35, h * 0.35), ew * 0.18, ew * 0.18)
+    def _hearts(self, p, cx, cy, cr) -> None:
+        p.setPen(Qt.PenStyle.NoPen)
+        for age, drift in self.hearts:
+            if age < 0:
+                continue
+            c = QColor(255, 90, 140, int(230 * (1 - age)))
+            p.setBrush(c)
+            center = QPointF(cx + cr * drift * 1.6, cy - cr * (0.9 + age * 1.8))
+            p.drawPath(self._heart_path(center, cr * (0.1 + 0.08 * age)))
 
-        # blush while talking or just woken
-        if state == "speaking" or self.flash_t > 0:
-            blush = QColor(255, 110, 150, int(70 + 60 * max(self.level, self.flash_t)))
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(blush)
-            for side in (-1, 1):
-                p.drawEllipse(QPointF(cx + side * ex * 1.45, ey + eh * 0.95), ew * 0.9, ew * 0.45)
-
-        # mouth
-        my = cy + cr * 0.36
-        mw = cr * 0.16
-        p.setPen(line)
-        p.setBrush(Qt.BrushStyle.NoBrush)
-        if state == "speaking":
-            open_h = cr * (0.04 + 0.22 * self.level)
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(dark)
-            p.drawEllipse(QPointF(cx, my), mw * (0.8 + self.level * 0.4), open_h)
-        elif state == "thinking":
-            p.drawEllipse(QPointF(cx + cr * 0.05, my), mw * 0.35, mw * 0.35)
-        elif state == "muted":
-            p.drawLine(QPointF(cx - mw, my), QPointF(cx + mw, my))
-        elif state in {"sleeping", "offline"}:
-            p.drawEllipse(QPointF(cx, my), mw * 0.3, mw * 0.22)
-        else:
-            path = QPainterPath()
-            path.moveTo(cx - mw, my - mw * 0.2)
-            path.quadTo(cx, my + mw * 0.7, cx + mw, my - mw * 0.2)
-            p.drawPath(path)
+    def _timer_rings(self, p, cx, cy, r) -> None:
+        if not self.timers:
+            return
+        now = time.time()
+        p.setFont(QFont("Segoe UI", 9, QFont.Weight.Bold))
+        labels = []
+        for i, (tid, (ends, total, label)) in enumerate(sorted(self.timers.items())):
+            left = max(0.0, ends - now)
+            frac = left / total if total else 0
+            rr = r * (1.06 + i * 0.07)
+            track = QColor(255, 255, 255, 25)
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(QPen(track, 4))
+            p.drawEllipse(QPointF(cx, cy), rr, rr)
+            color = QColor(DANGER if left < 10 else "#ffb547" if frac < 0.25 else OK)
+            if left < 10 and int(now * 4) % 2:  # blink in the last seconds
+                color.setAlpha(120)
+            pen = QPen(color, 4)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            p.setPen(pen)
+            p.drawArc(QRectF(cx - rr, cy - rr, rr * 2, rr * 2), 90 * 16, int(frac * 360 * 16))
+            m, sec = divmod(int(left + 0.999), 60)
+            h, m = divmod(m, 60)
+            stamp = f"{h}:{m:02d}:{sec:02d}" if h else f"{m}:{sec:02d}"
+            labels.append((f"⏱ {stamp}" + (f"  {label}" if label else ""), color))
+        labels = labels[:3]
+        y = max(14.0, cy - r * 1.55 - 26 * (len(labels) - 1))  # stack downwards, never off the top
+        fm = p.fontMetrics()
+        for text, color in labels:
+            tw = fm.horizontalAdvance(text)
+            rect = QRectF(cx - tw / 2 - 10, y - 11, tw + 20, 22)
+            p.setPen(QPen(color, 1))
+            p.setBrush(QColor(10, 15, 20, 210))
+            p.drawRoundedRect(rect, 11, 11)
+            p.setPen(color)
+            p.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
+            y += 26
 
     def _zzzs(self, p, cx, cy, cr) -> None:
         if not self.zzz:
