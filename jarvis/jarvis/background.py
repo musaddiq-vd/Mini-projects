@@ -42,7 +42,7 @@ class BackgroundServices:
     # -- lifecycle -----------------------------------------------------------
     def start(self) -> None:
         for target in (self._hardware_loop, self._topic_loop, self._proactive_loop, self._recap_loop,
-                       self._health_loop, self._goal_loop, self._calendar_loop):
+                       self._health_loop, self._goal_loop, self._calendar_loop, self._weekly_loop):
             threading.Thread(target=target, daemon=True).start()
 
     def stop(self) -> None:
@@ -177,6 +177,29 @@ class BackgroundServices:
                              "warm recap of their day, then ask what they'd like to do tomorrow.")
             except Exception as exc:  # one bad tick must not end the loop
                 self.app.events.emit("log", text=f"[recap] {exc}")
+
+    # -- weekly report -------------------------------------------------------------------
+    def weekly_due(self, now: datetime | None = None) -> bool:
+        """Sunday from 6 pm, once a week, when awake and free."""
+        now = now or datetime.now()
+        if now.weekday() != 6 or now.hour < 18:
+            return False
+        year, week, _ = now.isocalendar()
+        if self.app.state.get("last_weekly_report") == f"{year}-W{week}":
+            return False
+        return not (self.sleeping or self._focusing() or self._practicing())
+
+    def _weekly_loop(self) -> None:
+        while not self._stop.wait(120):
+            try:
+                if self.weekly_due():
+                    year, week, _ = datetime.now().isocalendar()
+                    self.app.state.set("last_weekly_report", f"{year}-W{week}")
+                    self.app.events.emit("nudge", kind="weekly", text="📊 Your weekly report is ready")
+                    self.say("(system: weekly report) It's Sunday evening. Call weekly_report and give the user a "
+                             "short, warm summary of their week and one suggestion for next week.")
+            except Exception as exc:
+                self.app.events.emit("log", text=f"[weekly] {exc}")
 
     # -- goal follow-up --------------------------------------------------------------------
     def goal_checkin_due(self, now: datetime | None = None) -> str | None:

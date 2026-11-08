@@ -37,6 +37,7 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | ⚡ **Power-up wake** | Say the name and the core charges up, bursts with lightning and shockwaves and says ONLINE, with a matching sound (Settings > Look to turn off). |
 | 🪟 **Mini mode chat** | The floating mini Jarvis folds out a small chat (💬): last messages, a box to type in, and the next reminder or meeting. |
 | 🖼 **Desktop widget** | A glassy card on the wallpaper with a live orb, time, the next meeting/reminder, to-dos and habits. Clicks pass through it. Settings > Look, the tray menu, or "desktop widget lagao / hatao". |
+| 📊 **Weekly report** | Every Sunday evening (or "is hafte ka report"): money vs last week, habits %, goal steps, tasks, focus time and next week's meetings as a card, with a short spoken summary and one tip. |
 | 🎯 **Goal coach** | "Mujhe 2 mahine mein 5 km daudna hai" -> Jarvis plans small dated steps until the deadline, tracks progress and follows up once a day on the step that's due. |
 | 📊 **Dashboard** | `Ctrl+D` / 📊 / "dashboard dikhao": your week (messages, tasks, focus minutes, spending), habits with +1 buttons, money with budget bar and charts, goals with tickable steps. |
 | 📋 **Planner** | `Ctrl+P` or the 📋 button: tick and add to-dos, add or cancel reminders ("6:30 pm" / "20 min"), quick 1/5/10/25-minute timers and a focus session, run or delete routines. Guardrails and undo apply here too. |

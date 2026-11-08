@@ -105,3 +105,59 @@ def links_card(r: dict, limit: int = 5) -> QFrame | None:
             lab.setToolTip(url)
         v.addWidget(lab)
     return card
+
+
+def _money(value: float, currency: str) -> str:
+    return f"{currency}{value:,.0f}" if value >= 100 else f"{currency}{value:,.2f}".rstrip("0").rstrip(".")
+
+
+def report_card(r: dict) -> QFrame | None:
+    """The weekly report: six stat tiles, top spending, wins and goals."""
+    if not isinstance(r, dict) or "week" not in r or "spent" not in r:
+        return None
+    cur = r.get("currency", "₹")
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(520)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(16, 12, 16, 14)
+    v.setSpacing(8)
+    title = "Your week" if r.get("which") != "last" else "Last week"
+    v.addWidget(QLabel(f"📊  {title}  ·  {html.escape(r['week'])}", objectName="h2"))
+    change = r.get("spent_change_percent")
+    trend = "" if change is None else (f"▲ {change}%" if change > 0 else f"▼ {abs(change)}%" if change < 0 else "same")
+    trend_color = theme.DANGER if change and change > 0 else theme.OK
+    tiles = [
+        ("💰", _money(r["spent"], cur), "spent" + (f" <span style='color:{trend_color}'>{trend}</span>" if trend else "")),
+        ("✅", f"{r['habits_percent']}%" if r.get("habits_percent") is not None else "–", "habits done"),
+        ("🎯", str(r.get("goal_steps_done", 0)), "goal steps"),
+        ("📝", str(r.get("tasks_done", 0)), "tasks done"),
+        ("⏱", r.get("focus") or "–", "focus time"),
+        ("📅", "–" if r.get("meetings_next_week") is None else str(r["meetings_next_week"]), "meetings ahead"),
+    ]
+    grid = QGridLayout()
+    grid.setHorizontalSpacing(8)
+    grid.setVerticalSpacing(8)
+    accent = theme.readable(theme.ACCENT)
+    for i, (icon, value, name) in enumerate(tiles):
+        tile = QLabel(f"<div style='font-size:15px'>{icon}</div>"
+                      f"<div style='font-size:18px; font-weight:700; color:{accent}'>{html.escape(value)}</div>"
+                      f"<div style='color:{theme.MUTED}; font-size:10px'>{name}</div>")
+        tile.setTextFormat(Qt.TextFormat.RichText)
+        tile.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        tile.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px;")
+        grid.addWidget(tile, i // 3, i % 3)
+    v.addLayout(grid)
+    lines = []
+    if r.get("top_categories"):
+        lines.append("Top spend: " + " · ".join(f"{html.escape(str(c)).title()} {_money(a, cur)}"
+                                                 for c, a in r["top_categories"]))
+    if r.get("wins"):
+        lines.append("🏆 " + html.escape(", ".join(r["wins"])))
+    for g in (r.get("goals") or [])[:2]:
+        lines.append(f"🎯 {html.escape(g['title'])} — {g['percent']}%")
+    for line in lines:
+        lb = QLabel(line, objectName="muted")
+        lb.setTextFormat(Qt.TextFormat.RichText)
+        lb.setWordWrap(True)
+        v.addWidget(lb)
+    return card

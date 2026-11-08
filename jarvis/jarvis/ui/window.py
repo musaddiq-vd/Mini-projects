@@ -1197,7 +1197,8 @@ class MainWindow(QMainWindow):
             self.doc_chip.setText(f"📄  {name.replace('&', '&&')}  ·  ask anything about it   ✕")
             self.doc_chip.setVisible(bool(name))
         elif kind == "nudge":
-            icon = {"eyes": "👀", "water": "💧", "recap": "🌙", "meeting": "📅"}.get(data.get("kind"), "💡")
+            icon = {"eyes": "👀", "water": "💧", "recap": "🌙", "meeting": "📅", "weekly": "📊"}.get(
+                data.get("kind"), "💡")
             text = data.get("text", "")
             self.toast(icon, text[1:].strip() if text[:1] == icon[:1] else text, theme.ACCENT,
                        15 if data.get("kind") == "meeting" else 8)
@@ -1301,13 +1302,15 @@ class MainWindow(QMainWindow):
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
 
     def _rich_card(self, name: str, result: dict):
-        from jarvis.ui.cards import links_card, weather_card
+        from jarvis.ui.cards import links_card, report_card, weather_card
 
         try:
             if name == "get_weather":
                 return weather_card(result)
             if name == "web_search":
                 return links_card(result)
+            if name == "weekly_report":
+                return report_card(result)
         except Exception:
             log.exception("couldn't draw a card for %s", name)
         return None
