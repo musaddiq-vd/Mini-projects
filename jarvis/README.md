@@ -86,8 +86,8 @@ Press **F1** in the app to see every example by topic. Click one to try it.
 **You need:** Windows 10/11, Python 3.10+, a microphone and speakers, and a free [Gemini API key](https://aistudio.google.com/apikey).
 
 ```bash
-git clone https://github.com/musaddiq-vd/java.git
-cd java/jarvis
+git clone https://github.com/musaddiq-vd/Mini-projects.git
+cd Mini-projects/jarvis
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
