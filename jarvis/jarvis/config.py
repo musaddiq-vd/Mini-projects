@@ -92,6 +92,8 @@ class Settings:
     desktop_widget: bool = False  # a small Jarvis card on the wallpaper
     offline_voice: bool = True  # without internet: Windows voice replies + simple English voice commands
     widget_corner: str = "top_right"  # top_right | top_left | bottom_right | bottom_left
+    widget_screen: str = ""  # monitor name for the desktop widget; "" = the main screen
+    popup_screen: str = "mouse"  # where pop-ups appear: mouse (where you look) | main | jarvis
     currency: str = "₹"  # for the expense tracker
     # Private iCal links (read-only calendar sync). Secret like passwords: encrypted on disk, never logged.
     calendar_urls: list[str] = field(default_factory=list)

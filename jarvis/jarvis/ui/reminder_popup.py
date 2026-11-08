@@ -303,9 +303,11 @@ class ReminderPopups:
     """Keeps the pop-ups stacked upwards from the bottom-right corner of the screen."""
 
     def __init__(self, accent: Callable[[], str], *, on_done, on_snooze, on_cancel, on_open, enabled=lambda: True,
-                 language: Callable[[], str] = lambda: "en"):
+                 language: Callable[[], str] = lambda: "en", screen: Callable[[], object] | None = None):
         self.accent = accent
         self.language = language
+        self.screen = screen or QGuiApplication.primaryScreen  # which monitor a new stack of cards goes on
+        self._screen = None
         self.on_done, self.on_snooze, self.on_cancel, self.on_open = on_done, on_snooze, on_cancel, on_open
         self.enabled = enabled
         self.popups: list[ReminderPopup] = []
@@ -343,8 +345,18 @@ class ReminderPopups:
         self.popups = []
 
     def _area(self):
-        screen = QGuiApplication.primaryScreen()
-        return screen.availableGeometry() if screen else None
+        """The monitor of the current stack (chosen when the first card of a stack appears)."""
+        live = [p for p in self.popups if not p._closing]
+        if self._screen is None or len(live) <= 1:
+            try:
+                self._screen = self.screen() or QGuiApplication.primaryScreen()
+            except Exception:
+                self._screen = QGuiApplication.primaryScreen()
+        try:
+            return self._screen.availableGeometry() if self._screen else None
+        except RuntimeError:  # that monitor was unplugged
+            self._screen = QGuiApplication.primaryScreen()
+            return self._screen.availableGeometry() if self._screen else None
 
     def _slot(self, popup: ReminderPopup) -> QPoint:
         area = self._area()

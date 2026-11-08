@@ -776,7 +776,9 @@ class MainWindow(QMainWindow):
             on_snooze=lambda rid, m: self._reminder_action("snooze_reminder", {"id": rid, "minutes": m}),
             on_cancel=lambda rid: self._reminder_action("cancel_reminder", {"id": rid}),
             on_open=self._show_window,
-            language=lambda: reminder_language(self.app.settings, self.app.state))
+            language=lambda: reminder_language(self.app.settings, self.app.state),
+            screen=lambda: __import__("jarvis.ui.screens", fromlist=["x"]).for_popups(
+                self.app.settings.popup_screen, self))
         self._glows = [add_glow(b, self.accent, 20 if b.objectName() != "chip" else 14)
                        for b in root.findChildren(QPushButton)]
         self._glows.append(add_glow(self.input, self.accent, 18))
@@ -1044,11 +1046,11 @@ class MainWindow(QMainWindow):
         if self.desk is None:
             from jarvis.ui.desktop_widget import DesktopWidget
 
-            self.desk = DesktopWidget(self.app, self.accent, s.orb_face, s.widget_corner)
+            self.desk = DesktopWidget(self.app, self.accent, s.orb_face, s.widget_corner, s.widget_screen)
             self.desk.orb.set_state(self._last_state or "connecting")
             self.orb.orbs.append(self.desk.orb)
         self.desk.set_accent(self.accent)
-        self.desk.place(s.widget_corner)
+        self.desk.place(s.widget_corner, s.widget_screen)
         self.desk.show_on_desktop()
 
     desk = None
@@ -1617,7 +1619,7 @@ class MainWindow(QMainWindow):
         save_settings(self.app.settings)
         if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face"}:
             self._apply_theme()
-        if changed & {"desktop_widget", "widget_corner", "theme_color", "theme_name"}:
+        if changed & {"desktop_widget", "widget_corner", "widget_screen", "theme_color", "theme_name"}:
             self.apply_desktop_widget()
         if "history_days" in changed and self.app.history:
             self.app.history.prune(self.app.settings.history_days)

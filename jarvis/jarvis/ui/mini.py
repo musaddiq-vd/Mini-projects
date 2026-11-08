@@ -266,11 +266,14 @@ class MiniWindow(QWidget):
         self.send(text)
 
     def show_at_saved_place(self) -> None:
+        from jarvis.ui.screens import at_point, visible_anywhere
+
         pos = QSettings("MusaddiqKhan", "Jarvis").value("mini_pos")
-        screen = QApplication.primaryScreen().availableGeometry()
-        if isinstance(pos, QPoint) and screen.adjusted(-50, -50, 50, 50).contains(pos):
+        if isinstance(pos, QPoint) and visible_anywhere(pos):  # any monitor, not only the main one
+            screen = at_point(pos).availableGeometry()
             self.move(pos)
-        else:
+        else:  # first time, or that monitor is gone: bottom-right of the main screen
+            screen = QApplication.primaryScreen().availableGeometry()
             self.move(screen.right() - self.width() - 24, screen.bottom() - self.height() - 24)
         if self.geometry().bottom() > screen.bottom():
             self.move(self.x(), max(screen.top(), screen.bottom() - self.height()))

@@ -12,7 +12,7 @@ from datetime import date, datetime
 
 from PyQt6.QtCore import QRectF, Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen
-from PyQt6.QtWidgets import QApplication, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from jarvis.ui.orb import Orb
 
@@ -52,13 +52,14 @@ def lines_for(app, now: float | None = None) -> list[str]:
 
 
 class DesktopWidget(QWidget):
-    def __init__(self, app, accent: str, face: bool = True, corner: str = "top_right"):
+    def __init__(self, app, accent: str, face: bool = True, corner: str = "top_right", screen_name: str = ""):
         super().__init__(None, Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnBottomHint
                          | Qt.WindowType.Tool | Qt.WindowType.WindowTransparentForInput
                          | Qt.WindowType.WindowDoesNotAcceptFocus)
         self.app = app
         self.accent = accent
         self.corner = corner if corner in CORNERS else "top_right"
+        self.screen_name = screen_name
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
@@ -130,10 +131,14 @@ class DesktopWidget(QWidget):
             lb.setText(text[:48] + ("…" if len(text) > 48 else ""))
             lb.setVisible(bool(text))
 
-    def place(self, corner: str | None = None) -> None:
+    def place(self, corner: str | None = None, screen_name: str | None = None) -> None:
+        from jarvis.ui.screens import by_name
+
         if corner:
             self.corner = corner if corner in CORNERS else self.corner
-        screen = QApplication.primaryScreen()
+        if screen_name is not None:
+            self.screen_name = screen_name
+        screen = by_name(self.screen_name)  # the main screen when that monitor isn't connected
         area = screen.availableGeometry() if screen else None
         if area is None:
             return

@@ -176,6 +176,24 @@ class SettingsDialog(QDialog):
         self.desk_corner.setCurrentIndex(max(0, self.desk_corner.findData(self.result_settings.widget_corner)))
         desk_row.addWidget(self.desk_corner)
         v.addLayout(desk_row)
+        from jarvis.ui import screens
+
+        mons = screens.screens()
+        self.desk_screen = QComboBox()
+        for i, sc in enumerate(mons):
+            self.desk_screen.addItem(screens.label(sc, i), "" if sc is screens.main_screen() else sc.name())
+        self.desk_screen.setCurrentIndex(max(0, self.desk_screen.findData(self.result_settings.widget_screen)))
+        self.popup_screen = QComboBox()
+        for key, text in (("mouse", "Where my mouse is"), ("main", "Main screen"), ("jarvis", "Where Jarvis is")):
+            self.popup_screen.addItem(text, key)
+        self.popup_screen.setCurrentIndex(max(0, self.popup_screen.findData(self.result_settings.popup_screen)))
+        if len(mons) > 1:  # the choice only matters with two or more monitors
+            mon_row = QHBoxLayout()
+            mon_row.addWidget(QLabel("Widget on"))
+            mon_row.addWidget(self.desk_screen, 1)
+            mon_row.addWidget(QLabel("Pop-ups on"))
+            mon_row.addWidget(self.popup_screen, 1)
+            v.addLayout(mon_row)
         v.addStretch()
         return w
 
@@ -458,6 +476,8 @@ class SettingsDialog(QDialog):
         s.power_up_wake = self.power_up.isChecked()
         s.desktop_widget = self.desk_widget.isChecked()
         s.widget_corner = self.desk_corner.currentData() or "top_right"
+        s.widget_screen = self.desk_screen.currentData() or ""
+        s.popup_screen = self.popup_screen.currentData() or "mouse"
         s.morning_briefing = self.briefing.isChecked()
         s.proactive = self.proactive.isChecked()
         s.proactive_minutes = self.proactive_minutes.value()
