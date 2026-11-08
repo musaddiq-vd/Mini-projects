@@ -625,6 +625,10 @@ class MainWindow(QMainWindow):
         self.header_label = QLabel("CONVERSATION", objectName="section")
         header.addWidget(self.header_label)
         header.addStretch(1)
+        badges_btn = QPushButton("🏆", objectName="small")
+        badges_btn.setToolTip("Achievements")
+        badges_btn.clicked.connect(self.toggle_badges)
+        header.addWidget(badges_btn)
         help_btn = QPushButton("?", objectName="small")
         help_btn.setToolTip("What can I say? (F1)")
         help_btn.clicked.connect(self.toggle_help)
@@ -962,6 +966,14 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "achievement":
+            from jarvis.ui.fx import Confetti
+
+            Confetti(self.centralWidget())
+            self.orb.transform("star", 3.2)
+            self.toast(data.get("icon", "🏆"), f"Achievement unlocked: {data.get('title')} - {data.get('desc')}",
+                       "#ffd23f", 6)
+            self._add_system(f"🏆 Achievement unlocked: {data.get('icon', '')} {data.get('title')}")
         elif kind == "capture":
             if self.app.settings.notify_capture:
                 self.flash_capture(data.get("what", "screen"))
@@ -1134,8 +1146,17 @@ class MainWindow(QMainWindow):
             self.help = HelpPanel(self.right_panel, self._send)
         self.help.toggle()
 
+    def toggle_badges(self) -> None:
+        if getattr(self, "badges", None) is None:
+            from jarvis.ui.badges import BadgesPanel
+
+            self.badges = BadgesPanel(self.right_panel, self.app.achievements)
+        self.badges.toggle()
+
     def _escape(self) -> None:
-        if getattr(self, "help", None) is not None and self.help.isVisible():
+        if getattr(self, "badges", None) is not None and self.badges.isVisible():
+            self.badges.hide()
+        elif getattr(self, "help", None) is not None and self.help.isVisible():
             self.help.close_panel()
         else:
             self.close_search()

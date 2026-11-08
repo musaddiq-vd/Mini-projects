@@ -104,6 +104,7 @@ class Jarvis:
     events: Events
     state: StateStore
     history: ChatHistory | None = None
+    achievements: object = None  # jarvis.achievements.Achievements
     _english: object = None
 
     @property
@@ -138,4 +139,6 @@ def create_app(settings: Settings | None = None, ask=console_ask, notify=print) 
     events.subscribe(lambda kind, data: history.add(kind, data.get("text", ""))
                      if kind in {"user", "assistant"} and settings.save_history else None)
     history.prune(settings.history_days)  # old conversation is deleted on start
-    return Jarvis(settings, memory, registry, ctx, events, state, history)
+    from jarvis.achievements import Achievements
+
+    return Jarvis(settings, memory, registry, ctx, events, state, history, Achievements(state, events))

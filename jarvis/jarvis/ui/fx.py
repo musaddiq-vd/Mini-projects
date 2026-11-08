@@ -228,6 +228,11 @@ class ToastHost:
         return toast
 
     def _restack(self) -> None:
+        try:
+            self.parent.width()
+        except RuntimeError:  # the window is being closed: nothing left to arrange
+            self.toasts = []
+            return
         self.toasts = [t for t in self.toasts if _alive(t)]
         y = self.top
         for t in self.toasts:
@@ -317,3 +322,68 @@ def grow_in(widget: QWidget, duration: int = 280) -> _HeightAnimator:
 
 
 __all__ = ["AnimatedBackground", "ToastHost", "Typewriter", "add_glow", "grow_in", "QRectF"]
+
+
+class Confetti(QWidget):
+    """A burst of confetti over a widget for celebrations; removes itself when done."""
+
+    COLORS = ("#ff5c8a", "#ffd23f", "#3ddc97", "#00d4ff", "#8b7bff", "#ff8a3d", "#ffffff")
+
+    def __init__(self, parent: QWidget, pieces: int = 120, seconds: float = 2.8):
+        super().__init__(parent)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setGeometry(parent.rect())
+        w, h = max(1, self.width()), max(1, self.height())
+        self.parts = []
+        for _ in range(pieces):
+            # x, y, vx, vy, angle, spin, size, color, shape
+            self.parts.append([random.uniform(0.2, 0.8) * w, h * random.uniform(0.25, 0.45),
+                               random.uniform(-380, 380), random.uniform(-760, -260), random.uniform(0, 360),
+                               random.uniform(-540, 540), random.uniform(5, 10), QColor(random.choice(self.COLORS)),
+                               random.choice(("rect", "circle", "strip"))])
+        self.age, self.life = 0.0, seconds
+        self._last = time.monotonic()
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start(16)
+        self.show()
+        self.raise_()
+
+    def _tick(self) -> None:
+        now = time.monotonic()
+        dt = min(0.05, now - self._last)
+        self._last = now
+        self.age += dt
+        for p in self.parts:
+            p[3] += 900 * dt  # gravity
+            p[2] *= 0.985  # air
+            p[0] += p[2] * dt
+            p[1] += p[3] * dt
+            p[4] += p[5] * dt
+        if self.age >= self.life:
+            self._timer.stop()
+            self.deleteLater()
+            return
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        fade = max(0.0, min(1.0, (self.life - self.age) / 0.6))
+        p.setPen(Qt.PenStyle.NoPen)
+        for x, y, _, _, angle, _, size, color, shape in self.parts:
+            c = QColor(color)
+            c.setAlpha(int(235 * fade))
+            p.save()
+            p.translate(x, y)
+            p.rotate(angle)
+            p.setBrush(c)
+            if shape == "circle":
+                p.drawEllipse(QPointF(0, 0), size * 0.45, size * 0.45)
+            elif shape == "strip":
+                p.drawRoundedRect(QRectF(-size * 0.15, -size, size * 0.3, size * 2), 1, 1)
+            else:
+                p.drawRect(QRectF(-size / 2, -size / 3, size, size * 0.66))
+            p.restore()
+        p.end()
