@@ -538,6 +538,8 @@ class MainWindow(QMainWindow):
         self._restore_history()
         if app.settings.desktop_widget:
             QTimer.singleShot(400, self.apply_desktop_widget)
+        if app.settings.telegram_token and app.settings.telegram_chat_id:
+            QTimer.singleShot(1500, self.apply_phone)
         self.practice_btn.setText(f"🎓  {app.state.get('practice_target', 'English')} Practice")
         if not app.settings.effective_api_key and app.practice_on:
             QTimer.singleShot(0, lambda: self.set_practice(True))
@@ -1073,6 +1075,36 @@ class MainWindow(QMainWindow):
         self.hide()
         self.mini.show_at_saved_place()
 
+    phone = None
+
+    def apply_phone(self) -> None:
+        """Run the Telegram link when a paired bot is set up (restarted after a change)."""
+        s = self.app.settings
+        if self.phone is not None:
+            self.phone.stop()
+            self.phone = None
+        if s.telegram_token and s.telegram_chat_id:
+            from jarvis.phone import PhoneBridge
+
+            self.phone = PhoneBridge(self.app)
+            self.phone.start()
+
+    def phone_pair(self, token: str) -> tuple[str, str]:
+        """Settings > Phone > Connect: check the token and start listening for the pairing code."""
+        from jarvis.phone import PhoneBridge, TelegramAPI
+
+        s = self.app.settings
+        bridge = PhoneBridge(self.app, api=TelegramAPI(token))
+        bot = bridge.check_token()  # raises a friendly error for a wrong token
+        if self.phone is not None:
+            self.phone.stop()
+        if s.telegram_token != token:
+            s.telegram_token, s.telegram_chat_id, s.telegram_user = token, 0, ""
+        code = bridge.begin_pairing()
+        self.phone = bridge
+        bridge.start()
+        return bot, code
+
     def apply_desktop_widget(self) -> None:
         """Show, move or hide the desktop widget to match the settings."""
         s = self.app.settings
@@ -1268,6 +1300,15 @@ class MainWindow(QMainWindow):
         elif kind == "offline_mode" and data.get("on"):
             self.toast("📴", "No internet - timers, reminders, notes, your list and apps still work. Type, or "
                        "say “Jarvis, …” in English.", WARN, 8)
+        elif kind == "phone":
+            who = data.get("who")
+            text = data.get("text", "")
+            if who == "user":
+                self._add_bubble("📱 You", text, mine=True)
+            else:
+                self._add_bubble(f"{self.app.settings.assistant_name} → 📱", text)
+        elif kind == "phone_paired" and data.get("who"):
+            self.toast("📱", f"Phone connected: {data['who']}", OK, 5)
         elif kind == "restart_requested":
             self.restart_app()
         elif kind == "reminder_closed":
@@ -1659,6 +1700,8 @@ class MainWindow(QMainWindow):
         if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face", "avatar",
                       "theme_second"}:
             self._apply_theme()
+        if changed & {"telegram_token", "telegram_chat_id"}:
+            self.apply_phone()
         if changed & {"desktop_widget", "widget_corner", "widget_screen", "theme_color", "theme_name"}:
             self.apply_desktop_widget()
         if "history_days" in changed and self.app.history:
@@ -1720,6 +1763,8 @@ class MainWindow(QMainWindow):
         """The app doesn't quit on its own (mini mode hides this window), so quit explicitly."""
         self._quitting = True
         self.reminders.close_all()
+        if self.phone is not None:
+            self.phone.stop()
         if self.desk is not None:
             self.desk.close()
         if self.mini:

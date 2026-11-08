@@ -74,6 +74,8 @@ How to act:
   When a document is open, questions about "it" / "is invoice" go to ask_document.
 - "Backup bana do / mera data save karo" -> make_backup. Restoring is only in Settings > Privacy (say so).
 - "Is hafte ka report / weekly summary / last week kaisa raha" -> weekly_report (a card shows the numbers).
+- Messages that start with "(sent from the user's phone)" come from their Telegram: answer in short text
+  (it's read, not heard) and do what they ask on the PC as usual.
 - Smart home: "bedroom light on", "fan band karo", "AC 24 pe", "lights blue kar do", "sab lights off" ->
   smart_home(device, action, value). "Which devices do I have?" -> smart_devices.
 - Calendar (read-only): "aaj meri meetings", "kal free kab hu", "next meeting kab hai" -> calendar_events(day).

@@ -105,6 +105,10 @@ class Settings:
     ha_url: str = ""  # Home Assistant address, e.g. http://homeassistant.local:8123
     ha_token: str = ""  # Home Assistant long-lived access token
     tuya_devices: list[dict] = field(default_factory=list)  # [{name, type, id, ip, key, version, room}]
+    # Phone control through your own Telegram bot (token encrypted on disk)
+    telegram_token: str = ""
+    telegram_chat_id: int = 0  # the one chat that paired with the code
+    telegram_user: str = ""
     # wellbeing
     evening_recap: bool = True  # a short recap of the day in the evening
     recap_hour: int = 21
@@ -158,6 +162,9 @@ def load_settings(path: Path | None = None) -> Settings:
         urls = []
     plain_urls = any(isinstance(u, str) and u and not u.startswith(secure.PREFIX) for u in urls)
     data["calendar_urls"] = [u for u in (secure.unprotect(u) for u in urls if isinstance(u, str)) if u]
+    tg = data.get("telegram_token", "")
+    plain_urls = plain_urls or (isinstance(tg, str) and tg and not tg.startswith(secure.PREFIX))
+    data["telegram_token"] = secure.unprotect(tg) if isinstance(tg, str) else ""
     token = data.get("ha_token", "")
     plain_urls = plain_urls or (isinstance(token, str) and token and not token.startswith(secure.PREFIX))
     data["ha_token"] = secure.unprotect(token) if isinstance(token, str) else ""
@@ -193,6 +200,8 @@ def save_settings(settings: Settings, path: Path | None = None) -> Path:
         data["calendar_urls"] = [secure.protect(u) for u in data["calendar_urls"]]
     if data.get("ha_token"):
         data["ha_token"] = secure.protect(data["ha_token"])
+    if data.get("telegram_token"):
+        data["telegram_token"] = secure.protect(data["telegram_token"])
     if data.get("tuya_devices"):
         data["tuya_devices"] = [{**d, "key": secure.protect(d.get("key", ""))} for d in data["tuya_devices"]]
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")

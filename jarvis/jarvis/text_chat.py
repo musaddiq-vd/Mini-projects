@@ -11,12 +11,16 @@ MAX_TOOL_ROUNDS = 8
 
 
 class TextChat:
-    def __init__(self, app: Jarvis, model: TextModel | None = None):
+    def __init__(self, app: Jarvis, model: TextModel | None = None, ctx=None):
+        """ctx: a separate tool context (the phone has its own); by default the app's, used only in text mode."""
         self.app = app
         self.model = model or TextModel(app.settings)
         self.history: list[types.Content] = []
         self._images: list[bytes] = []
-        app.ctx.attach_image = self._images.append
+        if ctx is None:
+            app.ctx.attach_image = self._images.append
+            ctx = app.ctx
+        self.ctx = ctx
 
     def _config(self) -> types.GenerateContentConfig:
         return types.GenerateContentConfig(
@@ -26,6 +30,7 @@ class TextChat:
         )
 
     def send(self, text: str, on_tool=None) -> str:
+        self._trim()
         start = len(self.history)
         self.history.append(types.Content(role="user", parts=[types.Part(text=text)]))
         try:
@@ -33,6 +38,17 @@ class TextChat:
         except Exception:
             del self.history[start:]  # drop the half-finished turn so history stays valid
             raise
+
+    def _trim(self, keep: int = 40) -> None:
+        """Keep a long chat short - cut only where a user message starts, never between a tool call and its
+        answer (the model rejects that)."""
+        if len(self.history) <= keep:
+            return
+        for i in range(len(self.history) - keep, len(self.history)):
+            c = self.history[i]
+            if c.role == "user" and any(getattr(p, "text", None) for p in c.parts or []):
+                self.history = self.history[i:]
+                return
 
     def _run_turn(self, on_tool) -> str:
         config = self._config()
@@ -48,7 +64,7 @@ class TextChat:
             parts = []
             for call in calls:
                 args = dict(call.args or {})
-                result = self.app.registry.call(call.name, args, self.app.ctx)
+                result = self.app.registry.call(call.name, args, self.ctx)
                 if on_tool:
                     on_tool(call.name, args, result)
                 parts.append(types.Part.from_function_response(name=call.name, response=result))

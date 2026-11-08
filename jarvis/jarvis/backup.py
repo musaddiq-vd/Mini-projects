@@ -24,7 +24,8 @@ DATA_FILES = ("memory.json", "state.json", "history.jsonl", "english.json", "exp
 SETTINGS_NAME = "settings.json"
 MANIFEST = "manifest.json"
 ALLOWED = set(DATA_FILES) | {SETTINGS_NAME, MANIFEST}
-SECRET_SETTINGS = ("api_key", "calendar_urls", "ha_token", "tuya_devices")
+SECRET_SETTINGS = ("api_key", "calendar_urls", "ha_token", "tuya_devices", "telegram_token", "telegram_chat_id",
+                   "telegram_user")
 MAX_FILE = 60 * 1024 * 1024
 MAX_TOTAL = 200 * 1024 * 1024
 KEEP_AUTO = 4

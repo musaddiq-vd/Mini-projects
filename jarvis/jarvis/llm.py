@@ -56,6 +56,16 @@ class TextModel:
         response = self.generate(parts, config)
         return (response.text or "").strip()
 
+    def transcribe(self, audio: bytes, mime: str = "audio/ogg") -> str:
+        """Speech in a voice note -> text (in the language it was spoken)."""
+        config = types.GenerateContentConfig(
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True))
+        parts = [types.Part.from_bytes(data=audio, mime_type=mime),
+                 "Write down exactly what is said in this voice message, in the language it is spoken. Only the "
+                 "words - no notes. If nothing is said, reply with nothing."]
+        response = self.generate(parts, config)
+        return (response.text or "").strip()
+
     def ask(self, prompt: str, system: str | None = None) -> str:
         config = types.GenerateContentConfig(
             system_instruction=system,

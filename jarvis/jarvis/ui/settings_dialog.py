@@ -44,6 +44,11 @@ class SettingsDialog(QDialog):
 
         self.home = HomeTab(self.result_settings)
         self.tabs.addTab(self.home, "🏠 Home")
+        from jarvis.ui.phone_tab import PhoneTab
+
+        main = parent if parent is not None and hasattr(parent, "phone_pair") else None
+        self.phone = PhoneTab(app, main.phone_pair if main else None)
+        self.tabs.addTab(self.phone, "📱 Phone")
         self.tabs.addTab(self._memory_tab(), "Memory")
         self.tabs.addTab(self._tools_tab(), "Tools")
         from jarvis.ui.privacy import PrivacyTab
@@ -580,6 +585,7 @@ class SettingsDialog(QDialog):
                 set_autostart(self.autostart.isChecked())
         self.privacy.apply_to(s)
         self.home.apply_to(s)
+        self.phone.apply_to(s)
         self.accept()
 
 
