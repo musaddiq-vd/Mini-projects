@@ -60,6 +60,8 @@ class LiveAssistant:
         self._reload_wake = bool(self.s.wake_word)  # loaded on the assistant thread, not the UI
         self._wake_name = ""
         self._failures = 0  # connection errors in a row
+        # turned off if the model doesn't support expressive dialog (remembered per model)
+        self._affective_ok = app.state.get("affective_unsupported") != self.s.live_model
         self._pending: list[str] = []  # texts typed before the session was up
         self._woken_by_name = False  # woke mid-speech: make sure Jarvis answers
         self._spoke_since_wake = False
@@ -219,6 +221,7 @@ class LiveAssistant:
             response_modalities=[types.Modality.AUDIO],
             system_instruction=self.app.prompt(),
             tools=[types.Tool(function_declarations=self.app.registry.declarations())],
+            enable_affective_dialog=True if (self.s.expressive_voice and self._affective_ok) else None,
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=self.s.voice)
@@ -295,6 +298,10 @@ class LiveAssistant:
         heard, said = [], []
         while True:
             async for msg in session.receive():
+                if self._failures:  # the server answered: this connection really works
+                    self.events.emit("log", text="✓ Reconnected.")
+                    log.info("reconnected after %d failed attempt(s)", self._failures)
+                    self._failures = 0
                 if msg.session_resumption_update and msg.session_resumption_update.new_handle:
                     self.resume_handle = msg.session_resumption_update.new_handle
                 if msg.go_away:
@@ -344,10 +351,6 @@ class LiveAssistant:
             self.speaker.start()
         async with self.client.aio.live.connect(model=self.s.live_model, config=self._config()) as session:
             self.session = session
-            if self._failures:
-                self.events.emit("log", text="✓ Reconnected.")
-                log.info("reconnected after %d failed attempt(s)", self._failures)
-                self._failures = 0
             pending, self._pending = self._pending, []
             for text in pending:
                 await session.send_realtime_input(text=text)
@@ -370,6 +373,15 @@ class LiveAssistant:
     def _on_connection_error(self, exc: Exception, backoff: float) -> None:
         self._failures += 1
         text = str(exc)
+        low = text.lower()
+        if self._affective_ok and self.s.expressive_voice and ("affective" in low or "invalid argument" in low):
+            # this model can't do expressive dialog: connect without it (and remember, so we don't try again)
+            self._affective_ok = False
+            self.app.state.set("affective_unsupported", self.s.live_model)
+            self.events.emit("log", text="(Expressive voice isn't supported by this model - using the normal voice.)")
+        if "voice" in low and ("not" in low or "invalid" in low or "unsupported" in low) and self.s.voice != "Charon":
+            self.events.emit("log", text=f"(Voice '{self.s.voice}' isn't available here - using Charon.)")
+            self.s.voice = "Charon"
         log.warning("connection error #%d: %s: %s", self._failures, type(exc).__name__, text)
         if self.resume_handle and (self._failures >= 2 or any(m in text.lower() for m in STALE_SESSION_MARKERS)):
             # an expired session can never be resumed: start fresh rather than retrying forever

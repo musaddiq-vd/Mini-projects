@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
 )
 
 from jarvis.app import Jarvis
-from jarvis.config import VOICES, Settings
+from jarvis.config import SPEAKING_STYLES, VOICE_INFO, Settings
 from jarvis.ui.theme import MODES, THEMES, valid_color
 
 WAKE_WORDS = ["", "hey_jarvis", "alexa", "hey_mycroft", "hey_rhasspy"]
@@ -75,9 +75,18 @@ class SettingsDialog(QDialog):
         self.assistant_name = QLineEdit(s.assistant_name)
         form.addRow("Assistant name", self.assistant_name)
         self.voice = QComboBox()
-        self.voice.addItems(VOICES)
-        self.voice.setCurrentText(s.voice)
+        for name, sound in VOICE_INFO.items():
+            self.voice.addItem(f"{name}  -  {sound}", name)
+        self.voice.setCurrentIndex(max(0, self.voice.findData(s.voice)))
         form.addRow("Voice", self.voice)
+        self.style = QComboBox()
+        for key, desc in SPEAKING_STYLES.items():
+            self.style.addItem(f"{key.title()}  -  {desc.split(',')[0]}", key)
+        self.style.setCurrentIndex(max(0, self.style.findData(s.speaking_style)))
+        form.addRow("Speaking style", self.style)
+        self.expressive = QCheckBox("Expressive voice - the tone follows the mood of the conversation")
+        self.expressive.setChecked(s.expressive_voice)
+        form.addRow("", self.expressive)
         self.city = QLineEdit(s.city)
         self.city.setPlaceholderText("For weather in the morning briefing")
         form.addRow("City", self.city)
@@ -303,7 +312,9 @@ class SettingsDialog(QDialog):
         s.api_key = self.api_key.text().strip()
         s.user_name = self.user_name.text().strip()
         s.assistant_name = self.assistant_name.text().strip() or "Jarvis"
-        s.voice = self.voice.currentText()
+        s.voice = self.voice.currentData() or "Charon"
+        s.speaking_style = self.style.currentData() or "friendly"
+        s.expressive_voice = self.expressive.isChecked()
         s.city = self.city.text().strip()
         s.live_model = self.live_model.text().strip() or Settings().live_model
         s.text_model = self.text_model.text().strip() or Settings().text_model

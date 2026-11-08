@@ -36,7 +36,7 @@ from jarvis.ui.settings_dialog import SettingsDialog, apply_settings
 from jarvis.ui import theme
 from jarvis.ui.theme import DANGER, OK, STATE_LABELS, WARN
 
-RESTART_KEYS = {"voice", "live_model", "input_device", "output_device", "wake_word",
+RESTART_KEYS = {"voice", "speaking_style", "expressive_voice", "live_model", "input_device", "output_device", "wake_word",
                 "assistant_name", "user_name", "api_key", "allow_interrupt"}
 MAX_CHAT_ROWS = 250
 THUMB_WIDTH = 340

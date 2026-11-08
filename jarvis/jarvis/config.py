@@ -11,7 +11,27 @@ import os
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 
-VOICES = ("Charon", "Puck", "Kore", "Fenrir", "Aoede")
+# Gemini voices and how they sound (the first five were the original choices).
+VOICE_INFO = {
+    "Charon": "informative, deep", "Puck": "upbeat", "Kore": "firm", "Fenrir": "excitable", "Aoede": "breezy",
+    "Zephyr": "bright", "Leda": "youthful", "Orus": "firm, male", "Callirrhoe": "easy-going",
+    "Autonoe": "bright", "Enceladus": "breathy", "Iapetus": "clear", "Umbriel": "easy-going",
+    "Algieba": "smooth", "Despina": "smooth", "Erinome": "clear", "Algenib": "gravelly",
+    "Rasalgethi": "informative", "Laomedeia": "upbeat", "Achernar": "soft", "Alnilam": "firm",
+    "Schedar": "even", "Gacrux": "mature", "Pulcherrima": "forward", "Achird": "friendly",
+    "Zubenelgenubi": "casual", "Vindemiatrix": "gentle", "Sadachbia": "lively", "Sadaltager": "knowledgeable",
+    "Sulafat": "warm",
+}
+VOICES = tuple(VOICE_INFO)
+
+# How Jarvis talks. Each style is a short instruction added to the system prompt.
+SPEAKING_STYLES = {
+    "friendly": "warm, relaxed and caring, like a close friend who is genuinely happy to help",
+    "calm": "calm, soft and unhurried, with a soothing, reassuring tone",
+    "energetic": "upbeat, lively and enthusiastic, with real energy in your voice",
+    "professional": "polite, crisp and confident, like a top-class personal assistant",
+    "funny": "playful and witty, with light jokes and teasing when the moment allows (never at the user's expense)",
+}
 
 # Text models tried in order when one is retired, overloaded or slow.
 TEXT_MODEL_FALLBACKS = ("gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite")
@@ -68,6 +88,8 @@ class Settings:
     sound_effects: bool = True
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
+    speaking_style: str = "friendly"  # see SPEAKING_STYLES
+    expressive_voice: bool = True  # the voice follows the mood of the conversation (affective dialog)
 
     @property
     def effective_api_key(self) -> str:
