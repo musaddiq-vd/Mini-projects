@@ -23,6 +23,8 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 💬 **Conversation panel** | Chat bubbles with timestamps that fade in, a chip for every action (✓ / ✗), image thumbnails (click to open) and a "working on it" indicator. |
 | 📸 **Screenshots** | "Screenshot lo aur kholo" saves it to *Pictures/Jarvis Screenshots*, opens it and shows it in the chat. |
 | 📂 **Drag & drop** | Drop a file or image on the window and Jarvis reads/looks at it. |
+| ❓ **What can I say?** | `F1` or the **?** button opens example commands by topic - click one to try it. An empty chat shows a welcome card with ideas. |
+| 🔒 **Privacy tab** | Settings › Privacy shows everything Jarvis keeps (with sizes), deletes any of it, sets history retention, asks before the camera, and flashes the window whenever the screen or camera is used. |
 | ⌨️ **Input history** | ↑ / ↓ in the message box brings back what you typed. |
 | 🌓 **Day / night themes** | Six themes (Jarvis Blue, Neon Pink, Emerald, Sunset, Royal Purple, Mono) in dark, light or auto mode (light by day, dark at night). The 🌙/☀ button in the chat header switches instantly. |
 | 💬 **Better chat** | **Bold**, `code`, bullets and clickable links; TODAY / YESTERDAY separators; right-click Copy; a "Latest" button when you scroll up; `Ctrl+F` search; ⤓ export to Documents › Jarvis Chats. |
@@ -196,6 +198,7 @@ something was blocked or hidden.
 - Irreversible actions need a click from you — the model can't confirm them itself.
 - Keyboard shortcuts are limited to a known key list; URLs must be http(s).
 - Secrets and personal data stay in `~/.jarvis`, outside the repository.
+- The Gemini API key is encrypted with your Windows account (DPAPI); logs mask secrets.
 
 ---
 

@@ -143,7 +143,8 @@ def test_chat_is_saved_and_comes_back(window):
     text = again.chat.toPlainText()
     assert "remember this chat" in text and "earlier conversation" in text
     again._clear_chat()
-    assert MainWindow(app, Bridge()).chat.toPlainText() == ""
+    fresh = MainWindow(app, Bridge()).chat.toPlainText()
+    assert "remember this chat" not in fresh and "Hi! I'm Jarvis" in fresh  # empty chat shows the welcome card
 
 
 def test_mini_mode_shares_the_orb(window):

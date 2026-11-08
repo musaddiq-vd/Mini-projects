@@ -179,7 +179,10 @@ def test_history_on_disk_has_no_secrets(tmp_path):
 
     h = ChatHistory(tmp_path / "h.jsonl")
     h.add("user", "my upi pin 4321")
-    assert "4321" not in (tmp_path / "h.jsonl").read_text(encoding="utf-8")
+    import json
+
+    saved = json.loads((tmp_path / "h.jsonl").read_text(encoding="utf-8"))["text"]
+    assert "4321" not in saved and "hidden" in saved
 
 
 def test_safety_rules_in_both_prompts(isolated_home):

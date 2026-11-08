@@ -618,12 +618,17 @@ class MainWindow(QMainWindow):
 
         # right: header + banner + conversation + quick actions + input
         right = QFrame(objectName="panel")
+        self.right_panel = right
         rv = QVBoxLayout(right)
         rv.setContentsMargins(18, 18, 18, 18)
         header = QHBoxLayout()
         self.header_label = QLabel("CONVERSATION", objectName="section")
         header.addWidget(self.header_label)
         header.addStretch(1)
+        help_btn = QPushButton("?", objectName="small")
+        help_btn.setToolTip("What can I say? (F1)")
+        help_btn.clicked.connect(self.toggle_help)
+        header.addWidget(help_btn)
         search_btn = QPushButton("🔍", objectName="small")
         search_btn.setToolTip("Search the chat (Ctrl+F)")
         search_btn.clicked.connect(self.open_search)
@@ -748,7 +753,7 @@ class MainWindow(QMainWindow):
         for keys, fn in (("Ctrl+M", self.mute_btn.toggle), ("Ctrl+Space", self._toggle_sleep),
                          ("Ctrl+L", self._clear_chat), ("Ctrl+,", self.open_settings),
                          ("Ctrl+K", self.input.setFocus), ("Ctrl+Shift+M", self.toggle_mini),
-                         ("Ctrl+F", self.open_search), ("Esc", self.close_search)):
+                         ("Ctrl+F", self.open_search), ("Esc", self._escape), ("F1", self.toggle_help)):
             QShortcut(QKeySequence(keys), self, activated=fn)
 
     def _open_logs(self) -> None:
@@ -1121,6 +1126,20 @@ class MainWindow(QMainWindow):
     def _add_system(self, text: str) -> None:
         self.chat.add_system(text)
 
+    # -- help --------------------------------------------------------------------------
+    def toggle_help(self) -> None:
+        if getattr(self, "help", None) is None:
+            from jarvis.ui.help import HelpPanel
+
+            self.help = HelpPanel(self.right_panel, self._send)
+        self.help.toggle()
+
+    def _escape(self) -> None:
+        if getattr(self, "help", None) is not None and self.help.isVisible():
+            self.help.close_panel()
+        else:
+            self.close_search()
+
     # -- search and export -------------------------------------------------------
     def open_search(self) -> None:
         self.search_bar.show()
@@ -1167,6 +1186,10 @@ class MainWindow(QMainWindow):
     def _restore_history(self) -> None:
         items = self.history.recent(30)
         if not items:
+            from jarvis.ui.help import welcome_card
+
+            self.chat._add_row(welcome_card(self.app.settings.assistant_name, self.app.settings.user_name,
+                                            self._send), "center", text="welcome", animate=False)
             return
         name = self.app.settings.assistant_name
         self.chat.animate = False
