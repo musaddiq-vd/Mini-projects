@@ -88,6 +88,7 @@ class Settings:
     sound_effects: bool = True
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
+    avatar: str = "ai"  # ai | robot | cat | anime | minimal
     power_up_wake: bool = True  # big power-up animation + sound when Jarvis wakes
     desktop_widget: bool = False  # a small Jarvis card on the wallpaper
     offline_voice: bool = True  # without internet: Windows voice replies + simple English voice commands

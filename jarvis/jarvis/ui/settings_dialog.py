@@ -162,6 +162,17 @@ class SettingsDialog(QDialog):
         self.orb_face = QCheckBox("Show the AI face on the core (LED eyes, voice waveform, feelings)")
         self.orb_face.setChecked(self.result_settings.orb_face)
         v.addWidget(self.orb_face)
+        from jarvis.ui.avatars import AVATARS
+
+        av_row = QHBoxLayout()
+        av_row.addWidget(QLabel("Avatar"))
+        self.avatar = QComboBox()
+        for key, name in AVATARS.items():
+            self.avatar.addItem({"ai": "🧠", "robot": "🤖", "cat": "🐱", "anime": "🌸", "minimal": "◯"}[key] + "  " + name,
+                                key)
+        self.avatar.setCurrentIndex(max(0, self.avatar.findData(self.result_settings.avatar)))
+        av_row.addWidget(self.avatar, 1)
+        v.addLayout(av_row)
         self.power_up = QCheckBox("Power-up animation and sound when Jarvis wakes up")
         self.power_up.setChecked(self.result_settings.power_up_wake)
         v.addWidget(self.power_up)
@@ -473,6 +484,7 @@ class SettingsDialog(QDialog):
         s.sound_effects = self.sfx.isChecked()
         s.sound_volume = self.sfx_volume.value()
         s.orb_face = self.orb_face.isChecked()
+        s.avatar = self.avatar.currentData() or "ai"
         s.power_up_wake = self.power_up.isChecked()
         s.desktop_widget = self.desk_widget.isChecked()
         s.widget_corner = self.desk_corner.currentData() or "top_right"

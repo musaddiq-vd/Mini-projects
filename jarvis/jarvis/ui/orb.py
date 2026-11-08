@@ -44,6 +44,7 @@ class Orb(QWidget):
         self.zzz: list[list] = []  # [age, drift]
         self._zzz_timer = 0.0
         self.flash_t = 0.0
+        self.avatar = "ai"  # see avatars.py
         self.power: dict | None = None  # the wake-up power-up animation while it runs
         self.boot = 0.0  # 0 -> 1 during the start-up animation
         # cute moments: the AI core briefly turns into a bubbly anime face, then morphs back
@@ -102,6 +103,12 @@ class Orb(QWidget):
 
     def set_face(self, on: bool) -> None:
         self.face = on
+
+    def set_avatar(self, kind: str) -> None:
+        """'ai' (the default core) or an avatar pack from avatars.py."""
+        from jarvis.ui.avatars import AVATARS
+
+        self.avatar = kind if kind in AVATARS else "ai"
 
     def emote(self, kind: str, seconds: float = 2.6) -> None:
         """Show a feeling for a moment: love, sad, wink or surprised."""
@@ -279,9 +286,19 @@ class Orb(QWidget):
         base_opacity = p.opacity()
         if self.cute < 1:
             p.setOpacity(base_opacity * (1 - self.cute))
-            self._core(p, cx, cy, core_r, color)
-            if self.face:
-                self._face(p, cx, cy, core_r, color)
+            if self.avatar != "ai" and self.face:
+                from jarvis.ui import avatars
+
+                now = time.monotonic()
+                if now > self.blink_at + 0.14:
+                    self.blink_at = now + random.uniform(2.5, 6.0)
+                blinking = self.blink_at <= now <= self.blink_at + 0.12
+                feeling = self._feeling() if self.state not in {"sleeping", "offline"} else ""
+                avatars.draw(p, self, self.avatar, cx, cy, core_r, color, feeling, blinking)
+            else:
+                self._core(p, cx, cy, core_r, color)
+                if self.face:
+                    self._face(p, cx, cy, core_r, color)
         if self.cute > 0:
             pop = 1 + 0.14 * math.sin(math.pi * min(1.0, self.cute))  # bounce while morphing
             p.setOpacity(base_opacity * self.cute)

@@ -935,6 +935,12 @@ class MainWindow(QMainWindow):
         elif action == "theme" and theme_name in theme.THEMES:
             s.theme_name = theme_name
             s.theme_color = theme.THEMES[theme_name][0]  # the theme's own accent
+        elif action == "avatar" and opts.get("avatar"):
+            from jarvis.ui.avatars import AVATARS
+
+            if opts["avatar"] in AVATARS:
+                s.avatar = opts["avatar"]
+                s.orb_face = True
         elif action == "mini_mode":
             if not (self.mini and self.mini.isVisible()):
                 self.toggle_mini()
@@ -1031,6 +1037,7 @@ class MainWindow(QMainWindow):
             for who, text in self._recent_for_mini():
                 self.mini.add_message(who, text)
             self.mini.orb.set_state(self._last_state or "connecting")
+            self.mini.orb.set_avatar(self.app.settings.avatar)
             self.orb.orbs.append(self.mini.orb)
         self.mini.orb._timer.start(16)
         self.hide()
@@ -1048,6 +1055,7 @@ class MainWindow(QMainWindow):
 
             self.desk = DesktopWidget(self.app, self.accent, s.orb_face, s.widget_corner, s.widget_screen)
             self.desk.orb.set_state(self._last_state or "connecting")
+            self.desk.orb.set_avatar(self.app.settings.avatar)
             self.orb.orbs.append(self.desk.orb)
         self.desk.set_accent(self.accent)
         self.desk.place(s.widget_corner, s.widget_screen)
@@ -1119,6 +1127,7 @@ class MainWindow(QMainWindow):
             self.mode_btn.setToolTip(f"Theme: {s.theme_mode} - click to switch (dark → light → auto)")
         self.orb.set_accent(self.accent)
         self.orb.set_face(self.app.settings.orb_face)
+        self.orb.set_avatar(self.app.settings.avatar)
         if self.mini:
             self.mini.set_accent(self.accent)
         if self.desk is not None:
@@ -1617,7 +1626,7 @@ class MainWindow(QMainWindow):
             return False
         changed = apply_settings(self.app.settings, dialog.result_settings)
         save_settings(self.app.settings)
-        if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face"}:
+        if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face", "avatar"}:
             self._apply_theme()
         if changed & {"desktop_widget", "widget_corner", "widget_screen", "theme_color", "theme_name"}:
             self.apply_desktop_widget()
