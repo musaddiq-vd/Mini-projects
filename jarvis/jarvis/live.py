@@ -44,6 +44,9 @@ class LiveAssistant:
         self.events = app.events
         self.client = genai.Client(api_key=self.s.effective_api_key)
         self.resume_handle: str | None = None
+        self.mode = "agent"  # "agent" (Jarvis with commands) or "practice" (language tutor, no commands)
+        self._handles: dict[str, str | None] = {}  # each mode resumes its own conversation
+        self.practice = None  # jarvis.english.tutor.Tutor, created on first use
         self.awake = True
         self.muted = False
         self.last_activity = time.monotonic()
@@ -140,6 +143,26 @@ class LiveAssistant:
             return f'say "{self.s.assistant_name}" or press Wake'
         return "press Wake or type a message"
 
+    def set_mode(self, mode: str) -> None:
+        """Switch between Jarvis (agent) and the language tutor (practice). Reconnects with the new role."""
+        mode = "practice" if mode == "practice" else "agent"
+        if mode == self.mode:
+            return
+        if mode == "practice" and self.practice is None:
+            from jarvis.english.tutor import Tutor
+
+            self.practice = Tutor(self.app)
+        self._handles[self.mode] = self.resume_handle
+        self.mode = mode
+        self.resume_handle = self._handles.get(mode)
+        self.events.emit("mode", mode=mode)
+        self.restart()
+
+    @property
+    def registry(self):
+        """The tools the model may use right now: the tutor's in practice mode, Jarvis's otherwise."""
+        return self.practice.registry if self.mode == "practice" and self.practice else self.app.registry
+
     def restart(self, fresh: bool = False) -> None:
         """Reconnect with current settings (voice, devices). fresh=True forgets the conversation."""
         self._restart_fresh = fresh
@@ -219,8 +242,8 @@ class LiveAssistant:
     def _config(self) -> types.LiveConnectConfig:
         return types.LiveConnectConfig(
             response_modalities=[types.Modality.AUDIO],
-            system_instruction=self.app.prompt(),
-            tools=[types.Tool(function_declarations=self.app.registry.declarations())],
+            system_instruction=self.practice.prompt() if self.mode == "practice" and self.practice else self.app.prompt(),
+            tools=[types.Tool(function_declarations=self.registry.declarations())],
             enable_affective_dialog=True if (self.s.expressive_voice and self._affective_ok) else None,
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
@@ -279,7 +302,12 @@ class LiveAssistant:
             args = dict(fc.args or {})
             self.events.emit("state", state="thinking")
             self.events.emit("tool_start", name=fc.name, args=args)
-            result = await asyncio.to_thread(self.app.registry.call, fc.name, args, self.app.ctx)
+            registry = self.registry
+            if fc.name not in registry.tools:  # e.g. an agent command while in practice mode
+                result = {"error": "Practice mode is on, so computer commands are off. The user can press "
+                                   "'Back to Jarvis' to use them again."}
+            else:
+                result = await asyncio.to_thread(registry.call, fc.name, args, self.app.ctx)
             self.events.emit("tool", name=fc.name, args=args, result=result)
             responses.append(types.FunctionResponse(id=fc.id, name=fc.name, response=result))
         self.state = ""

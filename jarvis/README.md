@@ -23,6 +23,9 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 📸 **Screenshots** | "Screenshot lo aur kholo" saves it to *Pictures/Jarvis Screenshots*, opens it and shows it in the chat. |
 | 📂 **Drag & drop** | Drop a file or image on the window and Jarvis reads/looks at it. |
 | ⌨️ **Input history** | ↑ / ↓ in the message box brings back what you typed. |
+| 🌓 **Day / night themes** | Six themes (Jarvis Blue, Neon Pink, Emerald, Sunset, Royal Purple, Mono) in dark, light or auto mode (light by day, dark at night). The 🌙/☀ button in the chat header switches instantly. |
+| 💬 **Better chat** | **Bold**, `code`, bullets and clickable links; TODAY / YESTERDAY separators; right-click Copy; a "Latest" button when you scroll up; `Ctrl+F` search; ⤓ export to Documents › Jarvis Chats. |
+| 🗣 **Human-like voice** | Speaks like a person on a call - natural reactions, mood matching, short sentences. Choose a speaking style (friendly, calm, energetic, professional, funny) and one of 30 voices. Expressive voice is used when the model supports it. |
 | ⚡ **Quick actions** | One-click chips: screen, weather, news, system, reminders, joke. |
 | 📊 **HUD meters** | Live CPU, RAM and battery bars. |
 | 🫧 **Mini mode** | A small floating orb with captions that stays on top of other apps. Drag it anywhere; double-click for the full window (`Ctrl+Shift+M`, or the *Mini* button). |
@@ -35,6 +38,20 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | ⚙️ **Settings** | API key, names, voice, city, accent colour, microphone/speakers, wake word, features, auto-start. |
 | 🧠 **Memory panel** | See every fact Jarvis stored about you and forget any of them. |
 | 🧩 **Tools panel** | Every skill Jarvis has, including your plugins. |
+
+### 🎓 English (language) practice mode
+Press **🎓 English Practice** (left panel). Jarvis becomes your speaking coach and its computer commands are switched
+off until you press **🤖 Back to Jarvis** - the same button.
+
+| | |
+|---|---|
+| 🌍 **Your languages** | Pick the language you speak (for explanations and tips) and the one you are learning - English by default, or Spanish, French, Hindi, Arabic... (exercises for other languages are written by the AI). |
+| 📅 **Day-wise plan** | Every practice day: vocabulary quiz, grammar & sentence-structure quiz, reading *or* listening, a speaking task and a bonus task from your focus module. Day N counts the days you practised, so skipping a day never skips content. |
+| 🧩 **Modules** | Daily conversation · Daily routine · Interview practice · Pronunciation · Grammar & sentences · Vocabulary · Reading · Listening. |
+| ✅ **On-screen exercises** | Multiple-choice questions with instant right/wrong and explanations; reading passages; listening (the tutor reads it aloud, transcript on demand); speaking role-plays scored out of 10. |
+| 🗣 **Live coaching** | Talk freely - the tutor answers, gently corrects you and shows correction cards (what you said → better version → tip in your language). It can also put quick quiz questions on screen. |
+| 📈 **Progress** | XP, daily streak (best streak too), today's progress bar and accuracy per skill (listening, reading, speaking, grammar, vocabulary). |
+| 💾 **Picks up where you left off** | Languages, level, focus module, today's plan, results and even whether you were in practice mode are saved in `~/.jarvis/english.json`. |
 
 ### What Jarvis can do
 | Area | Examples |
@@ -122,10 +139,12 @@ Settings live in `~/.jarvis/config.json` (or the `JARVIS_HOME` folder), **never 
 | `name_wake` | Wake when you say the assistant's name (used when no offline wake word is set) |
 | `sound_effects`, `sound_volume` | Sound effects on/off and their volume (0-100) |
 | `orb_face` | The orb's animated face |
+| `theme_name`, `theme_mode` | Theme style and `dark` / `light` / `auto` |
+| `speaking_style`, `expressive_voice` | How Jarvis talks; expressive (affective) voice on/off |
 | `morning_briefing`, `proactive`, `proactive_minutes`, `hardware_alerts` | Background features |
 | `allowed_roots` | Folders the file tools may use; empty = your home folder |
 
-Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` (also reminders, notes, routines) · chat history: `~/.jarvis/history.jsonl` · logs: `~/.jarvis/logs/`.
+Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` (also reminders, notes, routines) · chat history: `~/.jarvis/history.jsonl` · practice progress: `~/.jarvis/english.json` · logs: `~/.jarvis/logs/`.
 
 ---
 
@@ -168,6 +187,7 @@ jarvis/
 │   ├── text_chat.py      # typed chat with the same tools
 │   ├── llm.py            # text model with automatic fallback
 │   ├── events.py         # event bus between core and window
+│   ├── english/          # practice mode: bank, curriculum, store (progress), generator, tutor
 │   ├── voicecmd.py       # "Jarvis" wakes it, "so jao" puts it to sleep
 │   ├── sfx.py            # synthesised sound effects
 │   ├── logs.py           # log file + crash capture

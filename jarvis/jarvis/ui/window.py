@@ -18,6 +18,7 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (
+    QStackedWidget,
     QApplication, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
     QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSystemTrayIcon, QVBoxLayout, QWidget,
 )
@@ -528,6 +529,9 @@ class MainWindow(QMainWindow):
         self._shortcuts()
         self._apply_theme()
         self._restore_history()
+        self.practice_btn.setText(f"🎓  {app.english.profile.get('target', 'English')} Practice")
+        if not app.settings.effective_api_key and app.english.mode == "practice":
+            QTimer.singleShot(0, lambda: self.set_practice(True))
 
     def _forward(self, kind: str, data: dict) -> None:
         """Worker thread -> Qt thread. After the window is gone, events are dropped quietly."""
@@ -597,6 +601,12 @@ class MainWindow(QMainWindow):
         for b in (self.mute_btn, self.sleep_btn, mini_btn, settings_btn):
             controls.addWidget(b)
         lv.addLayout(controls)
+        self.practice_btn = QPushButton("🎓  English Practice", objectName="primary")
+        self.practice_btn.setToolTip("Practice speaking, listening, reading and grammar with your tutor. "
+                                     "Jarvis's computer commands are off until you come back.")
+        self.practice_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.practice_btn.clicked.connect(lambda: self.set_practice(not self.practicing))
+        lv.addWidget(self.practice_btn)
         credit = QLabel(f"Jarvis v{__version__} · by Musaddiq Khan", objectName="muted")
         credit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lv.addWidget(credit)
@@ -607,7 +617,8 @@ class MainWindow(QMainWindow):
         rv = QVBoxLayout(right)
         rv.setContentsMargins(18, 18, 18, 18)
         header = QHBoxLayout()
-        header.addWidget(QLabel("CONVERSATION", objectName="section"))
+        self.header_label = QLabel("CONVERSATION", objectName="section")
+        header.addWidget(self.header_label)
         header.addStretch(1)
         search_btn = QPushButton("🔍", objectName="small")
         search_btn.setToolTip("Search the chat (Ctrl+F)")
@@ -663,12 +674,20 @@ class MainWindow(QMainWindow):
         self.search_bar.hide()
         rv.addWidget(self.search_bar)
         self.chat = ChatView()
-        rv.addWidget(self.chat, 1)
+        from jarvis.ui.practice import PracticePanel
+
+        self.practice = PracticePanel(self.app, None)
+        self.stack = QStackedWidget()
+        self.stack.addWidget(self.chat)
+        self.stack.addWidget(self.practice)
+        rv.addWidget(self.stack, 1)
         self.typing = TypingDots()
         self.typing.hide()
         rv.addWidget(self.typing)
 
-        chips = QHBoxLayout()
+        self.chips = QWidget()
+        chips = QHBoxLayout(self.chips)
+        chips.setContentsMargins(0, 0, 0, 0)
         chips.setSpacing(6)
         for label, prompt in QUICK_ACTIONS:
             b = QPushButton(label, objectName="chip")
@@ -677,7 +696,7 @@ class MainWindow(QMainWindow):
             b.clicked.connect(lambda _, t=prompt: self._send(t))
             chips.addWidget(b)
         chips.addStretch(1)
-        rv.addLayout(chips)
+        rv.addWidget(self.chips)
 
         row = QHBoxLayout()
         self.input = QLineEdit()
@@ -765,6 +784,41 @@ class MainWindow(QMainWindow):
         self._send(f"I dropped this file into the window: {names}. Read or look at it and tell me "
                    f"briefly what it is, then ask what I want to do with it.")
 
+    # -- practice mode -------------------------------------------------------------------
+    practicing = False
+
+    def set_practice(self, on: bool) -> None:
+        """English practice mode: the tutor takes over; Jarvis's commands are off until switched back."""
+        self.practicing = on
+        self.app.english.set_mode("practice" if on else "agent")
+        if self.assistant is not None:
+            self.assistant.set_mode("practice" if on else "agent")
+            self.practice.say = self.assistant.send_system
+        else:
+            self.practice.say = None
+        self.stack.setCurrentWidget(self.practice if on else self.chat)
+        self.chips.setVisible(not on)
+        self.header_label.setText("LANGUAGE PRACTICE" if on else "CONVERSATION")
+        if on:
+            self.close_search()
+        target = self.app.english.profile.get("target", "English")
+        if on:
+            self.practice_btn.setText("🤖  Back to Jarvis (agent mode)")
+            self.practice_btn.setObjectName("modeOn")
+            self.input.setPlaceholderText(f"Talk or type in {target} - your tutor will help...")
+            self.title.setText(f"{self.app.settings.assistant_name.upper()}  ·  TUTOR")
+            self.practice.reload()
+            self.toast("🎓", f"{target} practice mode - commands are off until you press Back to Jarvis.",
+                       self.accent, 4)
+        else:
+            self.practice_btn.setText(f"🎓  {target} Practice")
+            self.practice_btn.setObjectName("primary")
+            self.input.setPlaceholderText("Type a message, or just talk...  (Ctrl+K)")
+            self.title.setText(self.app.settings.assistant_name.upper())
+            self.toast("🤖", "Back to Jarvis - commands are on again.", self.accent, 3)
+        self.practice_btn.style().unpolish(self.practice_btn)
+        self.practice_btn.style().polish(self.practice_btn)
+
     # -- day / night ------------------------------------------------------------------
     def cycle_theme_mode(self) -> None:
         s = self.app.settings
@@ -842,7 +896,7 @@ class MainWindow(QMainWindow):
         for glow in self._glows:
             glow.set_color(self.accent)
         name = self.app.settings.assistant_name
-        self.title.setText(name.upper())
+        self.title.setText(name.upper() + ("  ·  TUTOR" if self.practicing else ""))
         self.setWindowTitle(name)
         icon = app_icon(self.accent)
         self.setWindowIcon(icon)
@@ -868,6 +922,8 @@ class MainWindow(QMainWindow):
         from jarvis.live import LiveAssistant
 
         self.assistant = LiveAssistant(self.app)
+        if self.app.english.mode == "practice":  # continue where the user left off
+            self.set_practice(True)
         self.thread = self.assistant.run_in_thread()
         self._add_system(f"Starting... say \"{self.app.settings.assistant_name}\", or type below.")
 
@@ -885,6 +941,14 @@ class MainWindow(QMainWindow):
             if self._joke_pending:
                 self._joke_pending = False
                 self._emote("wink")
+        elif kind == "practice_mcq":
+            self.practice.tutor_mcq(data["question"], data["options"], data["answer"], data.get("why", ""))
+        elif kind == "practice_correction":
+            self.practice.correction(data.get("said", ""), data["better"], data.get("tip", ""))
+        elif kind == "practice_progress":
+            self.practice.progress(**data)
+            if data.get("xp_gained"):
+                self.toast("⭐", f"+{data['xp_gained']} XP  ·  🔥 {data.get('streak', 0)} day streak", OK, 3)
         elif kind == "timer":
             self.orb.set_timer(data["id"], data["ends"], data["total"], data.get("label", ""))
         elif kind == "timer_end":

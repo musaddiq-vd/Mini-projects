@@ -101,6 +101,7 @@ class Jarvis:
     events: Events
     state: StateStore
     history: ChatHistory | None = None
+    english: object = None  # jarvis.english.store.EnglishStore (practice progress)
 
     def prompt(self) -> str:
         return system_prompt(self.settings, self.memory)
@@ -118,4 +119,7 @@ def create_app(settings: Settings | None = None, ask=console_ask, notify=print) 
     history = ChatHistory(home / "history.jsonl")
     events.subscribe(lambda kind, data: history.add(kind, data.get("text", ""))
                      if kind in {"user", "assistant"} else None)
-    return Jarvis(settings, memory, registry, ctx, events, state, history)
+    from jarvis.english.store import EnglishStore
+
+    english = EnglishStore(home / "english.json")
+    return Jarvis(settings, memory, registry, ctx, events, state, history, english)

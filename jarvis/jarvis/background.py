@@ -82,6 +82,10 @@ class BackgroundServices:
                 + ". Keep it under six short sentences, in the user's language.")
 
     # -- loops ---------------------------------------------------------------
+    def _practicing(self) -> bool:
+        assistant = getattr(self.app.ctx, "assistant", None)
+        return getattr(assistant, "mode", "agent") == "practice"
+
     def _focusing(self) -> bool:
         from jarvis.tools.timers import focus_active
 
@@ -148,7 +152,7 @@ class BackgroundServices:
 
     def _proactive_loop(self) -> None:
         while not self._stop.wait(60):
-            if not self.s.proactive or self.sleeping or self._focusing():
+            if not self.s.proactive or self.sleeping or self._focusing() or self._practicing():
                 continue
             idle = time.monotonic() - self.last_activity
             if idle >= self.s.proactive_minutes * 60 and 9 <= datetime.now().hour < 22:
