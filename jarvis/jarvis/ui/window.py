@@ -24,8 +24,11 @@ from PyQt6.QtWidgets import (
 
 from jarvis import __version__
 from jarvis.app import Jarvis, create_app
-from jarvis.config import load_settings, save_settings
+from jarvis.config import home_dir, load_settings, save_settings
+from jarvis.history import ChatHistory
 from jarvis.logs import log_dir, on_crash, setup_logging
+from jarvis.ui.hotkey import HOTKEY_TEXT, GlobalHotkey
+from jarvis.ui.mini import MiniWindow, OrbGroup
 from jarvis.ui.orb import Orb
 from jarvis.ui.settings_dialog import SettingsDialog, apply_settings
 from jarvis.ui.theme import DANGER, MUTED, OK, STATE_LABELS, WARN, stylesheet, valid_color
@@ -72,6 +75,7 @@ class Bridge(QObject):
 
     event = pyqtSignal(str, dict)
     confirm = pyqtSignal(str, object)  # question, reply callback
+    hotkey = pyqtSignal()
 
 
 def app_icon(color: str) -> QIcon:
@@ -309,12 +313,15 @@ class ChatView(QScrollArea):
                       default=0)
         label.setMinimumWidth(min(longest + 6, max_width))
 
-    def add_message(self, who: str, text: str, mine: bool) -> None:
+    def add_message(self, who: str, text: str, mine: bool, when: datetime | None = None) -> None:
         bubble = QFrame(objectName="bubbleMe" if mine else "bubbleAi")
         v = QVBoxLayout(bubble)
         v.setContentsMargins(12, 8, 12, 10)
         v.setSpacing(2)
-        stamp = datetime.now().strftime("%I:%M %p").lstrip("0")
+        when = when or datetime.now()
+        stamp = when.strftime("%I:%M %p").lstrip("0")
+        if when.date() != datetime.now().date():
+            stamp = when.strftime("%d %b, ") + stamp
         name = QLabel(f"{who.upper()}   ·   {stamp}", objectName="who")
         if mine:
             name.setAlignment(Qt.AlignmentFlag.AlignRight)
@@ -389,6 +396,10 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._last_state = ""
         self.accent = valid_color(app.settings.theme_color)
+        self.history = ChatHistory(home_dir() / "history.jsonl")
+        self.mini: MiniWindow | None = None
+        self.hotkey: GlobalHotkey | None = None
+        bridge.hotkey.connect(self._on_hotkey)
 
         bridge.event.connect(self._on_event)
         bridge.confirm.connect(self._on_confirm)
@@ -400,6 +411,7 @@ class MainWindow(QMainWindow):
         self._build_tray()
         self._shortcuts()
         self._apply_theme()
+        self._restore_history()
 
     def _forward(self, kind: str, data: dict) -> None:
         """Worker thread -> Qt thread. After the window is gone, events are dropped quietly."""
@@ -425,8 +437,9 @@ class MainWindow(QMainWindow):
         self.clock = QLabel(objectName="muted")
         self.clock.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lv.addWidget(self.clock)
-        self.orb = Orb(self.accent, face=self.app.settings.orb_face)
-        lv.addWidget(self.orb, 1)
+        self.big_orb = Orb(self.accent, face=self.app.settings.orb_face)
+        self.orb = OrbGroup(self.big_orb)  # every orb call also reaches the mini orb
+        lv.addWidget(self.big_orb, 1)
 
         state_row = QHBoxLayout()
         state_row.addStretch(1)
@@ -460,7 +473,10 @@ class MainWindow(QMainWindow):
         settings_btn = QPushButton("⚙  Settings")
         settings_btn.setToolTip("Settings (Ctrl+,)")
         settings_btn.clicked.connect(self.open_settings)
-        for b in (self.mute_btn, self.sleep_btn, settings_btn):
+        mini_btn = QPushButton("🗗  Mini")
+        mini_btn.setToolTip("Floating mini orb that stays on top (Ctrl+Shift+M)")
+        mini_btn.clicked.connect(self.toggle_mini)
+        for b in (self.mute_btn, self.sleep_btn, mini_btn, settings_btn):
             controls.addWidget(b)
         lv.addLayout(controls)
         credit = QLabel(f"Jarvis v{__version__} · by Musaddiq Khan", objectName="muted")
@@ -543,7 +559,8 @@ class MainWindow(QMainWindow):
             return
         self.tray = QSystemTrayIcon(self)
         menu = QMenu()
-        for text, fn in (("Show", self._show_window), ("Wake / Sleep", self._toggle_sleep),
+        for text, fn in (("Show", self._show_window), ("Mini mode", self.toggle_mini),
+                         ("Wake / Sleep", self._toggle_sleep),
                          ("Mute / Unmute", self.mute_btn.toggle), ("Open logs folder", self._open_logs),
                          ("Quit", self.close)):
             act = QAction(text, menu)
@@ -557,7 +574,7 @@ class MainWindow(QMainWindow):
     def _shortcuts(self) -> None:
         for keys, fn in (("Ctrl+M", self.mute_btn.toggle), ("Ctrl+Space", self._toggle_sleep),
                          ("Ctrl+L", self._clear_chat), ("Ctrl+,", self.open_settings),
-                         ("Ctrl+K", self.input.setFocus)):
+                         ("Ctrl+K", self.input.setFocus), ("Ctrl+Shift+M", self.toggle_mini)):
             QShortcut(QKeySequence(keys), self, activated=fn)
 
     def _open_logs(self) -> None:
@@ -594,7 +611,46 @@ class MainWindow(QMainWindow):
         self._send(f"I dropped this file into the window: {names}. Read or look at it and tell me "
                    f"briefly what it is, then ask what I want to do with it.")
 
+    # -- mini mode and hotkey -------------------------------------------------------
+    def toggle_mini(self) -> None:
+        if self.mini and self.mini.isVisible():
+            self._show_window()
+            return
+        if self.mini is None:
+            self.mini = MiniWindow(self.accent, self.app.settings.orb_face, self._show_window, [
+                ("Wake / Sleep", self._toggle_sleep), ("Mute / Unmute", self.mute_btn.toggle),
+                ("Quit", self.close)])
+            self.mini.orb.set_state(self._last_state or "connecting")
+            self.orb.orbs.append(self.mini.orb)
+        self.mini.orb._timer.start(16)
+        self.hide()
+        self.mini.show_at_saved_place()
+
+    def _leave_mini(self) -> None:
+        if self.mini and self.mini.isVisible():
+            self.mini.hide()
+            self.mini.orb._timer.stop()  # no drawing while hidden
+
+    def start_hotkey(self) -> None:
+        self.hotkey = GlobalHotkey(self.bridge.hotkey.emit)
+        if self.hotkey.start():
+            self.input.setPlaceholderText(f"Type a message, or just talk...  ({HOTKEY_TEXT} from anywhere)")
+        else:
+            self.hotkey = None
+
+    def _on_hotkey(self) -> None:
+        """Ctrl+Alt+J from any app: bring Jarvis up, awake and ready to listen."""
+        if self.mini and self.mini.isVisible():
+            self.mini.raise_()
+        else:
+            self._show_window()
+            self.input.setFocus()
+        if self.assistant and not self.assistant.awake:
+            self.assistant.wake_up()
+        self.orb.flash()
+
     def _show_window(self) -> None:
+        self._leave_mini()
         self.showNormal()
         self.raise_()
         self.activateWindow()
@@ -604,6 +660,8 @@ class MainWindow(QMainWindow):
         QApplication.instance().setStyleSheet(stylesheet(self.accent))
         self.orb.set_accent(self.accent)
         self.orb.set_face(self.app.settings.orb_face)
+        if self.mini:
+            self.mini.set_accent(self.accent)
         self.stats.accent = self.accent
         name = self.app.settings.assistant_name
         self.title.setText(name.upper())
@@ -643,8 +701,10 @@ class MainWindow(QMainWindow):
             self._on_state(data["state"])
         elif kind == "user":
             self._add_bubble("You", data["text"], mine=True)
+            self.history.add("user", data["text"])
         elif kind == "assistant":
             self._add_bubble(self.app.settings.assistant_name, data["text"])
+            self.history.add("assistant", data["text"])
         elif kind == "caption":
             self._on_caption(data.get("who", ""), data.get("text", ""))
         elif kind == "tool_start":
@@ -694,7 +754,7 @@ class MainWindow(QMainWindow):
         if who == "user" and text and self._last_state != "thinking":
             self.typing.show_text(f"{self.app.settings.assistant_name} is listening...", self.accent)
         if not text:
-            QTimer.singleShot(1800, lambda: self.caption.setText("") if not self._caption_live else None)
+            QTimer.singleShot(1800, self._clear_caption)
             self._caption_live = False
             return
         self._caption_live = True
@@ -704,6 +764,15 @@ class MainWindow(QMainWindow):
         icon = "🔊" if who == "assistant" else "🎙"
         self.caption.setStyleSheet(f"color:{color};")
         self.caption.setText(f"{icon}  {text}")
+        if self.mini:
+            self.mini.set_caption(f"{icon} {text}")
+
+    def _clear_caption(self) -> None:
+        if self._caption_live:
+            return
+        self.caption.setText("")
+        if self.mini:
+            self.mini.set_caption("")
 
     _caption_live = False
 
@@ -717,6 +786,18 @@ class MainWindow(QMainWindow):
 
     def _clear_chat(self) -> None:
         self.chat.clear()
+        self.history.clear()
+
+    def _restore_history(self) -> None:
+        items = self.history.recent(30)
+        if not items:
+            return
+        name = self.app.settings.assistant_name
+        for item in items:
+            mine = item["role"] == "user"
+            self.chat.add_message("You" if mine else name, item["text"], mine,
+                                  when=datetime.fromtimestamp(item.get("t", 0) or 0))
+        self.chat.add_system("──────  earlier conversation  ·  Ctrl+L clears it  ──────")
 
     # -- controls ---------------------------------------------------------------
     def _send_typed(self) -> None:
@@ -787,6 +868,15 @@ class MainWindow(QMainWindow):
             self._add_system("Confirmation timed out - cancelled.")
 
     # -- close --------------------------------------------------------------------
+    def _quit(self) -> None:
+        """The app doesn't quit on its own (mini mode hides this window), so quit explicitly."""
+        self._quitting = True
+        if self.mini:
+            self.mini.close()
+        QTimer.singleShot(0, QApplication.instance().quit)
+
+    _quitting = False
+
     def save_geometry(self) -> None:
         QSettings("MusaddiqKhan", "Jarvis").setValue("geometry", self.saveGeometry())
 
@@ -795,12 +885,20 @@ class MainWindow(QMainWindow):
         return bool(isinstance(data, QByteArray) and self.restoreGeometry(data))
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt naming
-        if not self._closing:
+        if self._quitting:  # Qt asks every window again while quitting
+            event.accept()
+            return
+        if self.hotkey:
+            self.hotkey.stop()
+            self.hotkey = None
+        self._leave_mini()
+        if not self._closing and self.isVisible():
             self.save_geometry()
         if self._closing or not (self.thread and self.thread.is_alive()):
             if self.tray:
                 self.tray.hide()
             event.accept()
+            self._quit()
             return
         self._closing = True
         event.ignore()
@@ -813,7 +911,7 @@ class MainWindow(QMainWindow):
             if not self.thread.is_alive() or self._wait_ticks > 60:  # at most ~15 s
                 if self.tray:
                     self.tray.hide()
-                QApplication.instance().quit()
+                self._quit()
             else:
                 QTimer.singleShot(250, check)
 
@@ -864,6 +962,7 @@ def run_window() -> int:
     qt = QApplication.instance() or QApplication(sys.argv)
     qt.setApplicationName("Jarvis")
     qt.setFont(QFont("Segoe UI", 10))
+    qt.setQuitOnLastWindowClosed(False)  # hiding into mini mode must not end the app
     if _already_running():
         log.info("already running - brought the open window to the front")
         return 0
@@ -876,6 +975,7 @@ def run_window() -> int:
     window._instance_server = _listen_for_second_start(window)
     on_crash(lambda text: app.events.emit("crash", text=text))
     window.show()
+    window.start_hotkey()
     for err in app.registry.errors:
         window._add_system(f"⚠ {err}")
     if not app.settings.effective_api_key:

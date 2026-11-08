@@ -22,6 +22,9 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | ⌨️ **Input history** | ↑ / ↓ in the message box brings back what you typed. |
 | ⚡ **Quick actions** | One-click chips: screen, weather, news, system, reminders, joke. |
 | 📊 **HUD meters** | Live CPU, RAM and battery bars. |
+| 🫧 **Mini mode** | A small floating orb with captions that stays on top of other apps. Drag it anywhere; double-click for the full window (`Ctrl+Shift+M`, or the *Mini* button). |
+| ⌨️ **Global hotkey** | `Ctrl+Alt+J` from any app brings Jarvis up, awake and listening. |
+| 🗂️ **Chat history** | The conversation is saved and shown again after a restart (`Ctrl+L` clears it). |
 | 🗔 **Tray + shortcuts** | Tray icon (show / wake / mute / quit). `Ctrl+M` mute · `Ctrl+Space` sleep/wake · `Ctrl+K` type · `Ctrl+L` clear · `Ctrl+,` settings. |
 | ⌨️ **Type or talk** | Type in the box at any time — same session, same tools. |
 | 🎙️ **Mute / 💤 Sleep** | One click to mute the mic or put Jarvis to sleep. |
@@ -45,7 +48,7 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | Code | "Write a Python snake game in a folder called snake" — creates the files and opens VS Code · explain/review a code file |
 | Games | Open Steam / Epic downloads, library or store |
 | Memory | Remembers your name, city, people, preferences, contacts · "What do you know about me?" |
-| Reminders | "Remind me in 20 minutes to call mom" |
+| Reminders | "Remind me in 20 minutes to call mom" · "Shaam 6:30 baje chai ki yaad dilana" - kept across restarts; one that came due while Jarvis was closed is told when it starts |
 | Undo | "Undo" reverses file changes, brightness, dark mode, clipboard and saved memories |
 
 ### On its own
@@ -115,7 +118,7 @@ Settings live in `~/.jarvis/config.json` (or the `JARVIS_HOME` folder), **never 
 | `morning_briefing`, `proactive`, `proactive_minutes`, `hardware_alerts` | Background features |
 | `allowed_roots` | Folders the file tools may use; empty = your home folder |
 
-Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` · logs: `~/.jarvis/logs/`.
+Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` (also reminders) · chat history: `~/.jarvis/history.jsonl` · logs: `~/.jarvis/logs/`.
 
 ---
 
@@ -161,6 +164,7 @@ jarvis/
 │   ├── voicecmd.py       # "Jarvis" wakes it, "so jao" puts it to sleep
 │   ├── sfx.py            # synthesised sound effects
 │   ├── logs.py           # log file + crash capture
+│   ├── history.py        # saved chat history
 │   ├── audio.py · wake.py · net.py
 │   ├── config.py · memory.py · state.py · undo.py · confirm.py
 │   ├── tools/            # built-in tools, one file per area

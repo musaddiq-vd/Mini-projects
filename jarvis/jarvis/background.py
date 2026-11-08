@@ -49,6 +49,14 @@ class BackgroundServices:
 
     def on_connected(self) -> None:
         """Called once the first live session is up."""
+        from jarvis.tools.reminders import restore_reminders
+
+        try:
+            count = restore_reminders(self.app.ctx)
+            if count:
+                self.app.events.emit("log", text=f"⏰ {count} reminder(s) restored.")
+        except Exception as exc:
+            self.app.events.emit("log", text=f"[reminders] {exc}")
         if self.s.morning_briefing and self.app.state.get("last_briefing") != date.today().isoformat():
             self.app.state.set("last_briefing", date.today().isoformat())
             self.say(self.briefing_instruction())
