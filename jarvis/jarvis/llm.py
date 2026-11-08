@@ -46,6 +46,16 @@ class TextModel:
                     self.models.pop(0)
                     self.log(f"[model] {model} failed ({str(last_error)[:60]}), using {self.models[0]}")
 
+    def ask_image(self, prompt: str, jpeg: bytes, system: str | None = None) -> str:
+        """Ask about a picture (a screenshot). Returns the text answer."""
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+        )
+        parts = [types.Part.from_bytes(data=jpeg, mime_type="image/jpeg"), prompt]
+        response = self.generate(parts, config)
+        return (response.text or "").strip()
+
     def ask(self, prompt: str, system: str | None = None) -> str:
         config = types.GenerateContentConfig(
             system_instruction=system,

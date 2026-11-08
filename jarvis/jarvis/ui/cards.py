@@ -161,3 +161,65 @@ def report_card(r: dict) -> QFrame | None:
         lb.setWordWrap(True)
         v.addWidget(lb)
     return card
+
+
+def _inline_code(text: str) -> str:
+    """Escape text and show `code` in a code font (models like backticks)."""
+    import re
+
+    accent = theme.readable(theme.ACCENT)
+    return re.sub(r"`([^`]+)`", lambda m: f"<span style='font-family: Consolas, monospace; color:{accent}'>"
+                  f"{m.group(1)}</span>", html.escape(text))
+
+
+def fix_card(r: dict) -> QFrame | None:
+    """The fix for an error on screen: problem, cause, steps and code with a Copy button."""
+    if not isinstance(r, dict) or not r.get("problem"):
+        return None
+    from PyQt6.QtWidgets import QApplication, QPushButton
+
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(560)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(16, 12, 16, 14)
+    v.setSpacing(6)
+    head = QLabel("🛠  Fix" + (f"  ·  {html.escape(r['app'])}" if r.get("app") else ""), objectName="h2")
+    v.addWidget(head)
+    problem = QLabel(f"<b style='color:{theme.DANGER}'>{html.escape(r['problem'])}</b>")
+    problem.setTextFormat(Qt.TextFormat.RichText)
+    problem.setWordWrap(True)
+    v.addWidget(problem)
+    if r.get("cause"):
+        cause = QLabel(_inline_code(r["cause"]), objectName="muted")
+        cause.setTextFormat(Qt.TextFormat.RichText)
+        cause.setWordWrap(True)
+        v.addWidget(cause)
+    for i, step in enumerate(r.get("steps") or [], 1):
+        lb = QLabel(f"<b style='color:{theme.readable(theme.ACCENT)}'>{i}.</b> {_inline_code(step)}")
+        lb.setTextFormat(Qt.TextFormat.RichText)
+        lb.setWordWrap(True)
+        v.addWidget(lb)
+    code = r.get("code") or ""
+    if code:
+        box = QLabel(f"<pre style='margin:0'>{html.escape(code)}</pre>")
+        box.setTextFormat(Qt.TextFormat.RichText)
+        box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        box.setWordWrap(True)
+        box.setStyleSheet(f"background:{theme.P.bg}; border:1px solid {theme.MUTED}; border-radius:8px; "
+                          "padding:8px; font-family: Consolas, 'Cascadia Mono', monospace; font-size: 12px;")
+        v.addWidget(box)
+        row = QHBoxLayout()
+        lang = QLabel(html.escape(r.get("language") or ""), objectName="muted")
+        row.addWidget(lang)
+        row.addStretch(1)
+        copy = QPushButton("📋  Copy code", objectName="chip")
+        copy.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        def do_copy():
+            QApplication.clipboard().setText(code)
+            copy.setText("✓  Copied")
+
+        copy.clicked.connect(do_copy)
+        row.addWidget(copy)
+        v.addLayout(row)
+    return card

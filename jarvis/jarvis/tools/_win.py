@@ -94,3 +94,10 @@ def close(hwnd: int) -> None:
 
 def show(hwnd: int, how: int) -> None:
     user32.ShowWindow(hwnd, how)
+
+
+def rect(hwnd: int) -> tuple[int, int, int, int]:
+    """(left, top, right, bottom) of a window in screen pixels."""
+    r = wintypes.RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(r))
+    return r.left, r.top, r.right, r.bottom

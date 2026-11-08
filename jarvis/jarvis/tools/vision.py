@@ -25,7 +25,7 @@ def grab_screen(monitor: int = 1):
     import mss
     from PIL import Image
 
-    with mss.mss() as sct:
+    with getattr(mss, "MSS", mss.mss)() as sct:
         monitors = sct.monitors
         shot = sct.grab(monitors[monitor if 0 < monitor < len(monitors) else 1])
         return Image.frombytes("RGB", shot.size, shot.rgb)

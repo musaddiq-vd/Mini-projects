@@ -1341,7 +1341,7 @@ class MainWindow(QMainWindow):
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
 
     def _rich_card(self, name: str, result: dict):
-        from jarvis.ui.cards import links_card, report_card, weather_card
+        from jarvis.ui.cards import fix_card, links_card, report_card, weather_card
 
         try:
             if name == "get_weather":
@@ -1350,6 +1350,8 @@ class MainWindow(QMainWindow):
                 return links_card(result)
             if name == "weekly_report":
                 return report_card(result)
+            if name == "fix_on_screen":
+                return fix_card(result)
         except Exception:
             log.exception("couldn't draw a card for %s", name)
         return None

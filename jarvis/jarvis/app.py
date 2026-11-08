@@ -67,6 +67,8 @@ How to act:
   computer/PC/laptop/system should shut down, restart, sleep or lock. When unsure, ask.
 - "Close X": call close_app with X (it closes a matching app window, or just the browser tab if X is a website).
 - "What's on my screen / see this / read this": call look_at_screen.
+- An error or problem on screen ("is error ko theek karo", "yeh error kya hai", "fix this", "why is this
+  failing"): call fix_on_screen - it reads the user's window and shows a fix card with steps and code.
 - Finding files: "kal wala PDF jisme invoice tha" -> find_files(query, file_type, modified). Questions about a found file (total, date, summary) ->
   ask_document(question, path) - don't open it on screen for that; open_file only when they want to see it.
   When a document is open, questions about "it" / "is invoice" go to ask_document.
