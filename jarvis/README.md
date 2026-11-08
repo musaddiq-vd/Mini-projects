@@ -23,6 +23,9 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 💬 **Conversation panel** | Chat bubbles with timestamps that fade in, a chip for every action (✓ / ✗), image thumbnails (click to open) and a "working on it" indicator. |
 | 📸 **Screenshots** | "Screenshot lo aur kholo" saves it to *Pictures/Jarvis Screenshots*, opens it and shows it in the chat. |
 | 📂 **Drag & drop** | Drop a file or image on the window and Jarvis reads/looks at it. |
+| 🏆 **Achievements** | 19 badges you unlock just by using Jarvis (Early Bird, Night Owl, Timer Master, List Maker, Week Warrior, Perfect Score...). Unlocking one bursts confetti with a fanfare; the 🏆 button shows them all with progress bars. |
+| 📅 **Today strip** | Under the orb: next reminder, running timer, open to-dos, streak and badges - click a chip to ask about it. |
+| 🗣 **Voice control of the window** | "Night mode karo", "Sunset theme lagao", "chhote ho jao", "help dikhao", "mere achievements dikhao". |
 | ❓ **What can I say?** | `F1` or the **?** button opens example commands by topic - click one to try it. An empty chat shows a welcome card with ideas. |
 | 🔒 **Privacy tab** | Settings › Privacy shows everything Jarvis keeps (with sizes), deletes any of it, sets history retention, asks before the camera, and flashes the window whenever the screen or camera is used. |
 | ⌨️ **Input history** | ↑ / ↓ in the message box brings back what you typed. |

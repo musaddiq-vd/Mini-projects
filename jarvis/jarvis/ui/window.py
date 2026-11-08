@@ -847,6 +847,38 @@ class MainWindow(QMainWindow):
         self.practice_btn.style().unpolish(self.practice_btn)
         self.practice_btn.style().polish(self.practice_btn)
 
+    # -- voice control of this window ------------------------------------------------------
+    def ui_command(self, action: str, theme_name: str = "") -> None:
+        s = self.app.settings
+        if action in ("night_mode", "day_mode", "auto_mode"):
+            s.theme_mode = {"night_mode": "dark", "day_mode": "light", "auto_mode": "auto"}[action]
+        elif action == "theme" and theme_name in theme.THEMES:
+            s.theme_name = theme_name
+            s.theme_color = theme.THEMES[theme_name][0]  # the theme's own accent
+        elif action == "mini_mode":
+            if not (self.mini and self.mini.isVisible()):
+                self.toggle_mini()
+            return
+        elif action == "full_window":
+            self._show_window()
+            return
+        elif action == "show_help":
+            if not (getattr(self, "help", None) and self.help.isVisible()):
+                self.toggle_help()
+            return
+        elif action == "show_achievements":
+            if not (getattr(self, "badges", None) and self.badges.isVisible()):
+                self.toggle_badges()
+            return
+        elif action == "clear_chat":
+            self.chat.clear()
+            return
+        else:
+            return
+        save_settings(s)
+        self._apply_theme()
+        self.orb.flash()
+
     # -- day / night ------------------------------------------------------------------
     def cycle_theme_mode(self) -> None:
         s = self.app.settings
@@ -971,6 +1003,8 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "ui_command":
+            self.ui_command(data.get("action", ""), data.get("theme", ""))
         elif kind == "achievement":
             from jarvis.ui.fx import Confetti
 
