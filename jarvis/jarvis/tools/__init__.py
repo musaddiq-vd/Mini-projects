@@ -18,7 +18,7 @@ import importlib.util
 import inspect
 import pkgutil
 import sys
-import traceback
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +28,8 @@ from jarvis.config import Settings
 from jarvis.confirm import ConfirmGate
 from jarvis.memory import MemoryStore
 from jarvis.undo import UndoStack
+
+log = logging.getLogger("jarvis.tools")
 
 
 @dataclass
@@ -176,8 +178,9 @@ class ToolRegistry:
         try:
             result = t.handler(ctx, **args)
         except Exception as exc:
-            traceback.print_exc()
+            log.exception("tool %s failed", name)
             return {"error": f"{type(exc).__name__}: {exc}"}
+        log.info("tool %s ok", name)
         if isinstance(result, dict):
             return result
         return {"result": "Done." if result is None else str(result)}

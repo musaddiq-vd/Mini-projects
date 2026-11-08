@@ -243,3 +243,17 @@ def test_sound_effects_count_for_echo_guard(live):
 def test_text_typed_before_connecting_is_kept(live):
     asyncio.run(live._send_text("hello"))
     assert live._pending == ["hello"]
+
+
+def test_expired_session_reconnects_fresh(live):
+    live.resume_handle = "old-handle"
+    live._on_connection_error(Exception("1008 None. BidiGenerateContent session not found or expired"), 1)
+    assert live.resume_handle is None
+
+
+def test_repeated_errors_drop_the_handle(live):
+    live.resume_handle = "old-handle"
+    live._on_connection_error(Exception("network down"), 1)
+    assert live.resume_handle == "old-handle"  # one blip: try to resume the conversation
+    live._on_connection_error(Exception("network down"), 2)
+    assert live.resume_handle is None

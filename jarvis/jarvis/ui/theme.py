@@ -74,6 +74,8 @@ def stylesheet(accent: str) -> str:
     QScrollBar:vertical {{ background: transparent; width: 8px; }}
     QScrollBar::handle:vertical {{ background: {mid}; border-radius: 4px; min-height: 30px; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{ background: none; }}
+    QScrollBar::handle:vertical:hover {{ background: {accent}; }}
     QWidget#root {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #070b10, stop:1 #0d1620); }}
     QScrollArea, QWidget#chatInner, QWidget#chatRow {{ background: transparent; border: none; }}
     QFrame#bubbleAi {{ background: {PANEL_2}; border: 1px solid {soft}; border-radius: 14px;

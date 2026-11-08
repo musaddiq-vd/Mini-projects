@@ -79,6 +79,9 @@ def main(argv: list[str] | None = None) -> int:
         except AttributeError:
             pass
 
+    from jarvis.logs import setup_logging
+
+    setup_logging(console=bool(args.cli or args.text))
     if args.setup:
         return _setup()
     if args.tools:

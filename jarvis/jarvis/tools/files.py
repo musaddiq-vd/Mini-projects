@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import platform
 import shutil
+import subprocess
 from pathlib import Path
 
 from jarvis.tools import tool
@@ -183,3 +185,49 @@ def delete_file(ctx, path: str):
         return "Cancelled - the user did not confirm."
     send2trash(os.fspath(target))
     return f"Moved {target.name} to the trash."
+
+
+def open_path(path: Path) -> None:
+    """Open a file or folder with its default app."""
+    if platform.system() == "Windows":
+        os.startfile(str(path))  # noqa: S606 - a checked local path
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["open", str(path)])
+    else:
+        subprocess.Popen(["xdg-open", str(path)])
+
+
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+RUNNABLE_EXT = {".exe", ".bat", ".cmd", ".ps1", ".vbs", ".msi", ".com", ".scr", ".js", ".jar", ".lnk", ".reg"}
+
+
+@tool(
+    "open_file",
+    "Open a file or folder for the user with its default app (photo viewer, PDF reader, Word, Explorer...). "
+    "Use for 'kholo', 'open this file', 'show me that folder', 'open the last screenshot'. "
+    "Paths can start with desktop/, documents/, downloads/, pictures/.",
+    {"path": {"type": "string"}},
+    required=["path"],
+)
+@_guard
+def open_file(ctx, path: str):
+    target = resolve(ctx, path)
+    if not target.exists():
+        return {"error": f"Not found: {target}"}
+    if target.suffix.lower() in RUNNABLE_EXT:
+        return {"error": "For safety Jarvis doesn't run programs or scripts from files; use open_app for apps."}
+    open_path(target)
+    out = {"result": f"Opened {target.name}."}
+    if target.suffix.lower() in IMAGE_EXT:
+        out["image"] = str(target)
+    return out
+
+
+@tool("latest_screenshot", "Find the most recent screenshot Jarvis saved (to open or talk about it).")
+def latest_screenshot(ctx):
+    from jarvis.tools.vision import SCREENSHOT_DIR
+
+    shots = sorted(SCREENSHOT_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime) if SCREENSHOT_DIR.is_dir() else []
+    if not shots:
+        return {"error": "No screenshots saved yet - use take_screenshot."}
+    return {"path": str(shots[-1]), "result": f"Latest screenshot: {shots[-1].name}", "image": str(shots[-1])}

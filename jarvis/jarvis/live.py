@@ -8,6 +8,7 @@ send_text, set_muted, sleep, wake, restart, stop - and listen via app.events.
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 import time
 
@@ -22,9 +23,13 @@ from jarvis.sfx import SoundFX
 from jarvis.voicecmd import is_sleep_command, mentions_name
 
 SILENCE = bytes(MIC_BLOCK * 2)
+log = logging.getLogger("jarvis.live")
 ECHO_GUARD_SECONDS = 0.4  # keep the mic muted briefly after Jarvis stops talking
 GOODBYE_SECONDS = 2.5  # let "good night" be heard before going to sleep
 NAME_HELLO_SECONDS = 4.0  # woken by name but no answer/action by then -> say "yes?"
+
+# Errors that mean the resume handle is dead: reconnect with a fresh session instead.
+STALE_SESSION_MARKERS = ("handle", "session not found", "expired", "1008", "invalid argument")
 
 ASLEEP_NOTE = ("(system: asleep) You are now asleep. Stay completely silent and say nothing "
                "until you hear your name or get a '(system: awake)' note.")
@@ -54,6 +59,7 @@ class LiveAssistant:
         self._connected_once = False
         self._reload_wake = bool(self.s.wake_word)  # loaded on the assistant thread, not the UI
         self._wake_name = ""
+        self._failures = 0  # connection errors in a row
         self._pending: list[str] = []  # texts typed before the session was up
         self._woken_by_name = False  # woke mid-speech: make sure Jarvis answers
         self._spoke_since_wake = False
@@ -204,6 +210,7 @@ class LiveAssistant:
         else:
             state = "listening"
         if state != self.state:
+            log.info("state %s -> %s", self.state or "-", state)
             self.state = state
             self.events.emit("state", state=state)
 
@@ -337,6 +344,10 @@ class LiveAssistant:
             self.speaker.start()
         async with self.client.aio.live.connect(model=self.s.live_model, config=self._config()) as session:
             self.session = session
+            if self._failures:
+                self.events.emit("log", text="✓ Reconnected.")
+                log.info("reconnected after %d failed attempt(s)", self._failures)
+                self._failures = 0
             pending, self._pending = self._pending, []
             for text in pending:
                 await session.send_realtime_input(text=text)
@@ -355,6 +366,16 @@ class LiveAssistant:
                 mic.cancel()
                 recv.cancel()
                 self.session = None
+
+    def _on_connection_error(self, exc: Exception, backoff: float) -> None:
+        self._failures += 1
+        text = str(exc)
+        log.warning("connection error #%d: %s: %s", self._failures, type(exc).__name__, text)
+        if self.resume_handle and (self._failures >= 2 or any(m in text.lower() for m in STALE_SESSION_MARKERS)):
+            # an expired session can never be resumed: start fresh rather than retrying forever
+            self.resume_handle = None
+            log.info("dropped the resume handle; next attempt starts a new session")
+        self.events.emit("log", text=f"[connection lost] {type(exc).__name__}: {text[:120]} - retrying in {backoff}s")
 
     # -- main loop ----------------------------------------------------------------
     async def run(self) -> None:
@@ -383,9 +404,7 @@ class LiveAssistant:
                     self.events.emit("log", text="Reconnecting with new settings...")
                     continue
                 except Exception as exc:
-                    self.events.emit("log", text=f"[connection] {type(exc).__name__}: {str(exc)[:150]} - retrying in {backoff}s")
-                    if "handle" in str(exc).lower():
-                        self.resume_handle = None  # a stale handle must not block reconnecting
+                    self._on_connection_error(exc, backoff)
                     self.session = None
                     self._emit_state()
                     await asyncio.sleep(backoff)

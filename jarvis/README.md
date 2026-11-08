@@ -16,7 +16,10 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 🔵 **Living orb with a face** | Anime-style eyes that blink and look around, smile and blush while talking, close with floating "Z z z" while asleep, look up while working. Spectrum ring, ripples when you speak, radar sweep while connecting, a flash on wake-up and a pulse + floating label for every action. |
 | 🎙️ **Live captions** | What you say and what Jarvis says appear under the orb as it happens. |
 | 🔊 **Sound effects** | Startup, wake, sleep, action, success, error, reminder and confirm sounds - synthesised, no files. Volume in Settings. |
-| 💬 **Conversation panel** | Chat bubbles that fade in, plus a chip for every action Jarvis took (✓ / ✗). |
+| 💬 **Conversation panel** | Chat bubbles with timestamps that fade in, a chip for every action (✓ / ✗), image thumbnails (click to open) and a "working on it" indicator. |
+| 📸 **Screenshots** | "Screenshot lo aur kholo" saves it to *Pictures/Jarvis Screenshots*, opens it and shows it in the chat. |
+| 📂 **Drag & drop** | Drop a file or image on the window and Jarvis reads/looks at it. |
+| ⌨️ **Input history** | ↑ / ↓ in the message box brings back what you typed. |
 | ⚡ **Quick actions** | One-click chips: screen, weather, news, system, reminders, joke. |
 | 📊 **HUD meters** | Live CPU, RAM and battery bars. |
 | 🗔 **Tray + shortcuts** | Tray icon (show / wake / mute / quit). `Ctrl+M` mute · `Ctrl+Space` sleep/wake · `Ctrl+K` type · `Ctrl+L` clear · `Ctrl+,` settings. |
@@ -34,8 +37,8 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | Keyboard | "Press ctrl+shift+t" · "Type hello how are you and press enter" |
 | System | Volume · brightness · dark mode · WiFi · lock / sleep / shutdown / restart · CPU, RAM, battery |
 | Media | "Play Arijit Singh on YouTube" (plays the top result) · play/pause · next / previous |
-| Vision | "What's on my screen?" · "Read this error" · "Look at the camera" (needs `opencv-python`) |
-| Files & documents | List, read, write, move, create folders, delete to Recycle Bin · read PDF, Word, Excel, PowerPoint |
+| Vision | "What's on my screen?" · "Read this error" · "Screenshot lo aur kholo" · "Open the last screenshot" · "Look at the camera" (needs `opencv-python`) |
+| Files & documents | List, read, write, move, open, create folders, delete to Recycle Bin · read PDF, Word, Excel, PowerPoint |
 | Clipboard | "Translate what I copied" · "Fix the grammar of my clipboard" |
 | Web | Web and news search · weather · Google Flights · Google Maps |
 | Messages | WhatsApp to saved contacts (confirmed on screen) · email drafts |
@@ -57,7 +60,9 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 💤 **"So jao"** | "So jao", "go to sleep", "chup ho jao" put **Jarvis** to sleep - never the PC. "PC ko so jao" is left to the power tool, which asks you first. Auto-sleep after a quiet spell. |
 | 🔒 **Offline wake word** | Optional "Hey Jarvis" (or Alexa / Hey Mycroft) model: while asleep no audio leaves your computer. When set, it is used instead of "say my name". |
 | 🚀 **Auto-start** | Optionally start with Windows. |
-| 🔁 **Auto-reconnect** | Dropped connections reconnect and resume the same conversation. |
+| 🔁 **Auto-reconnect** | Dropped connections reconnect and resume the same conversation; an expired session starts fresh instead of retrying forever. |
+| 🪟 **One window** | Starting Jarvis again just brings the open window to the front. Size and position are remembered. |
+| 📝 **Logs** | Everything important goes to `~/.jarvis/logs/jarvis.log` (rotated). Tray → *Open logs folder*. Crashes in any thread are logged and shown in the chat. |
 
 ---
 
@@ -110,7 +115,7 @@ Settings live in `~/.jarvis/config.json` (or the `JARVIS_HOME` folder), **never 
 | `morning_briefing`, `proactive`, `proactive_minutes`, `hardware_alerts` | Background features |
 | `allowed_roots` | Folders the file tools may use; empty = your home folder |
 
-Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json`.
+Memories: `~/.jarvis/memory.json` · app state (watched topics, last summary): `~/.jarvis/state.json` · logs: `~/.jarvis/logs/`.
 
 ---
 
@@ -155,6 +160,7 @@ jarvis/
 │   ├── events.py         # event bus between core and window
 │   ├── voicecmd.py       # "Jarvis" wakes it, "so jao" puts it to sleep
 │   ├── sfx.py            # synthesised sound effects
+│   ├── logs.py           # log file + crash capture
 │   ├── audio.py · wake.py · net.py
 │   ├── config.py · memory.py · state.py · undo.py · confirm.py
 │   ├── tools/            # built-in tools, one file per area

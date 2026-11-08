@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import getpass
+import logging
 import sys
 import threading
 from datetime import datetime
+from pathlib import Path
 
 import psutil
-from PyQt6.QtCore import QEasingCurve, QObject, QPropertyAnimation, QRectF, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QColor, QFont, QIcon, QKeySequence, QPainter, QPixmap, QShortcut
+from PyQt6.QtCore import (
+    QByteArray, QEasingCurve, QObject, QPropertyAnimation, QRectF, QSettings, Qt, QTimer, QUrl, pyqtSignal,
+)
+from PyQt6.QtGui import (
+    QAction, QColor, QDesktopServices, QFont, QIcon, QKeySequence, QPainter, QPainterPath, QPixmap, QShortcut,
+)
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
 from PyQt6.QtWidgets import (
     QApplication, QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLineEdit, QMainWindow, QMenu,
     QMessageBox, QPushButton, QScrollArea, QSizePolicy, QSystemTrayIcon, QVBoxLayout, QWidget,
@@ -17,6 +25,7 @@ from PyQt6.QtWidgets import (
 from jarvis import __version__
 from jarvis.app import Jarvis, create_app
 from jarvis.config import load_settings, save_settings
+from jarvis.logs import log_dir, on_crash, setup_logging
 from jarvis.ui.orb import Orb
 from jarvis.ui.settings_dialog import SettingsDialog, apply_settings
 from jarvis.ui.theme import DANGER, MUTED, OK, STATE_LABELS, WARN, stylesheet, valid_color
@@ -24,6 +33,9 @@ from jarvis.ui.theme import DANGER, MUTED, OK, STATE_LABELS, WARN, stylesheet, v
 RESTART_KEYS = {"voice", "live_model", "input_device", "output_device", "wake_word",
                 "assistant_name", "user_name", "api_key", "allow_interrupt"}
 MAX_CHAT_ROWS = 250
+THUMB_WIDTH = 340
+INSTANCE_KEY = f"jarvis-assistant-{getpass.getuser()}"
+log = logging.getLogger("jarvis.ui")
 AWAKE_STATES = {"listening", "speaking", "muted", "thinking"}
 
 QUICK_ACTIONS = [
@@ -37,7 +49,7 @@ QUICK_ACTIONS = [
 
 TOOL_ICONS = {
     "open": "🚀", "close": "✖", "volume": "🔊", "brightness": "☀", "media": "🎵", "play": "▶",
-    "screen": "👁", "camera": "📷", "weather": "🌦", "search": "🔎", "news": "📰", "remind": "⏰",
+    "screenshot": "📸", "screen": "👁", "camera": "📷", "weather": "🌦", "search": "🔎", "news": "📰", "remind": "⏰",
     "remember": "🧠", "recall": "🧠", "memory": "🧠", "file": "📁", "folder": "📁", "whatsapp": "💬",
     "message": "💬", "email": "✉", "code": "💻", "type": "⌨", "key": "⌨", "clipboard": "📋",
     "power": "⏻", "wifi": "📶", "time": "🕒", "system": "📊", "undo": "↩", "sleep": "💤", "window": "🪟",
@@ -160,6 +172,82 @@ class StatusDot(QWidget):
         p.end()
 
 
+class TypingDots(QWidget):
+    """"Jarvis is thinking" with three bouncing dots."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.text = ""
+        self.color = QColor(MUTED)
+        self.t = 0.0
+        self.setFixedHeight(22)
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+
+    def show_text(self, text: str, color: str) -> None:
+        self.text, self.color = text, QColor(color)
+        if not self._timer.isActive():
+            self._timer.start(40)
+        self.show()
+
+    def hide_now(self) -> None:
+        self._timer.stop()
+        self.hide()
+
+    def _tick(self) -> None:
+        self.t += 0.04
+        self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        import math
+
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        p.setPen(Qt.PenStyle.NoPen)
+        for k in range(3):
+            c = QColor(self.color)
+            bounce = max(0.0, math.sin(self.t * 6 - k * 0.7))
+            c.setAlpha(int(110 + 145 * bounce))
+            p.setBrush(c)
+            p.drawEllipse(QRectF(8 + k * 12, 8 - 4 * bounce, 7, 7))
+        p.setPen(QColor(MUTED))
+        p.setFont(QFont("Segoe UI", 9))
+        p.drawText(QRectF(52, 0, self.width() - 52, self.height()), Qt.AlignmentFlag.AlignVCenter, self.text)
+        p.end()
+
+
+class ImageThumb(QLabel):
+    """Rounded, clickable thumbnail of an image file; click opens it."""
+
+    def __init__(self, path: str, accent: str, parent=None):
+        super().__init__(parent)
+        self.path = path
+        pix = QPixmap(path)
+        if pix.isNull():
+            self.setText(f"🖼  {Path(path).name}")
+            return
+        pix = pix.scaledToWidth(THUMB_WIDTH, Qt.TransformationMode.SmoothTransformation)
+        rounded = QPixmap(pix.size())
+        rounded.fill(Qt.GlobalColor.transparent)
+        p = QPainter(rounded)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        clip = QPainterPath()
+        clip.addRoundedRect(QRectF(0, 0, pix.width(), pix.height()), 12, 12)
+        p.setClipPath(clip)
+        p.drawPixmap(0, 0, pix)
+        p.setClipping(False)
+        p.setPen(QColor(accent))
+        p.drawRoundedRect(QRectF(0.5, 0.5, pix.width() - 1, pix.height() - 1), 12, 12)
+        p.end()
+        self.setPixmap(rounded)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setToolTip(f"{Path(path).name}\nClick to open")
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton and Path(self.path).exists():
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self.path))
+
+
 class ChatView(QScrollArea):
     """Conversation as fading-in bubbles."""
 
@@ -226,7 +314,8 @@ class ChatView(QScrollArea):
         v = QVBoxLayout(bubble)
         v.setContentsMargins(12, 8, 12, 10)
         v.setSpacing(2)
-        name = QLabel(who.upper(), objectName="who")
+        stamp = datetime.now().strftime("%I:%M %p").lstrip("0")
+        name = QLabel(f"{who.upper()}   ·   {stamp}", objectName="who")
         if mine:
             name.setAlignment(Qt.AlignmentFlag.AlignRight)
         v.addWidget(name)
@@ -243,10 +332,16 @@ class ChatView(QScrollArea):
 
     def add_tool(self, name: str, args: dict, result: dict) -> None:
         ok = "error" not in result
-        detail = result.get("error") or result.get("result") or ""
+        detail = str(result.get("error") or result.get("result") or "")
+        if not result.get("error"):
+            first = detail.split(". ")[0]
+            if first != detail:
+                detail = first + "."  # first sentence only; the rest is for the model
+        if len(detail) > 90:
+            detail = detail[:88].rsplit(" ", 1)[0] + "…"
         args_text = ", ".join(f"{k}={str(v)[:30]}" for k, v in args.items())
         line = f"{tool_icon(name)}  {pretty_tool(name)}" + (f"  ({args_text})" if args_text else "")
-        line += ("  ✓" if ok else "  ✗") + (f"  {str(detail)[:90]}" if detail else "")
+        line += ("  ✓" if ok else "  ✗") + (f"  {detail}" if detail else "")
         chip = QLabel(line, objectName="toolOk" if ok else "toolErr")
         chip.setTextFormat(Qt.TextFormat.PlainText)
         chip.setWordWrap(True)
@@ -254,6 +349,17 @@ class ChatView(QScrollArea):
         self._fit(chip, width - 22)
         chip.setMaximumWidth(width)
         self._add_row(chip, "left")
+
+    def add_image(self, path: str, caption: str, accent: str) -> None:
+        box = QFrame(objectName="bubbleAi")
+        v = QVBoxLayout(box)
+        v.setContentsMargins(8, 8, 8, 8)
+        v.setSpacing(6)
+        v.addWidget(ImageThumb(path, accent))
+        cap = QLabel(caption, objectName="muted")
+        cap.setTextFormat(Qt.TextFormat.PlainText)
+        v.addWidget(cap)
+        self._add_row(box, "left")
 
     def add_system(self, text: str) -> None:
         label = QLabel(text, objectName="muted")
@@ -289,6 +395,7 @@ class MainWindow(QMainWindow):
         app.events.subscribe(self._forward)
 
         self.setMinimumSize(1000, 660)
+        self.setAcceptDrops(True)
         self._build()
         self._build_tray()
         self._shortcuts()
@@ -395,6 +502,9 @@ class MainWindow(QMainWindow):
 
         self.chat = ChatView()
         rv.addWidget(self.chat, 1)
+        self.typing = TypingDots()
+        self.typing.hide()
+        rv.addWidget(self.typing)
 
         chips = QHBoxLayout()
         chips.setSpacing(6)
@@ -411,6 +521,9 @@ class MainWindow(QMainWindow):
         self.input = QLineEdit()
         self.input.setPlaceholderText("Type a message, or just talk...  (Ctrl+K)")
         self.input.returnPressed.connect(self._send_typed)
+        self.input.installEventFilter(self)
+        self._history: list[str] = []
+        self._history_pos = 0
         send = QPushButton("Send ➤", objectName="primary")
         send.clicked.connect(self._send_typed)
         row.addWidget(self.input, 1)
@@ -431,7 +544,8 @@ class MainWindow(QMainWindow):
         self.tray = QSystemTrayIcon(self)
         menu = QMenu()
         for text, fn in (("Show", self._show_window), ("Wake / Sleep", self._toggle_sleep),
-                         ("Mute / Unmute", self.mute_btn.toggle), ("Quit", self.close)):
+                         ("Mute / Unmute", self.mute_btn.toggle), ("Open logs folder", self._open_logs),
+                         ("Quit", self.close)):
             act = QAction(text, menu)
             act.triggered.connect(fn)
             menu.addAction(act)
@@ -445,6 +559,40 @@ class MainWindow(QMainWindow):
                          ("Ctrl+L", self._clear_chat), ("Ctrl+,", self.open_settings),
                          ("Ctrl+K", self.input.setFocus)):
             QShortcut(QKeySequence(keys), self, activated=fn)
+
+    def _open_logs(self) -> None:
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(log_dir())))
+
+    # -- input history and drag & drop ---------------------------------------------
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        from PyQt6.QtCore import QEvent
+
+        if obj is self.input and event.type() == QEvent.Type.KeyPress and self._history:
+            if event.key() == Qt.Key.Key_Up:
+                self._history_pos = max(0, self._history_pos - 1)
+            elif event.key() == Qt.Key.Key_Down:
+                self._history_pos = min(len(self._history), self._history_pos + 1)
+            else:
+                return False
+            hist = self._history + [""]
+            self.input.setText(hist[self._history_pos])
+            return True
+        return False
+
+    def dragEnterEvent(self, event) -> None:  # noqa: N802
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event) -> None:  # noqa: N802
+        paths = [u.toLocalFile() for u in event.mimeData().urls() if u.isLocalFile()]
+        if not paths:
+            return
+        for path in paths[:3]:
+            if Path(path).suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}:
+                self.chat.add_image(path, Path(path).name, self.accent)
+        names = "; ".join(paths[:3])
+        self._send(f"I dropped this file into the window: {names}. Read or look at it and tell me "
+                   f"briefly what it is, then ask what I want to do with it.")
 
     def _show_window(self) -> None:
         self.showNormal()
@@ -508,6 +656,12 @@ class MainWindow(QMainWindow):
             self.orb.pulse(ok)
             self.orb.action(f"{'✓' if ok else '✗'}  {pretty_tool(data['name'])}", OK if ok else DANGER)
             self.chat.add_tool(data["name"], data.get("args", {}), result)
+            image = result.get("image") if ok else None
+            if image and Path(image).exists():
+                caption = Path(image).name if "Screenshot" in Path(image).name else "What I saw"
+                self.chat.add_image(image, f"🖼  {caption}  ·  click to open", self.accent)
+        elif kind == "crash":
+            self._add_system(f"⚠ Something went wrong: {data['text']}  (details in the log: tray → Open logs folder)")
         elif kind == "log":
             text = data["text"]
             self._add_system(text)
@@ -520,6 +674,13 @@ class MainWindow(QMainWindow):
         self.state_label.setText(STATE_LABELS.get(state, state.upper()))
         self._set_state_style(state)
         self.sleep_btn.setText("☀  Wake" if state == "sleeping" else "💤  Sleep")
+        name = self.app.settings.assistant_name
+        if state == "thinking":
+            self.typing.show_text(f"{name} is working on it...", WARN)
+        elif state == "connecting":
+            self.typing.show_text("Connecting...", MUTED)
+        else:
+            self.typing.hide_now()
         if prev == "sleeping" and state in AWAKE_STATES:
             self.orb.flash()
         if state == "sleeping":
@@ -530,6 +691,8 @@ class MainWindow(QMainWindow):
             self.hint.setText("")
 
     def _on_caption(self, who: str, text: str) -> None:
+        if who == "user" and text and self._last_state != "thinking":
+            self.typing.show_text(f"{self.app.settings.assistant_name} is listening...", self.accent)
         if not text:
             QTimer.singleShot(1800, lambda: self.caption.setText("") if not self._caption_live else None)
             self._caption_live = False
@@ -561,6 +724,9 @@ class MainWindow(QMainWindow):
         if not text:
             return
         self.input.clear()
+        if not self._history or self._history[-1] != text:
+            self._history = (self._history + [text])[-50:]
+        self._history_pos = len(self._history)
         self._send(text)
 
     def _send(self, text: str) -> None:
@@ -621,7 +787,16 @@ class MainWindow(QMainWindow):
             self._add_system("Confirmation timed out - cancelled.")
 
     # -- close --------------------------------------------------------------------
+    def save_geometry(self) -> None:
+        QSettings("MusaddiqKhan", "Jarvis").setValue("geometry", self.saveGeometry())
+
+    def restore_geometry(self) -> bool:
+        data = QSettings("MusaddiqKhan", "Jarvis").value("geometry")
+        return bool(isinstance(data, QByteArray) and self.restoreGeometry(data))
+
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt naming
+        if not self._closing:
+            self.save_geometry()
         if self._closing or not (self.thread and self.thread.is_alive()):
             if self.tray:
                 self.tray.hide()
@@ -663,15 +838,43 @@ def make_confirm(bridge: Bridge):
     return ask
 
 
+def _already_running() -> bool:
+    """If Jarvis is already open, ask it to come to the front and return True."""
+    sock = QLocalSocket()
+    sock.connectToServer(INSTANCE_KEY)
+    if sock.waitForConnected(300):
+        sock.write(b"show")
+        sock.waitForBytesWritten(300)
+        sock.disconnectFromServer()
+        return True
+    return False
+
+
+def _listen_for_second_start(window: "MainWindow") -> QLocalServer:
+    QLocalServer.removeServer(INSTANCE_KEY)  # clean up after a crash
+    server = QLocalServer(window)
+    server.newConnection.connect(lambda: (server.nextPendingConnection(), window._show_window()))
+    if not server.listen(INSTANCE_KEY):
+        log.warning("single-instance server: %s", server.errorString())
+    return server
+
+
 def run_window() -> int:
+    setup_logging()
     qt = QApplication.instance() or QApplication(sys.argv)
     qt.setApplicationName("Jarvis")
     qt.setFont(QFont("Segoe UI", 10))
+    if _already_running():
+        log.info("already running - brought the open window to the front")
+        return 0
     bridge = Bridge()
     settings = load_settings()
     app = create_app(settings, ask=make_confirm(bridge))
     window = MainWindow(app, bridge)
-    window.resize(1160, 740)
+    if not window.restore_geometry():
+        window.resize(1160, 740)
+    window._instance_server = _listen_for_second_start(window)
+    on_crash(lambda text: app.events.emit("crash", text=text))
     window.show()
     for err in app.registry.errors:
         window._add_system(f"⚠ {err}")

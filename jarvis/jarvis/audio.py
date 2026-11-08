@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 
@@ -34,7 +35,7 @@ def find_device(name: str, kind: str) -> int | None:
     for i, d in enumerate(sd.query_devices()):
         if d[key] > 0 and name.lower() in d["name"].lower():
             return i
-    print(f"[audio] '{name}' not found, using the default {kind} device.")
+    logging.getLogger("jarvis.audio").warning("%s device '%s' not found, using the default", kind, name)
     return None
 
 

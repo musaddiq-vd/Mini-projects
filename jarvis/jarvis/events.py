@@ -12,8 +12,8 @@ Event kinds and their data:
 
 from __future__ import annotations
 
+import logging
 import threading
-import traceback
 from collections.abc import Callable
 
 Handler = Callable[[str, dict], None]
@@ -35,7 +35,7 @@ class Events:
             try:
                 handler(kind, data)
             except Exception:
-                traceback.print_exc()
+                logging.getLogger("jarvis.events").exception("event handler failed for %s", kind)
 
 
 def console_printer(assistant_name: str) -> Handler:
