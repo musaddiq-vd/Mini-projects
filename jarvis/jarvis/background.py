@@ -42,7 +42,8 @@ class BackgroundServices:
     # -- lifecycle -----------------------------------------------------------
     def start(self) -> None:
         for target in (self._hardware_loop, self._topic_loop, self._proactive_loop, self._recap_loop,
-                       self._health_loop, self._goal_loop, self._calendar_loop, self._weekly_loop):
+                       self._health_loop, self._goal_loop, self._calendar_loop, self._weekly_loop,
+                       self._todo_loop):
             threading.Thread(target=target, daemon=True).start()
 
     def stop(self) -> None:
@@ -177,6 +178,40 @@ class BackgroundServices:
                              "warm recap of their day, then ask what they'd like to do tomorrow.")
             except Exception as exc:  # one bad tick must not end the loop
                 self.app.events.emit("log", text=f"[recap] {exc}")
+
+    # -- to-dos with deadlines -------------------------------------------------------------
+    def todo_nudge(self, now: datetime | None = None) -> str | None:
+        """10 am: what's due today / overdue. 4 pm: an important task that's still open. Once each per day."""
+        from jarvis.tools.notes import due_summary
+
+        now = now or datetime.now()
+        if self.sleeping or self._focusing() or self._practicing():
+            return None
+        day = now.date().isoformat()
+        overdue, today = due_summary(self.app.state.get("notes", []) or [], now.date())
+        if now.hour >= 10 and self.app.state.get("todo_morning") != day and (overdue or today):
+            self.app.state.set("todo_morning", day)
+            names = ", ".join(n["text"] for n in (overdue + today)[:3])
+            self.app.events.emit("nudge", kind="todo", text=f"Due today: {names}")
+            return ("(system: to-do check) Briefly tell the user what's due today"
+                    + (f" and that {len(overdue)} task(s) are overdue" if overdue else "")
+                    + f": {names}. Offer to call what_first or start a focus timer. One or two sentences.")
+        urgent = [n for n in today if n.get("priority") == "high"] or today
+        if now.hour >= 16 and self.app.state.get("todo_afternoon") != day and urgent:
+            self.app.state.set("todo_afternoon", day)
+            self.app.events.emit("nudge", kind="todo", text=f"Still open: {urgent[0]['text']}")
+            return (f"(system: to-do check) Gently remind the user that '{urgent[0]['text']}' is due today and "
+                    "still open. One sentence; offer help.")
+        return None
+
+    def _todo_loop(self) -> None:
+        while not self._stop.wait(90):
+            try:
+                text = self.todo_nudge()
+                if text:
+                    self.say(text)
+            except Exception as exc:
+                self.app.events.emit("log", text=f"[to-do] {exc}")
 
     # -- weekly report -------------------------------------------------------------------
     def weekly_due(self, now: datetime | None = None) -> bool:

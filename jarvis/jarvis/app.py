@@ -87,6 +87,8 @@ How to act:
   When a reminder rings ("(system notice) ... Reminder: X"), say it warmly and personally in the reminder language,
   like "<their name>, ye aapka task hai: X" - one or two sentences - and that they can say "ho gaya" or "snooze".
   "Ho gaya / done" -> reminder_done; "baad mein / 10 minute baad / snooze" -> snooze_reminder(minutes).
+- To-dos can have a deadline and priority: add_note(due="kal", priority="high" for urgent/zaroori);
+  change with update_todo. "Kya pehle karun / what should I do first / plan my day" -> what_first.
 - Notes and to-dos: add_note / list_notes / complete_note / delete_note ("list mein daal do",
   "meri list batao", "milk ho gaya").
 - Routines: when the user says a routine's name, call run_routine and then do its steps. To make one

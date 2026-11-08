@@ -1197,7 +1197,7 @@ class MainWindow(QMainWindow):
             self.doc_chip.setText(f"📄  {name.replace('&', '&&')}  ·  ask anything about it   ✕")
             self.doc_chip.setVisible(bool(name))
         elif kind == "nudge":
-            icon = {"eyes": "👀", "water": "💧", "recap": "🌙", "meeting": "📅", "weekly": "📊"}.get(
+            icon = {"eyes": "👀", "water": "💧", "recap": "🌙", "meeting": "📅", "weekly": "📊", "todo": "📝"}.get(
                 data.get("kind"), "💡")
             text = data.get("text", "")
             self.toast(icon, text[1:].strip() if text[:1] == icon[:1] else text, theme.ACCENT,

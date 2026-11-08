@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 )
 
 from jarvis.ui import theme
+from jarvis.ui.theme import DANGER
 
 
 def _when(ts: float) -> str:
@@ -237,7 +238,11 @@ class PlannerPanel(QFrame):
         todos = [n for n in notes if n.get("todo")]
         open_ = [n for n in todos if not n.get("done")]
         self.todo.clear()
+        from jarvis.tools.notes import due_label, rank
+
+        order = {n["id"]: i for i, (n, _) in enumerate(rank(notes))}  # most urgent first
         shown = todos if self.done_toggle.isChecked() else open_
+        shown = sorted(shown, key=lambda n: (order.get(n["id"], 10_000), n["id"]))
         for n in shown:
             row = QHBoxLayout()
             box = QCheckBox(n["text"].replace("&", "&&"))  # '&' would otherwise become a shortcut key
@@ -247,6 +252,21 @@ class PlannerPanel(QFrame):
             box.setToolTip(n["text"])
             box.toggled.connect(lambda on, i=n["id"]: on and self._call("complete_note", {"item": str(i)}))
             row.addWidget(box, 1)
+            if n.get("due") and not n.get("done"):
+                label = due_label(n["due"])
+                color = DANGER if label.startswith("overdue") else theme.ACCENT if label == "today" else theme.MUTED
+                chip = QLabel(label)
+                chip.setStyleSheet(f"color:{color}; border:1px solid {color}; border-radius:8px; padding:0 6px;"
+                                   "font-size:10px; background: transparent;")
+                row.addWidget(chip)
+            if not n.get("done"):
+                high = n.get("priority") == "high"
+                flag = _small("🚩" if high else "⚑", "Important - tap to change",
+                              lambda _, i=n["id"], h=high: self._call(
+                                  "update_todo", {"item": str(i), "priority": "normal" if h else "high"}))
+                if not high:
+                    flag.setStyleSheet(f"color:{theme.MUTED};")
+                row.addWidget(flag)
             row.addWidget(_small("🗑", "Delete", lambda _, i=n["id"]: self._call("delete_note", {"item": str(i)})))
             self.todo.body.addLayout(row)
         if not shown:
