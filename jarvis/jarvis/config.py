@@ -60,6 +60,12 @@ class Settings:
     proactive_minutes: int = 60
     hardware_alerts: bool = True  # warn about high CPU/RAM, low battery
     city: str = ""  # for weather in the briefing; falls back to memory
+    # Say the assistant's name to wake it (works with any name and language).
+    # Uses the online session while asleep; the offline wake word above is used instead when set.
+    name_wake: bool = True
+    sound_effects: bool = True
+    sound_volume: int = 60  # 0..100
+    orb_face: bool = True  # cute eyes on the orb
 
     @property
     def effective_api_key(self) -> str:

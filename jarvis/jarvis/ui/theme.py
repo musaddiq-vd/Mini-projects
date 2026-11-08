@@ -11,6 +11,7 @@ TEXT = "#d8e6ef"
 MUTED = "#6f8594"
 WARN = "#ffb547"
 DANGER = "#ff5c6c"
+OK = "#3ddc97"
 
 STATE_LABELS = {
     "connecting": "CONNECTING",
@@ -73,4 +74,22 @@ def stylesheet(accent: str) -> str:
     QScrollBar:vertical {{ background: transparent; width: 8px; }}
     QScrollBar::handle:vertical {{ background: {mid}; border-radius: 4px; min-height: 30px; }}
     QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; }}
+    QWidget#root {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #070b10, stop:1 #0d1620); }}
+    QScrollArea, QWidget#chatInner, QWidget#chatRow {{ background: transparent; border: none; }}
+    QFrame#bubbleAi {{ background: {PANEL_2}; border: 1px solid {soft}; border-radius: 14px;
+                       border-top-left-radius: 4px; }}
+    QFrame#bubbleMe {{ background: {mid}; border: 1px solid {accent}; border-radius: 14px;
+                       border-top-right-radius: 4px; }}
+    QLabel#who {{ color: {accent}; font-size: 10px; font-weight: 700; letter-spacing: 1px; background: transparent; }}
+    QLabel#msg {{ color: {TEXT}; font-size: 14px; background: transparent; }}
+    QLabel#toolOk, QLabel#toolErr {{ font-family: Consolas, monospace; font-size: 11px; padding: 3px 10px;
+                                     border-radius: 9px; background: rgba(255,255,255,8); }}
+    QLabel#toolOk {{ color: {OK}; border: 1px solid rgba(61,220,151,70); }}
+    QLabel#toolErr {{ color: {WARN}; border: 1px solid rgba(255,181,71,90); }}
+    QLabel#caption {{ color: {TEXT}; font-size: 13px; font-style: italic; background: transparent; }}
+    QPushButton#chip {{ background: transparent; border: 1px solid {soft}; border-radius: 13px;
+                        padding: 4px 11px; font-size: 12px; color: {MUTED}; }}
+    QPushButton#chip:hover {{ color: {TEXT}; border: 1px solid {accent}; background: {soft}; }}
+    QPushButton#small {{ background: transparent; border: none; color: {MUTED}; padding: 2px 6px; }}
+    QPushButton#small:hover {{ color: {accent}; }}
     """

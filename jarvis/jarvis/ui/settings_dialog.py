@@ -108,6 +108,11 @@ class SettingsDialog(QDialog):
         self.color_label = QLabel()
         v.addWidget(self.color_label)
         self._set_color(self.color)
+        v.addSpacing(12)
+        v.addWidget(QLabel("Orb", objectName="section"))
+        self.orb_face = QCheckBox("Give the orb a cute animated face (eyes blink, sleep, smile)")
+        self.orb_face.setChecked(self.result_settings.orb_face)
+        v.addWidget(self.orb_face)
         v.addStretch()
         return w
 
@@ -169,15 +174,30 @@ class SettingsDialog(QDialog):
         idx = self.wake.findData(s.wake_word)
         self.wake.setCurrentIndex(max(idx, 0))
         form.addRow("Wake word", self.wake)
+        self.name_wake = QCheckBox("Wake up when I say the assistant's name (any name, any language)")
+        self.name_wake.setChecked(s.name_wake)
+        form.addRow("", self.name_wake)
         self.sleep_after = QSpinBox()
         self.sleep_after.setRange(20, 3600)
         self.sleep_after.setSuffix(" s")
         self.sleep_after.setValue(s.sleep_after_seconds)
         form.addRow("Sleep after silence", self.sleep_after)
-        note = QLabel("The wake word runs fully offline. While asleep no audio leaves your computer.")
+        note = QLabel("The offline wake word runs on your computer: while asleep no audio leaves it. "
+                      "\"Say the name\" works without a wake word model but keeps the online session "
+                      "listening while asleep. Say \"so jao\" / \"go to sleep\" to put Jarvis (not the PC) to sleep.")
         note.setObjectName("muted")
         note.setWordWrap(True)
         form.addRow("", note)
+
+        form.addRow(QLabel("Sound effects", objectName="section"))
+        self.sfx = QCheckBox("Play sounds on wake, sleep, actions and reminders")
+        self.sfx.setChecked(s.sound_effects)
+        form.addRow("", self.sfx)
+        self.sfx_volume = QSpinBox()
+        self.sfx_volume.setRange(0, 100)
+        self.sfx_volume.setSuffix(" %")
+        self.sfx_volume.setValue(s.sound_volume)
+        form.addRow("Effects volume", self.sfx_volume)
         return w
 
     def _features_tab(self) -> QWidget:
@@ -279,6 +299,10 @@ class SettingsDialog(QDialog):
         s.allow_interrupt = self.interrupt.isChecked()
         s.wake_word = self.wake.currentData() or ""
         s.sleep_after_seconds = self.sleep_after.value()
+        s.name_wake = self.name_wake.isChecked()
+        s.sound_effects = self.sfx.isChecked()
+        s.sound_volume = self.sfx_volume.value()
+        s.orb_face = self.orb_face.isChecked()
         s.morning_briefing = self.briefing.isChecked()
         s.proactive = self.proactive.isChecked()
         s.proactive_minutes = self.proactive_minutes.value()

@@ -13,8 +13,13 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 ### The window
 | | |
 |---|---|
-| 🔵 **Reactive orb** | Animated core and waveform that move with your voice and Jarvis's. |
-| 💬 **Conversation panel** | Everything said, plus every action Jarvis took (✓ / ✗). |
+| 🔵 **Living orb with a face** | Anime-style eyes that blink and look around, smile and blush while talking, close with floating "Z z z" while asleep, look up while working. Spectrum ring, ripples when you speak, radar sweep while connecting, a flash on wake-up and a pulse + floating label for every action. |
+| 🎙️ **Live captions** | What you say and what Jarvis says appear under the orb as it happens. |
+| 🔊 **Sound effects** | Startup, wake, sleep, action, success, error, reminder and confirm sounds - synthesised, no files. Volume in Settings. |
+| 💬 **Conversation panel** | Chat bubbles that fade in, plus a chip for every action Jarvis took (✓ / ✗). |
+| ⚡ **Quick actions** | One-click chips: screen, weather, news, system, reminders, joke. |
+| 📊 **HUD meters** | Live CPU, RAM and battery bars. |
+| 🗔 **Tray + shortcuts** | Tray icon (show / wake / mute / quit). `Ctrl+M` mute · `Ctrl+Space` sleep/wake · `Ctrl+K` type · `Ctrl+L` clear · `Ctrl+,` settings. |
 | ⌨️ **Type or talk** | Type in the box at any time — same session, same tools. |
 | 🎙️ **Mute / 💤 Sleep** | One click to mute the mic or put Jarvis to sleep. |
 | ⚠️ **Real confirmation** | Shutdown, restart, WiFi off, delete and sending messages show a banner — **you** press Confirm. |
@@ -48,7 +53,9 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 📊 **Hardware alerts** | Warns about CPU above 90% for 3 minutes, almost-full RAM, or battery below 20%. |
 | 📰 **Watched topics** | "Watch news about Bitcoin" — Jarvis checks a few times a day and tells you about new headlines. |
 | 🗓️ **Session memory** | Each conversation is summarised when you close Jarvis and mentioned in the next briefing. |
-| 💤 **Wake word** | Offline "Hey Jarvis" (or Alexa / Hey Mycroft). While asleep no audio leaves your computer. |
+| 🗣️ **Say my name** | Asleep? Just say "Jarvis" (or whatever you named it, in any language) - "Jarvis, time kya hai?" wakes it and gets answered. |
+| 💤 **"So jao"** | "So jao", "go to sleep", "chup ho jao" put **Jarvis** to sleep - never the PC. "PC ko so jao" is left to the power tool, which asks you first. Auto-sleep after a quiet spell. |
+| 🔒 **Offline wake word** | Optional "Hey Jarvis" (or Alexa / Hey Mycroft) model: while asleep no audio leaves your computer. When set, it is used instead of "say my name". |
 | 🚀 **Auto-start** | Optionally start with Windows. |
 | 🔁 **Auto-reconnect** | Dropped connections reconnect and resume the same conversation. |
 
@@ -96,7 +103,10 @@ Settings live in `~/.jarvis/config.json` (or the `JARVIS_HOME` folder), **never 
 | `theme_color` | Accent colour of the window |
 | `input_device`, `output_device` | Microphone and speakers by name; empty = default |
 | `allow_interrupt` | Talk over Jarvis (headphones) |
-| `wake_word`, `sleep_after_seconds` | Wake word model and auto-sleep time |
+| `wake_word`, `sleep_after_seconds` | Offline wake word model and auto-sleep time |
+| `name_wake` | Wake when you say the assistant's name (used when no offline wake word is set) |
+| `sound_effects`, `sound_volume` | Sound effects on/off and their volume (0-100) |
+| `orb_face` | The orb's animated face |
 | `morning_briefing`, `proactive`, `proactive_minutes`, `hardware_alerts` | Background features |
 | `allowed_roots` | Folders the file tools may use; empty = your home folder |
 
@@ -143,6 +153,8 @@ jarvis/
 │   ├── text_chat.py      # typed chat with the same tools
 │   ├── llm.py            # text model with automatic fallback
 │   ├── events.py         # event bus between core and window
+│   ├── voicecmd.py       # "Jarvis" wakes it, "so jao" puts it to sleep
+│   ├── sfx.py            # synthesised sound effects
 │   ├── audio.py · wake.py · net.py
 │   ├── config.py · memory.py · state.py · undo.py · confirm.py
 │   ├── tools/            # built-in tools, one file per area

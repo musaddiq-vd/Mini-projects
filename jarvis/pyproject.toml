@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jarvis-assistant"
-version = "0.2.0"
+version = "0.3.0"
 description = "Jarvis - a real-time voice AI assistant for your computer, powered by Gemini."
 readme = "README.md"
 authors = [{ name = "Musaddiq Khan", email = "musaddiqkhan001@gmail.com" }]

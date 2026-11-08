@@ -16,7 +16,6 @@ from jarvis.tools import tool
 def assistant_sleep(ctx):
     if ctx.assistant is None:
         return {"error": "Sleeping is only available in voice mode."}
-    threading.Timer(2.5, ctx.assistant.sleep).start()  # let the goodbye be heard first
-    wake = (ctx.settings.wake_word or "").replace("_", " ")
-    how = f'say "{wake}"' if wake and getattr(ctx.assistant, "wake", None) else "press Wake or type a message"
+    threading.Timer(2.5, lambda: ctx.assistant.sleep("voice")).start()  # let the goodbye be heard first
+    how = ctx.assistant.how_to_wake() if hasattr(ctx.assistant, "how_to_wake") else "press Wake"
     return f"Going to sleep. Tell the user in a few words; to wake you they can {how}."

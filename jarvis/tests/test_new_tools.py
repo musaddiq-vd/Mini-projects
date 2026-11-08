@@ -206,9 +206,9 @@ def test_assistant_sleep_never_touches_power(registry, ctx, monkeypatch):
     monkeypatch.setattr(at.threading, "Timer", lambda d, fn: type("T", (), {"start": lambda self: fn()})())
     monkeypatch.setattr(system.subprocess, "Popen", lambda *a: (_ for _ in ()).throw(AssertionError("power used")))
     calls = []
-    ctx.assistant = type("A", (), {"sleep": lambda self: calls.append("sleep"), "wake": None})()
+    ctx.assistant = type("A", (), {"sleep": lambda self, reason="button": calls.append(reason), "wake": None})()
     out = registry.call("assistant_sleep", {}, ctx)
-    assert calls == ["sleep"] and "Going to sleep" in out["result"]
+    assert calls == ["voice"] and "Going to sleep" in out["result"]
     ctx.assistant = None
     assert "error" in registry.call("assistant_sleep", {}, ctx)
 

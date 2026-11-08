@@ -1,0 +1,225 @@
+"""Say-the-name wake up, "so jao" sleep, sound effects and the live receive loop."""
+
+import asyncio
+from types import SimpleNamespace as NS
+
+import pytest
+
+from jarvis.voicecmd import is_sleep_command, mentions_name
+
+
+@pytest.mark.parametrize("text", [
+    "Jarvis, what time is it?", "hey jarvish", "जार्विस, टाइम बताओ", "ok JARVIS!",
+])
+def test_name_is_heard(text):
+    assert mentions_name(text, "Jarvis")
+
+
+@pytest.mark.parametrize("text", ["Charvis", "jarvisss open chrome", "", "service"])
+def test_other_words_are_not_the_name(text):
+    assert not mentions_name(text, "Jarvis")
+
+
+def test_custom_name():
+    assert mentions_name("Friday, open YouTube", "Friday")
+    assert not mentions_name("Friday, open YouTube", "Jarvis")
+
+
+@pytest.mark.parametrize("text", [
+    "so jao", "Jarvis so jao", "go to sleep", "chup ho jao yaar", "सो जाओ।", "سو جاؤ", "stop listening",
+])
+def test_sleep_commands(text):
+    assert is_sleep_command(text)
+
+
+@pytest.mark.parametrize("text", [
+    "pc ko so jao", "computer go to sleep", "put my laptop to sleep", "mujhe so jana hai",
+    "I can't go to sleep because the movie I am watching is too good", "hello",
+])
+def test_not_sleep_commands(text):
+    assert not is_sleep_command(text)
+
+
+# -- sound effects ----------------------------------------------------------------
+
+def test_sounds_are_built_and_short():
+    from jarvis.sfx import SoundFX
+
+    fx = SoundFX()
+    for name in ("startup", "wake", "sleep", "action", "success", "error", "notify", "alert"):
+        assert 0 < fx.duration(name) < 1.0
+        assert abs(fx.sounds[name]).max() <= 0.61
+
+
+def test_effects_follow_events(monkeypatch):
+    from jarvis.sfx import SoundFX
+
+    fx = SoundFX()
+    played = []
+    monkeypatch.setattr(fx, "play", played.append)
+    for state in ("connecting", "listening", "speaking", "sleeping", "listening"):
+        fx.on_event("state", {"state": state})
+    fx.on_event("tool_start", {"name": "open_app"})
+    fx.on_event("tool", {"name": "open_app", "result": {"result": "ok"}})
+    fx.on_event("tool", {"name": "open_app", "result": {"error": "nope"}})
+    fx.on_event("log", {"text": "🔔 Reminder: tea"})
+    assert played == ["startup", "sleep", "wake", "action", "success", "error", "notify"]
+
+
+def test_disabled_effects_are_silent():
+    from jarvis.sfx import SoundFX
+
+    fx = SoundFX(enabled=False)
+    fx.play("wake")
+    assert fx._thread is None and fx.busy_until == 0
+
+
+# -- live assistant ----------------------------------------------------------------
+
+class FakeSpeaker:
+    def __init__(self):
+        self.chunks = []
+        self.speaking = False
+
+    def play(self, chunk):
+        self.chunks.append(chunk)
+
+    def flush(self):
+        pass
+
+
+class Stop(Exception):
+    pass
+
+
+class FakeSession:
+    def __init__(self, messages):
+        self.messages = messages
+        self.used = False
+
+    async def receive(self):
+        if self.used:
+            raise Stop
+        self.used = True
+        for m in self.messages:
+            yield m
+
+
+def msg(heard=None, audio=None, said=None, done=False):
+    parts = [NS(inline_data=NS(data=audio))] if audio else None
+    return NS(
+        session_resumption_update=None, go_away=None, tool_call=None,
+        server_content=NS(
+            interrupted=False,
+            input_transcription=NS(text=heard) if heard else None,
+            output_transcription=NS(text=said) if said else None,
+            model_turn=NS(parts=parts) if parts else None,
+            turn_complete=done,
+        ),
+    )
+
+
+@pytest.fixture
+def live():
+    from jarvis.app import create_app
+    from jarvis.config import Settings
+    from jarvis.live import LiveAssistant
+
+    app = create_app(Settings(api_key="test-key", sound_effects=False))
+    a = LiveAssistant(app)
+    a.speaker = FakeSpeaker()
+    a.sent = []
+    a.send_system = a.sent.append
+    events = []
+    app.events.subscribe(lambda k, d: events.append((k, d)))
+    a.events_seen = events
+    return a
+
+
+def run_receive(a, messages):
+    async def go():
+        a.loop = asyncio.get_running_loop()
+        with pytest.raises(Stop):
+            await a._receive(FakeSession(messages))
+    asyncio.run(go())
+
+
+def test_saying_the_name_wakes_and_answers(live):
+    live.sleep()
+    assert not live.awake and live.wake_mode == "name"
+    assert live.sent[-1].startswith("(system: asleep)")
+    run_receive(live, [msg(heard="Jarvis, "), msg(heard="time kya hai?"),
+                       msg(audio=b"\x01\x02", said="Saade das baje hain."), msg(done=True)])
+    assert live.awake
+    assert live.speaker.chunks == [b"\x01\x02"]
+    users = [d["text"] for k, d in live.events_seen if k == "user"]
+    assert users == ["Jarvis, time kya hai?"]
+
+
+def test_asleep_ignores_other_speech(live):
+    live.sleep()
+    run_receive(live, [msg(heard="aaj mausam kaisa hai"), msg(audio=b"\x09", said="Aaj dhoop hai."),
+                       msg(done=True)])
+    assert not live.awake
+    assert live.speaker.chunks == []  # stays quiet
+    assert not [k for k, _ in live.events_seen if k in {"user", "assistant"}]
+
+
+def test_name_alone_gets_a_short_hello(live):
+    from jarvis.live import AWAKE_HELLO
+
+    live.sleep()
+    run_receive(live, [msg(heard="Jarvis"), msg(done=True)])
+    assert live.awake and live.sent[-1] == AWAKE_HELLO
+
+
+def test_so_jao_puts_jarvis_to_sleep_not_the_pc(live, monkeypatch):
+    import jarvis.tools.system as system
+
+    monkeypatch.setattr(system.subprocess, "Popen", lambda *a: (_ for _ in ()).throw(AssertionError("power")))
+    later = []
+
+    async def go():
+        live.loop = asyncio.get_running_loop()
+        monkeypatch.setattr(live.loop, "call_later", lambda delay, fn: later.append(fn))
+        with pytest.raises(Stop):
+            await live._receive(FakeSession([msg(heard="Jarvis so jao"), msg(done=True)]))
+    asyncio.run(go())
+    assert live.awake and len(later) == 1  # goodbye first
+    later[0]()
+    assert not live.awake
+
+
+def test_wake_modes(live):
+    assert "Jarvis" in live.how_to_wake()
+    live.s.name_wake = False
+    assert live.wake_mode == "" and "press Wake" in live.how_to_wake()
+    live.wake = object()
+    live._wake_name = "hey_jarvis"
+    assert live.wake_mode == "wake_word" and "hey jarvis" in live.how_to_wake()
+
+
+def test_button_wake_says_hello_and_typing_wakes(live):
+    from jarvis.live import AWAKE_HELLO
+
+    live.sleep()
+    live.wake_up()
+    assert live.awake and live.sent[-1] == AWAKE_HELLO
+    live.sleep()
+    live.send_text("hi")
+    assert live.awake
+
+
+def test_sound_effects_count_for_echo_guard(live):
+    import time
+
+    assert not live._echo_guard(live.speaker)
+    live.sfx.busy_until = time.monotonic() + 1
+    assert live._echo_guard(live.speaker)
+    live.s.allow_interrupt = True
+    assert not live._echo_guard(live.speaker)
+
+
+def test_text_typed_before_connecting_is_kept(live):
+    asyncio.run(live._send_text("hello"))
+    assert live._pending == ["hello"]
