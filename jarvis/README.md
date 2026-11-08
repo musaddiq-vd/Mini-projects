@@ -13,6 +13,7 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 ### The window
 | | |
 |---|---|
+| 🫧 **Cute moments** | On great moments the AI core morphs for a few seconds into a bubbly anime face with a burst of sparkles, then back: heart eyes when you say thanks, a laughing face for "wow / mast / zabardast", star eyes when Jarvis congratulates you, a wink after a joke - and now and then a tiny surprise while idle. |
 | 💖 **Feelings** | LED heart eyes and floating hearts when you say thanks, a wink after a joke, tilted dim visors with a tear when something fails, surprised rings when a timer rings. |
 | ⏱️ **Timer rings** | Every running timer is a countdown ring around the orb with a label; it blinks in the last seconds and an alarm plays. |
 | 🧠 **AI core** | A glass sphere with a rotating hex lattice, a scan line and glowing LED visor eyes that blink and glance around. Talking turns them into happy arcs with a live voice waveform for a mouth; working shows scanner lights sweeping in the visors; asleep they dim with floating "Z z z". Around it: a neural ring of nodes that light up with sound, a spectrum ring, ripples when you speak, a radar sweep while connecting, a flash on wake-up and a pulse + floating label for every action. |
@@ -40,8 +41,10 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 🧩 **Tools panel** | Every skill Jarvis has, including your plugins. |
 
 ### 🎓 English (language) practice mode
-Press **🎓 English Practice** (left panel). Jarvis becomes your speaking coach and its computer commands are switched
-off until you press **🤖 Back to Jarvis** - the same button.
+Press **🎓 English Practice** (left panel). Jarvis becomes your speaking coach - the orb turns into an
+instructor with a graduation cap, glasses and a pointer - and its computer commands are switched off until you press
+**🤖 Back to Jarvis** - the same button. Practice mode is fully separate: none of its code or files load until you
+turn it on the first time.
 
 | | |
 |---|---|

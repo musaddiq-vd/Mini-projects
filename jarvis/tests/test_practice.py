@@ -269,6 +269,7 @@ def test_tutor_events_show_on_screen(window):
 
 def test_language_choice_is_saved(window):
     w, app = window
+    w.set_practice(True)  # the practice screen only exists once the mode is used
     w.practice.native.setCurrentText("Urdu")
     w.practice.level.setCurrentIndex(w.practice.level.findData("advanced"))
     assert app.english.profile["native"] == "Urdu" and app.english.profile["level"] == "advanced"

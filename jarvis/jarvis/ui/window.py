@@ -56,6 +56,10 @@ QUICK_ACTIONS = [
 
 THANKS_WORDS = ("thank", "thanks", "shukriya", "dhanyavad", "dhanyawad", "love you", "awesome", "great job",
                 "well done", "you're the best", "nice work", "शुक्रिया", "धन्यवाद", "شکریہ")
+PRAISE_WORDS = ("wow", "awesome", "amazing", "great", "nice", "cool", "perfect", "superb", "mast", "zabardast",
+                "badhiya", "kamaal", "shandaar", "बढ़िया", "ज़बरदस्त", "कमाल")
+CELEBRATE_WORDS = ("congratulations", "congrats", "mubarak", "well done", "great job", "shabash", "proud of you",
+                   "bahut badhiya", "excellent", "बधाई", "मुबारक", "شاباش", "مبارک")
 JOKE_WORDS = ("joke", "mazak", "mazaak", "chutkula", "funny", "मज़ाक", "चुटकुला")
 
 TOOL_ICONS = {
@@ -529,8 +533,8 @@ class MainWindow(QMainWindow):
         self._shortcuts()
         self._apply_theme()
         self._restore_history()
-        self.practice_btn.setText(f"🎓  {app.english.profile.get('target', 'English')} Practice")
-        if not app.settings.effective_api_key and app.english.mode == "practice":
+        self.practice_btn.setText(f"🎓  {app.state.get('practice_target', 'English')} Practice")
+        if not app.settings.effective_api_key and app.practice_on:
             QTimer.singleShot(0, lambda: self.set_practice(True))
 
     def _forward(self, kind: str, data: dict) -> None:
@@ -674,12 +678,9 @@ class MainWindow(QMainWindow):
         self.search_bar.hide()
         rv.addWidget(self.search_bar)
         self.chat = ChatView()
-        from jarvis.ui.practice import PracticePanel
-
-        self.practice = PracticePanel(self.app, None)
+        self.practice = None  # the practice screen is built the first time practice mode is turned on
         self.stack = QStackedWidget()
         self.stack.addWidget(self.chat)
-        self.stack.addWidget(self.practice)
         rv.addWidget(self.stack, 1)
         self.typing = TypingDots()
         self.typing.hide()
@@ -789,19 +790,29 @@ class MainWindow(QMainWindow):
 
     def set_practice(self, on: bool) -> None:
         """English practice mode: the tutor takes over; Jarvis's commands are off until switched back."""
+        if on == self.practicing:
+            return
         self.practicing = on
-        self.app.english.set_mode("practice" if on else "agent")
+        self.app.state.set("practice_mode", on)
+        if on and self.practice is None:
+            from jarvis.ui.practice import PracticePanel  # first use: only now does practice code load
+
+            self.practice = PracticePanel(self.app, None)
+            self.stack.addWidget(self.practice)
+        if self.practice is not None:
+            self.app.english.set_mode("practice" if on else "agent")
         if self.assistant is not None:
             self.assistant.set_mode("practice" if on else "agent")
-            self.practice.say = self.assistant.send_system
-        else:
-            self.practice.say = None
+        if self.practice is not None:
+            self.practice.say = self.assistant.send_system if self.assistant is not None else None
         self.stack.setCurrentWidget(self.practice if on else self.chat)
+        self.orb.set_persona("tutor" if on else "")
         self.chips.setVisible(not on)
         self.header_label.setText("LANGUAGE PRACTICE" if on else "CONVERSATION")
         if on:
             self.close_search()
         target = self.app.english.profile.get("target", "English")
+        self.app.state.set("practice_target", target)
         if on:
             self.practice_btn.setText("🤖  Back to Jarvis (agent mode)")
             self.practice_btn.setObjectName("modeOn")
@@ -922,7 +933,7 @@ class MainWindow(QMainWindow):
         from jarvis.live import LiveAssistant
 
         self.assistant = LiveAssistant(self.app)
-        if self.app.english.mode == "practice":  # continue where the user left off
+        if self.app.practice_on:  # continue where the user left off
             self.set_practice(True)
         self.thread = self.assistant.run_in_thread()
         self._add_system(f"Starting... say \"{self.app.settings.assistant_name}\", or type below.")
@@ -941,12 +952,27 @@ class MainWindow(QMainWindow):
             if self._joke_pending:
                 self._joke_pending = False
                 self._emote("wink")
+            elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
+                self._emote("star")
+        elif kind == "practice_answer":
+            if data.get("correct"):
+                self.orb.transform("happy", 1.3)
+            else:
+                self.orb.emote("sad", 1.6)
+        elif kind.startswith("practice_") and self.practice is None:
+            pass  # practice events only matter once the practice screen exists
         elif kind == "practice_mcq":
             self.practice.tutor_mcq(data["question"], data["options"], data["answer"], data.get("why", ""))
         elif kind == "practice_correction":
             self.practice.correction(data.get("said", ""), data["better"], data.get("tip", ""))
+            self.orb.point()
         elif kind == "practice_progress":
             self.practice.progress(**data)
+            share = data.get("score", 0) / (data.get("total") or 1)
+            if share >= 0.9:
+                self._emote("star", 3.2)
+            elif share >= 0.6:
+                self._emote("happy")
             if data.get("xp_gained"):
                 self.toast("⭐", f"+{data['xp_gained']} XP  ·  🔥 {data.get('streak', 0)} day streak", OK, 3)
         elif kind == "timer":
@@ -1000,14 +1026,20 @@ class MainWindow(QMainWindow):
     _joke_pending = False
     _offline_toast = False
 
-    def _emote(self, kind: str) -> None:
-        self.orb.emote(kind)
+    def _emote(self, kind: str, seconds: float = 2.8) -> None:
+        """Happy feelings morph the core into the cute face for a moment; others show on the AI core."""
+        if kind in ("love", "happy", "wink", "star"):
+            self.orb.transform(kind, seconds)
+        else:
+            self.orb.emote(kind)
         self.app.events.emit("emote", feeling=kind)  # sound effects listen for this
 
     def _react_to_user(self, text: str) -> None:
         low = text.lower()
         if any(w in low for w in THANKS_WORDS):
             self._emote("love")
+        elif any(w in low for w in PRAISE_WORDS):
+            self._emote("happy")
         if any(w in low for w in JOKE_WORDS):
             self._joke_pending = True
 

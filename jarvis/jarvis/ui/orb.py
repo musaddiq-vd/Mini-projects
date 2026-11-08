@@ -19,7 +19,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
 from PyQt6.QtGui import QColor, QConicalGradient, QFont, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
-from jarvis.ui import aiface
+from jarvis.ui import aiface, cuteface
 from jarvis.ui.theme import DANGER, OK, state_color
 
 N_BARS = 72
@@ -45,6 +45,17 @@ class Orb(QWidget):
         self._zzz_timer = 0.0
         self.flash_t = 0.0
         self.boot = 0.0  # 0 -> 1 during the start-up animation
+        # cute moments: the AI core briefly turns into a bubbly anime face, then morphs back
+        self.cute = 0.0  # 0 = AI core, 1 = cute face (smoothly animated)
+        self.cute_kind = "happy"
+        self.cute_until = 0.0
+        self.sparkles: list[list] = []  # [age, angle, speed, "star"|"heart"]
+        self._next_surprise = time.monotonic() + random.uniform(150, 300)
+        # practice mode look
+        self.persona = ""  # "" or "tutor"
+        self.point_t = 0.0  # pointer animation 1 -> 0
+        self.letters: list[list] = []  # chalk letters: [age, drift, char]
+        self._letter_timer = 0.0
         self.emotion = ""  # love | sad | wink | surprised, for a few seconds
         self.emotion_until = 0.0
         self.hearts: list[list] = []  # [age, x drift]
@@ -68,6 +79,25 @@ class Orb(QWidget):
 
     def set_accent(self, accent: str) -> None:
         self.accent = accent
+
+    def transform(self, kind: str = "happy", seconds: float = 2.8) -> None:
+        """Turn into the cute face for a moment (love, happy, wink, star), with a burst of sparkles."""
+        self.cute_kind = kind if kind in cuteface.KINDS else "happy"
+        self.cute_until = time.monotonic() + seconds
+        shape = "heart" if kind == "love" else "star"
+        self.sparkles += [[-random.uniform(0, 0.15), random.uniform(0, math.tau), random.uniform(0.6, 1.3), shape]
+                          for _ in range(14)]
+        self.sparkles = self.sparkles[-40:]
+
+    def set_persona(self, persona: str) -> None:
+        """"tutor" = the instructor look for practice mode; "" = normal Jarvis."""
+        if persona != self.persona:
+            self.persona = persona
+            self.flash()
+
+    def point(self) -> None:
+        """The tutor's pointer taps (used when a correction appears)."""
+        self.point_t = 1.0
 
     def set_face(self, on: bool) -> None:
         self.face = on
@@ -167,6 +197,29 @@ class Orb(QWidget):
 
         self.flash_t = max(0.0, self.flash_t - dt * 1.6)
         self.boot = min(1.0, self.boot + dt / 1.8)
+        # cute morph
+        target = 1.0 if (self.face and now < self.cute_until) else 0.0
+        self.cute += (target - self.cute) * min(1.0, dt * 7)
+        if abs(self.cute - target) < 0.004:
+            self.cute = target
+        for sp in self.sparkles:
+            sp[0] += dt / 1.1
+        self.sparkles = [sp for sp in self.sparkles if sp[0] < 1.0]
+        # a little surprise now and then while idle, so Jarvis feels alive
+        if now > self._next_surprise:
+            self._next_surprise = now + random.uniform(150, 300)
+            if self.face and self.state == "listening" and self.level < 0.05 and self.cute == 0:
+                self.transform(random.choice(["wink", "happy", "love"]), 1.8)
+        # tutor extras
+        self.point_t = max(0.0, self.point_t - dt / 2.2)
+        if self.persona == "tutor":
+            self._letter_timer -= dt
+            if self._letter_timer <= 0:
+                self._letter_timer = random.uniform(1.8, 3.2)
+                self.letters.append([0.0, random.uniform(-0.6, 0.6), random.choice("AaBbCcEe?!✓")])
+        for lt in self.letters:
+            lt[0] += dt / 3.2
+        self.letters = [lt for lt in self.letters if lt[0] < 1.0][-6:]
 
         # eyes wander a little
         self._look_change -= dt
@@ -209,9 +262,21 @@ class Orb(QWidget):
         if self.state == "thinking":
             self._satellites(p, cx, cy, r, color)
         core_r = r * 0.62
-        self._core(p, cx, cy, core_r, color)
-        if self.face:
-            self._face(p, cx, cy, core_r, color)
+        base_opacity = p.opacity()
+        if self.cute < 1:
+            p.setOpacity(base_opacity * (1 - self.cute))
+            self._core(p, cx, cy, core_r, color)
+            if self.face:
+                self._face(p, cx, cy, core_r, color)
+        if self.cute > 0:
+            pop = 1 + 0.14 * math.sin(math.pi * min(1.0, self.cute))  # bounce while morphing
+            p.setOpacity(base_opacity * self.cute)
+            cuteface.draw_cute(p, self, cx, cy, core_r * pop, color, self.cute_kind)
+        p.setOpacity(base_opacity)
+        if self.sparkles:
+            cuteface.draw_sparkles(p, self.sparkles, cx, cy, core_r)
+        if self.persona == "tutor":
+            cuteface.draw_tutor(p, self, cx, cy, core_r, color, self.cute)
         self._zzzs(p, cx, cy, core_r)
         self._hearts(p, cx, cy, core_r)
         self._timer_rings(p, cx, cy, r)

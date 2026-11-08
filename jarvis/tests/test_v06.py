@@ -200,11 +200,11 @@ def test_thanks_shows_love_and_jokes_get_a_wink(window):
     feelings = []
     app.events.subscribe(lambda k, d: feelings.append(d["feeling"]) if k == "emote" else None)
     w._react_to_user("Thank you Jarvis!")  # called directly so an error here fails the test
-    assert w.big_orb.emotion == "love" and w.big_orb.hearts and feelings == ["love"]
+    assert w.big_orb.cute_kind == "love" and w.big_orb.sparkles and feelings == ["love"]
     app.events.emit("user", text="ek chutkula sunao")
     app.events.emit("assistant", text="Why did the computer go to the doctor? It had a virus!")
     qt.processEvents()
-    assert w.big_orb.emotion == "wink"
+    assert w.big_orb.cute_kind == "wink"
 
 
 def test_errors_look_sad_and_timers_show_on_the_orb(window):

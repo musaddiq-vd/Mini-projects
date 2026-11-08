@@ -66,6 +66,7 @@ class QuizView(QWidget):
     """Multiple-choice questions one at a time, with instant feedback."""
 
     finished = pyqtSignal(int, int, list)  # score, total, missed questions
+    answered = pyqtSignal(bool)  # right or wrong, for the orb to react
 
     def __init__(self, questions: list[dict], intro: str = "", parent=None):
         super().__init__(parent)
@@ -120,6 +121,7 @@ class QuizView(QWidget):
     def answer(self, k: int) -> None:
         q = self.questions[self.i]
         right = q["answer"]
+        self.answered.emit(k == right)
         if k == right:
             self.score += 1
             verdict = "✓ Correct!"
@@ -401,6 +403,7 @@ class PracticePanel(QWidget):
     def _quiz(self, task: Task | None, questions: list[dict], intro: str = "") -> QuizView:
         quiz = QuizView(questions, intro)
         quiz.finished.connect(lambda score, total, missed: self._quiz_done(task, quiz, score, total, missed))
+        quiz.answered.connect(lambda ok: self.app.events.emit("practice_answer", correct=ok))
         self.area_layout.addWidget(quiz)
         return quiz
 

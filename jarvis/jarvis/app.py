@@ -101,7 +101,22 @@ class Jarvis:
     events: Events
     state: StateStore
     history: ChatHistory | None = None
-    english: object = None  # jarvis.english.store.EnglishStore (practice progress)
+    _english: object = None
+
+    @property
+    def english(self):
+        """Practice progress (jarvis.english). Loaded only when practice mode is first used,
+        so nothing of the practice module runs while you use Jarvis normally."""
+        if self._english is None:
+            from jarvis.english.store import EnglishStore
+
+            self._english = EnglishStore(home_dir() / "english.json")
+        return self._english
+
+    @property
+    def practice_on(self) -> bool:
+        """Whether the user left practice mode on (kept in Jarvis's own state, not the practice file)."""
+        return bool(self.state.get("practice_mode", False))
 
     def prompt(self) -> str:
         return system_prompt(self.settings, self.memory)
@@ -119,7 +134,4 @@ def create_app(settings: Settings | None = None, ask=console_ask, notify=print) 
     history = ChatHistory(home / "history.jsonl")
     events.subscribe(lambda kind, data: history.add(kind, data.get("text", ""))
                      if kind in {"user", "assistant"} else None)
-    from jarvis.english.store import EnglishStore
-
-    english = EnglishStore(home / "english.json")
-    return Jarvis(settings, memory, registry, ctx, events, state, history, english)
+    return Jarvis(settings, memory, registry, ctx, events, state, history)
