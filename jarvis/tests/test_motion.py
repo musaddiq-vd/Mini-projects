@@ -29,6 +29,11 @@ def finish(qt, m, limit=3.0):
     end = time.time() + limit
     while time.time() < end and m._anim is not None and m._anim.state() == QAbstractAnimation.State.Running:
         settle(qt, 20)
+        if m._anim is not None and m._anim.currentTime() == 0 and time.time() > end - limit + 0.5:
+            break  # pytest's Qt animation clock can stall after many windows; jump to the end below
+    if m._anim is not None and m._anim.state() == QAbstractAnimation.State.Running:
+        m._anim.setCurrentTime(m._anim.duration())  # lands exactly where the animation would have
+    settle(qt, 20)
 
 
 @pytest.fixture

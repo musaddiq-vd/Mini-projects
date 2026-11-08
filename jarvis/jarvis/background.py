@@ -51,6 +51,12 @@ class BackgroundServices:
 
     def on_connected(self) -> None:
         """Called once the first live session is up."""
+        try:
+            from jarvis.backup import auto_backup
+
+            auto_backup()  # a weekly safety copy on this PC
+        except Exception as exc:
+            self.app.events.emit("log", text=f"[backup] {exc}")
         from jarvis.tools.reminders import restore_reminders
 
         try:

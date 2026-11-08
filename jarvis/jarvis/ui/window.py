@@ -1190,6 +1190,8 @@ class MainWindow(QMainWindow):
                        f"{label(data.get('reminders', 'same'))}", theme.ACCENT, 4)
         elif kind == "motion" and data.get("state") == "running":
             self.toast("🖱", "Scrolling… say “ruko” or “stop” when it's enough", self.accent, 4)
+        elif kind == "restart_requested":
+            self.restart_app()
         elif kind == "reminder_closed":
             self.reminders.close(data["id"])
         elif kind == "document":
@@ -1610,6 +1612,22 @@ class MainWindow(QMainWindow):
             self._add_system("Confirmation timed out - cancelled.")
 
     # -- close --------------------------------------------------------------------
+    def restart_app(self) -> None:
+        """Start a fresh Jarvis, then quit this one (after a restore)."""
+        import sys
+
+        from PyQt6.QtCore import QProcess
+
+        root = Path(__file__).resolve().parents[2]
+        launcher = root / "jarvis_launcher.pyw"
+        if getattr(sys, "frozen", False):
+            QProcess.startDetached(sys.executable, sys.argv[1:])
+        elif launcher.exists():
+            QProcess.startDetached(sys.executable, [str(launcher)], str(root))
+        else:
+            QProcess.startDetached(sys.executable, ["-m", "jarvis"], str(root))
+        self._quit()
+
     def _quit(self) -> None:
         """The app doesn't quit on its own (mini mode hides this window), so quit explicitly."""
         self._quitting = True

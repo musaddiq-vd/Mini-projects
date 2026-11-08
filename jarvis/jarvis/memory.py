@@ -42,6 +42,11 @@ class MemoryStore:
         self._load()
 
     # -- persistence ---------------------------------------------------------
+    def reload(self) -> None:
+        with self._lock:
+            self._facts = {}
+            self._load()
+
     def _load(self) -> None:
         if not self.path.exists():
             return

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QCheckBox, QFormLayout, QFrame, QGridLayout, QLabel, QMessageBox, QPushButton, QSpinBox,
-    QVBoxLayout, QWidget,
+    QCheckBox, QFileDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from jarvis.config import home_dir
@@ -104,6 +104,23 @@ class PrivacyTab(QWidget):
         form.addRow(self.notify_capture)
         v.addLayout(form)
 
+        v.addSpacing(8)
+        v.addWidget(QLabel("BACKUP", objectName="section"))
+        brow = QHBoxLayout()
+        make = QPushButton("💾  Make a backup…")
+        make.setToolTip("Save everything Jarvis keeps (memory, chat, lists, money, habits, goals, practice) "
+                        "in one file. Your API key and calendar links are not included.")
+        make.clicked.connect(self._make_backup)
+        brow.addWidget(make)
+        restore_btn = QPushButton("♻  Restore from a backup…")
+        restore_btn.clicked.connect(self._restore_backup)
+        brow.addWidget(restore_btn)
+        brow.addStretch(1)
+        v.addLayout(brow)
+        self.backup_info = QLabel(objectName="muted")
+        self.backup_info.setWordWrap(True)
+        v.addWidget(self.backup_info)
+
         box = QFrame(objectName="card")
         b = QVBoxLayout(box)
         text = QLabel(OUTSIDE)
@@ -141,6 +158,12 @@ class PrivacyTab(QWidget):
         }
         for key, (info, btn) in self.rows.items():
             info.setText(facts[key])
+        from jarvis.backup import backups_dir
+
+        autos = sorted(backups_dir().glob("auto-*.zip"))
+        when = datetime.fromtimestamp(autos[-1].stat().st_mtime).strftime("%d %b %Y") if autos else "not yet"
+        self.backup_info.setText(f"Jarvis also keeps a weekly automatic copy on this PC (last: {when}). "
+                                 "Backup files contain personal data - keep them somewhere safe.")
 
     @staticmethod
     def _file_fact(name: str, key: str, word: str) -> str:
@@ -156,6 +179,51 @@ class PrivacyTab(QWidget):
         from jarvis.datafile import store
 
         store(name, {}).delete()
+
+    # -- backup -----------------------------------------------------------------------------
+    def _make_backup(self) -> None:
+        from jarvis.backup import default_name, make_backup
+
+        start = Path.home() / "Documents" / default_name()
+        path, _ = QFileDialog.getSaveFileName(self, "Save Jarvis backup", str(start), "Jarvis backup (*.zip)")
+        if not path:
+            return
+        try:
+            manifest = make_backup(Path(path))
+        except OSError as exc:
+            QMessageBox.warning(self, "Backup", f"Couldn't save the backup:\n{exc}")
+            return
+        from jarvis.backup import describe
+
+        QMessageBox.information(self, "Backup saved", f"Saved to:\n{path}\n\n{describe(manifest)}")
+
+    def _restore_backup(self) -> None:
+        from jarvis.backup import BackupError, describe, read_backup, restore
+
+        path, _ = QFileDialog.getOpenFileName(self, "Restore Jarvis backup", str(Path.home() / "Documents"),
+                                              "Jarvis backup (*.zip)")
+        if not path:
+            return
+        try:
+            manifest, _files = read_backup(Path(path))
+        except BackupError as exc:
+            QMessageBox.warning(self, "Restore", str(exc))
+            return
+        answer = QMessageBox.question(
+            self, "Restore this backup?",
+            f"{describe(manifest)}\n\nThis replaces what Jarvis keeps now. A copy of your current data is saved "
+            "first, and Jarvis restarts afterwards.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            restore(Path(path))
+        except (BackupError, OSError) as exc:
+            QMessageBox.warning(self, "Restore", f"Couldn't restore: {exc}")
+            return
+        self.app.reload_stores()  # nothing old can be written over the restored files before the restart
+        QMessageBox.information(self, "Restored", "Your data is back. Jarvis will restart now.")
+        self.app.events.emit("restart_requested")
 
     def _confirm(self, what: str, action: Callable[[], None]) -> None:
         answer = QMessageBox.question(self, "Delete?", f"Permanently delete {what}?\nThis can't be undone.",

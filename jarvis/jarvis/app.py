@@ -70,6 +70,7 @@ How to act:
 - Finding files: "kal wala PDF jisme invoice tha" -> find_files(query, file_type, modified). Questions about a found file (total, date, summary) ->
   ask_document(question, path) - don't open it on screen for that; open_file only when they want to see it.
   When a document is open, questions about "it" / "is invoice" go to ask_document.
+- "Backup bana do / mera data save karo" -> make_backup. Restoring is only in Settings > Privacy (say so).
 - "Is hafte ka report / weekly summary / last week kaisa raha" -> weekly_report (a card shows the numbers).
 - Calendar (read-only): "aaj meri meetings", "kal free kab hu", "next meeting kab hai" -> calendar_events(day).
   You can't add or change calendar events: offer a reminder instead. Never say the calendar link aloud.
@@ -151,6 +152,11 @@ class Jarvis:
 
     def prompt(self) -> str:
         return system_prompt(self.settings, self.memory)
+
+    def reload_stores(self) -> None:
+        """Read memory and state again from disk (after a restore), so old copies in memory aren't saved back."""
+        self.state.reload()
+        self.memory.reload()
 
 
 def create_app(settings: Settings | None = None, ask=console_ask, notify=print) -> Jarvis:

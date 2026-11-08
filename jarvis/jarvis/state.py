@@ -17,6 +17,13 @@ class StateStore:
         except (OSError, json.JSONDecodeError):
             self._data = {}
 
+    def reload(self) -> None:
+        with self._lock:
+            try:
+                self._data = json.loads(self.path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                self._data = {}
+
     def get(self, key: str, default: Any = None) -> Any:
         with self._lock:
             return self._data.get(key, default)

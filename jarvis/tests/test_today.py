@@ -46,7 +46,8 @@ def test_shows_reminder_timer_todos_and_badges(strip):
     s.refresh()
     v = visible(s)
     assert "Call mom" in v["reminder"] and v["timer"].startswith("⏱ 1:0") and "tea" in v["timer"]
-    assert v["todo"] == "📝 1 to-do" and v["badges"] == "🏆 1"
+    got = len(app.achievements.unlocked())  # "hello" unlocks one; late at night "night owl" too
+    assert v["todo"] == "📝 1 to-do" and v["badges"] == f"🏆 {got}" and got >= 1
 
 
 def test_chips_ask_jarvis(strip):
