@@ -280,3 +280,38 @@ def test_answered_text_is_not_resent(live):
     run_receive(live, [msg(said="hi", done=True)])  # the server answered
     live._on_connection_error(Exception("network"), 1)
     assert live._pending == []
+
+
+def test_reminders_are_heard_even_while_asleep(live):
+    live.sleep()
+    live.notify("Reminder: drink water")  # opens a short window in which Jarvis may speak
+    run_receive(live, [msg(audio=b"\x05", said="Time to drink water!"), msg(done=True)])
+    assert live.speaker.chunks == [b"\x05"]
+    assert any(k == "assistant" for k, _ in live.events_seen)
+    assert not live.awake  # still asleep afterwards
+
+
+def test_ambient_replies_stay_silent_without_an_announcement(live):
+    live.sleep()
+    run_receive(live, [msg(audio=b"\x06", said="hmm"), msg(done=True)])
+    assert live.speaker.chunks == []
+
+
+def test_text_typed_before_the_loop_starts_is_kept(isolated_home):
+    from jarvis.app import create_app
+    from jarvis.config import Settings
+    from jarvis.live import LiveAssistant
+
+    a = LiveAssistant(create_app(Settings(api_key="k", sound_effects=False)))
+    a.send_text("hello early")
+    assert a._pending == ["hello early"]
+
+
+def test_resume_handle_is_not_stored_under_the_wrong_mode(live):
+    from types import SimpleNamespace as NS2
+
+    live._session_mode = "agent"
+    live.mode = "practice"  # switched while the old session still talks
+    update = NS(session_resumption_update=NS2(new_handle="agent-h"), go_away=None, tool_call=None, server_content=None)
+    run_receive(live, [update])
+    assert live.resume_handle is None

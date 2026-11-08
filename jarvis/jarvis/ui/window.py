@@ -803,8 +803,11 @@ class MainWindow(QMainWindow):
             self.app.english.set_mode("practice" if on else "agent")
         if self.assistant is not None:
             self.assistant.set_mode("practice" if on else "agent")
+            if on and not self.assistant.awake:
+                self.assistant.wake_up()  # the user wants to practise now
         if self.practice is not None:
-            self.practice.say = self.assistant.send_system if self.assistant is not None else None
+            # announce(): the tutor is heard even if Jarvis dozes off between tasks
+            self.practice.say = self.assistant.announce if self.assistant is not None else None
         self.stack.setCurrentWidget(self.practice if on else self.chat)
         self.orb.set_persona("tutor" if on else "")
         self.chips.setVisible(not on)
@@ -1213,6 +1216,8 @@ class MainWindow(QMainWindow):
         save_settings(self.app.settings)
         if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face"}:
             self._apply_theme()
+        if "history_days" in changed and self.app.history:
+            self.app.history.prune(self.app.settings.history_days)
         if self.assistant is not None and changed & {"sound_effects", "sound_volume"}:
             self.assistant.sfx.enabled = self.app.settings.sound_effects
             self.assistant.sfx.volume = self.app.settings.sound_volume

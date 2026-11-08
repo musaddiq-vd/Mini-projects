@@ -26,6 +26,7 @@ from jarvis.voicecmd import is_sleep_command, mentions_name
 SILENCE = bytes(MIC_BLOCK * 2)
 log = logging.getLogger("jarvis.live")
 ECHO_GUARD_SECONDS = 0.4  # keep the mic muted briefly after Jarvis stops talking
+ANNOUNCE_SECONDS = 25.0  # how long an announcement may be spoken while asleep
 GOODBYE_SECONDS = 2.5  # let "good night" be heard before going to sleep
 NAME_HELLO_SECONDS = 4.0  # woken by name but no answer/action by then -> say "yes?"
 
@@ -36,6 +37,10 @@ ASLEEP_NOTE = ("(system: asleep) You are now asleep. Stay completely silent and 
                "until you hear your name or get a '(system: awake)' note.")
 AWAKE_HELLO = ("(system: awake) The user just woke you up. Say one very short line like "
                "'Yes?' or 'Haan, boliye?' in their language, then listen.")
+
+
+def _a(word: str) -> str:
+    return "an" if word[:1].lower() in "aeiou" else "a"
 
 
 class LiveAssistant:
@@ -72,6 +77,9 @@ class LiveAssistant:
         self._unconfirmed: list[str] = []
         self._confirmed = False
         self._announced = False  # "Reconnected" shown for the current outage
+        self._announce_until = 0.0  # reminders, timers, briefing and alerts are heard even while asleep
+        self._tasks: set[asyncio.Task] = set()  # keep tool tasks alive until they finish
+        self._session_mode = "agent"  # the mode the current session was opened in
         self._woken_by_name = False  # woke mid-speech: make sure Jarvis answers
         self._spoke_since_wake = False
         self.sfx = SoundFX(self.s.sound_effects, self.s.sound_volume,
@@ -79,12 +87,14 @@ class LiveAssistant:
         app.ctx.notify = self.notify
         app.ctx.attach_image = self._attach_image
         app.ctx.assistant = self
-        self.background = BackgroundServices(app, self.send_system)
+        self.background = BackgroundServices(app, self.announce)
 
     # -- thread-safe controls -------------------------------------------------
     def _call(self, coro_fn, *args) -> None:
         if self.loop and self.loop.is_running():
             self.loop.call_soon_threadsafe(lambda: asyncio.ensure_future(coro_fn(*args)))
+        elif coro_fn == self._send_text and args:
+            self._pending = (self._pending + [args[0]])[-10:]  # not started yet: sent once connected
 
     def send_text(self, text: str) -> None:
         """Typed input from the user. Critical secrets are masked before anything sees them."""
@@ -93,7 +103,7 @@ class LiveAssistant:
         if hidden:
             what = describe(hidden)
             self.events.emit("guardrail", action="hidden", tool="", text=what)
-            text += (f" (system: the user typed a {what}; it was hidden for their safety. Don't ask for it - "
+            text += (f" (system: the user typed {_a(what)} {what}; it was hidden for their safety. Don't ask for it - "
                      "remind them kindly never to share it, then help with the rest.)")
         was_asleep = not self.awake
         self._set_awake(True)
@@ -105,9 +115,17 @@ class LiveAssistant:
         """An instruction from the app itself (briefing, reminder, alert). Doesn't wake the mic."""
         self._call(self._send_text, text)
 
+    def announce(self, text: str) -> None:
+        """An app message the user must hear (briefing, alert, reminder) - even if Jarvis is asleep."""
+        self._announce_until = time.monotonic() + ANNOUNCE_SECONDS
+        self.send_system(text)
+
     def notify(self, message: str) -> None:
         self.events.emit("log", text=f"🔔 {message}")
-        self.send_system(f"(system notice) Tell the user now: {message}")
+        self.announce(f"(system notice) Tell the user now: {message}")
+
+    def _audible(self) -> bool:
+        return self.awake or time.monotonic() < self._announce_until
 
     def set_muted(self, muted: bool) -> None:
         self.muted = muted
@@ -337,7 +355,7 @@ class LiveAssistant:
         if hidden:  # said out loud: the model heard it, so make sure it won't repeat or use it
             what = describe(hidden)
             self.events.emit("guardrail", action="hidden", tool="", text=what)
-            self.send_system(f"(system: the user just said a {what} out loud. Never repeat it or use it; "
+            self.send_system(f"(system: the user just said {_a(what)} {what} out loud. Never repeat it or use it; "
                              "gently remind them to keep it private.)")
         if is_sleep_command(text):
             self.loop.call_later(GOODBYE_SECONDS, lambda: self.sleep("voice"))
@@ -357,14 +375,17 @@ class LiveAssistant:
                     self._unconfirmed = []
                     self._failures = 0
                     self._announced = False
-                if msg.session_resumption_update and msg.session_resumption_update.new_handle:
+                if (msg.session_resumption_update and msg.session_resumption_update.new_handle
+                        and self.mode == self._session_mode):  # never store it under the other mode
                     self.resume_handle = msg.session_resumption_update.new_handle
                 if msg.go_away:
                     return  # server will close soon; reconnect with the handle
                 if msg.tool_call:
                     self._spoke_since_wake = True  # acting counts as answering
                     self.last_activity = time.monotonic()
-                    asyncio.create_task(self._handle_tools(session, msg.tool_call))
+                    task = asyncio.create_task(self._handle_tools(session, msg.tool_call))
+                    self._tasks.add(task)
+                    task.add_done_callback(self._tasks.discard)
                 sc = msg.server_content
                 if not sc:
                     continue
@@ -379,7 +400,7 @@ class LiveAssistant:
                     if self.awake:
                         self.last_activity = time.monotonic()
                         self.events.emit("caption", who="user", text=redact("".join(heard).strip())[0])
-                if sc.output_transcription and sc.output_transcription.text and self.awake:
+                if sc.output_transcription and sc.output_transcription.text and self._audible():
                     said.append(sc.output_transcription.text)
                     self.events.emit("caption", who="assistant", text=redact("".join(said).strip())[0])
                 if sc.model_turn:
@@ -387,14 +408,14 @@ class LiveAssistant:
                         self._user_turn(heard)
                         heard = []
                     for part in sc.model_turn.parts or []:
-                        # while asleep the reply is dropped: Jarvis stays quiet
-                        if part.inline_data and part.inline_data.data and self.awake:
+                        # while asleep the reply is dropped (Jarvis stays quiet) - except announcements
+                        if part.inline_data and part.inline_data.data and self._audible():
                             self.speaker.play(part.inline_data.data)
                             self.last_activity = time.monotonic()
                             self._spoke_since_wake = True
                 if sc.turn_complete:
                     self._user_turn(heard)
-                    if said and self.awake:
+                    if said and self._audible():
                         self.events.emit("assistant", text=redact("".join(said).strip())[0])
                     self.events.emit("caption", who="", text="")
                     heard, said = [], []
@@ -404,6 +425,7 @@ class LiveAssistant:
             self.speaker = Speaker(find_device(self.s.output_device, "output"),
                                    on_level=lambda v: self.events.emit("level", source="speaker", value=v))
             self.speaker.start()
+        self._session_mode = self.mode
         async with self.client.aio.live.connect(model=self.s.live_model, config=self._config()) as session:
             self.session = session
             self._confirmed = False
