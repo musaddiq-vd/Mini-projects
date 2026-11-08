@@ -230,7 +230,7 @@ class ToastHost:
     def _restack(self) -> None:
         try:
             self.parent.width()
-        except RuntimeError:  # the window is being closed: nothing left to arrange
+        except (RuntimeError, AttributeError):  # window closing / app shutting down: nothing to arrange
             self.toasts = []
             return
         self.toasts = [t for t in self.toasts if _alive(t)]

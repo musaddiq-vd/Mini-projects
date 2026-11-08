@@ -587,6 +587,11 @@ class MainWindow(QMainWindow):
 
         self.stats = StatsBar(self.accent)
         lv.addWidget(self.stats)
+        from jarvis.ui.today import TodayStrip
+
+        self.today = TodayStrip(self.app, lambda: self.big_orb.timers, lambda q: self._send(q))
+        self.today.on_badges = lambda: self.toggle_badges()
+        lv.addWidget(self.today)
 
         controls = QHBoxLayout()
         self.mute_btn = QPushButton("🎙  Mute")
@@ -1126,9 +1131,18 @@ class MainWindow(QMainWindow):
 
     _caption_live = False
 
+    _welcome_row = None
+
     def _add_bubble(self, who: str, text: str, mine: bool = False, typewriter: bool = False) -> None:
         if not text or text.startswith("(system"):
             return  # app-generated instructions are not shown as user messages
+        if self._welcome_row is not None:  # the conversation has started: the welcome card has done its job
+            try:
+                self._welcome_row.hide()
+                self._welcome_row.deleteLater()
+            except RuntimeError:
+                pass
+            self._welcome_row = None
         self.chat.add_message(who, text, mine, typewriter=typewriter)
 
     def toast(self, icon: str, text: str, color: str, seconds: float = 4.5) -> None:
@@ -1209,8 +1223,9 @@ class MainWindow(QMainWindow):
         if not items:
             from jarvis.ui.help import welcome_card
 
-            self.chat._add_row(welcome_card(self.app.settings.assistant_name, self.app.settings.user_name,
-                                            self._send), "center", text="welcome", animate=False)
+            self._welcome_row = self.chat._add_row(
+                welcome_card(self.app.settings.assistant_name, self.app.settings.user_name, self._send),
+                "center", text="welcome", animate=False)
             return
         name = self.app.settings.assistant_name
         self.chat.animate = False

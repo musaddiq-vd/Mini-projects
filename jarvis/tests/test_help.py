@@ -64,3 +64,12 @@ def test_no_welcome_when_there_is_history(monkeypatch, isolated_home):
     app.events.emit("user", text="hello")
     w = MainWindow(app, Bridge())
     assert qt is not None and "I'm Jarvis." not in w.chat.toPlainText()
+
+
+def test_welcome_card_goes_away_when_the_chat_starts(window):
+    w, app = window
+    assert "I'm Jarvis." in w.chat.toPlainText()
+    app.events.emit("user", text="hello")
+    w.qt.processEvents()
+    w.qt.processEvents()
+    assert w._welcome_row is None
