@@ -101,6 +101,10 @@ class Settings:
     # Private iCal links (read-only calendar sync). Secret like passwords: encrypted on disk, never logged.
     calendar_urls: list[str] = field(default_factory=list)
     calendar_reminder_minutes: int = 10  # spoken reminder before a meeting (0 = off)
+    # Smart home. The token and the Tuya keys are secrets: encrypted on disk like the API key.
+    ha_url: str = ""  # Home Assistant address, e.g. http://homeassistant.local:8123
+    ha_token: str = ""  # Home Assistant long-lived access token
+    tuya_devices: list[dict] = field(default_factory=list)  # [{name, type, id, ip, key, version, room}]
     # wellbeing
     evening_recap: bool = True  # a short recap of the day in the evening
     recap_hour: int = 21
@@ -154,6 +158,17 @@ def load_settings(path: Path | None = None) -> Settings:
         urls = []
     plain_urls = any(isinstance(u, str) and u and not u.startswith(secure.PREFIX) for u in urls)
     data["calendar_urls"] = [u for u in (secure.unprotect(u) for u in urls if isinstance(u, str)) if u]
+    token = data.get("ha_token", "")
+    plain_urls = plain_urls or (isinstance(token, str) and token and not token.startswith(secure.PREFIX))
+    data["ha_token"] = secure.unprotect(token) if isinstance(token, str) else ""
+    tuya = data.get("tuya_devices") if isinstance(data.get("tuya_devices"), list) else []
+    clean = []
+    for d in tuya:
+        if isinstance(d, dict):
+            key = d.get("key", "")
+            plain_urls = plain_urls or (isinstance(key, str) and key and not key.startswith(secure.PREFIX))
+            clean.append({**d, "key": secure.unprotect(key) if isinstance(key, str) else ""})
+    data["tuya_devices"] = clean
     try:
         settings = Settings(**data)
     except TypeError:
@@ -176,6 +191,10 @@ def save_settings(settings: Settings, path: Path | None = None) -> Path:
         data["api_key"] = secure.protect(data["api_key"])  # never stored in plain text on Windows
     if data.get("calendar_urls"):
         data["calendar_urls"] = [secure.protect(u) for u in data["calendar_urls"]]
+    if data.get("ha_token"):
+        data["ha_token"] = secure.protect(data["ha_token"])
+    if data.get("tuya_devices"):
+        data["tuya_devices"] = [{**d, "key": secure.protect(d.get("key", ""))} for d in data["tuya_devices"]]
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     tmp.replace(path)
     return path

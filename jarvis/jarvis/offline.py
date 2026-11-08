@@ -126,6 +126,16 @@ def parse(text: str, name: str = "jarvis") -> Command | None:
         return Command("list_notes")
     if re.search(r"\b(my reminders|mere reminders|reminders? (?:batao|dikhao)|what reminders)\b", t):
         return Command("list_reminders")
+    # -- smart home (Tuya devices work on the home WiFi, no internet needed)
+    m = re.match(r"(?:turn|switch) (on|off) (?:the )?(.+)$", t) or re.match(r"(?:turn|switch) (?:the )?(.+?) (on|off)$", t)
+    if m:
+        on_off, device = (m.group(1), m.group(2)) if m.group(1) in ("on", "off") else (m.group(2), m.group(1))
+        if not re.search(r"\b(wifi|bluetooth|computer|pc|laptop|volume|dark mode)\b", device):
+            return Command("smart_home", {"device": device, "action": on_off})
+    m = re.match(r"(.+?) (on|off|chalu|band) (?:karo|kar do|kardo|karna)$", t)
+    if m and not re.search(r"\b(wifi|bluetooth|computer|pc|laptop|volume|timer|music|gaana)\b", m.group(1)):
+        action = "on" if m.group(2) in ("on", "chalu") else "off"
+        return Command("smart_home", {"device": m.group(1), "action": action})
     # -- volume
     if "volume" in t or "awaaz" in t or "awaz" in t:
         if re.search(r"\b(mute|band)\b", t):

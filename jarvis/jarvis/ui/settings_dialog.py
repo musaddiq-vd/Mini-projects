@@ -40,6 +40,10 @@ class SettingsDialog(QDialog):
         self.tabs.addTab(self._look_tab(), "Look")
         self.tabs.addTab(self._audio_tab(), "Audio")
         self.tabs.addTab(self._features_tab(), "Features")
+        from jarvis.ui.home_tab import HomeTab
+
+        self.home = HomeTab(self.result_settings)
+        self.tabs.addTab(self.home, "🏠 Home")
         self.tabs.addTab(self._memory_tab(), "Memory")
         self.tabs.addTab(self._tools_tab(), "Tools")
         from jarvis.ui.privacy import PrivacyTab
@@ -575,6 +579,7 @@ class SettingsDialog(QDialog):
             if self.autostart.isChecked() != autostart_enabled():
                 set_autostart(self.autostart.isChecked())
         self.privacy.apply_to(s)
+        self.home.apply_to(s)
         self.accept()
 
 
