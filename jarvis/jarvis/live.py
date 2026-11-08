@@ -24,6 +24,7 @@ from jarvis.voicecmd import is_sleep_command, mentions_name
 SILENCE = bytes(MIC_BLOCK * 2)
 ECHO_GUARD_SECONDS = 0.4  # keep the mic muted briefly after Jarvis stops talking
 GOODBYE_SECONDS = 2.5  # let "good night" be heard before going to sleep
+NAME_HELLO_SECONDS = 4.0  # woken by name but no answer/action by then -> say "yes?"
 
 ASLEEP_NOTE = ("(system: asleep) You are now asleep. Stay completely silent and say nothing "
                "until you hear your name or get a '(system: awake)' note.")
@@ -106,8 +107,16 @@ class LiveAssistant:
         if reason == "name":
             self._woken_by_name = True  # the model heard it; it answers on its own
             self._spoke_since_wake = False
+            if self.loop:
+                self.loop.call_later(NAME_HELLO_SECONDS, self._hello_if_quiet)
         else:
             self.send_system(AWAKE_HELLO)
+
+    def _hello_if_quiet(self) -> None:
+        """Only the name was said: answer with a short "yes?" instead of silence."""
+        if self._woken_by_name and self.awake and not self._spoke_since_wake:
+            self.send_system(AWAKE_HELLO)
+        self._woken_by_name = False
 
     @property
     def wake_mode(self) -> str:
@@ -284,6 +293,7 @@ class LiveAssistant:
                 if msg.go_away:
                     return  # server will close soon; reconnect with the handle
                 if msg.tool_call:
+                    self._spoke_since_wake = True  # acting counts as answering
                     self.last_activity = time.monotonic()
                     asyncio.create_task(self._handle_tools(session, msg.tool_call))
                 sc = msg.server_content
@@ -314,15 +324,10 @@ class LiveAssistant:
                             self.last_activity = time.monotonic()
                             self._spoke_since_wake = True
                 if sc.turn_complete:
-                    user_spoke = bool(heard)
                     self._user_turn(heard)
                     if said and self.awake:
                         self.events.emit("assistant", text="".join(said).strip())
                     self.events.emit("caption", who="", text="")
-                    if self._woken_by_name and (user_spoke or self._spoke_since_wake):
-                        if not self._spoke_since_wake:
-                            self.send_system(AWAKE_HELLO)  # woke on the name alone: say "yes?"
-                        self._woken_by_name = False
                     heard, said = [], []
 
     async def _session_once(self) -> None:

@@ -169,8 +169,28 @@ def test_name_alone_gets_a_short_hello(live):
     from jarvis.live import AWAKE_HELLO
 
     live.sleep()
-    run_receive(live, [msg(heard="Jarvis"), msg(done=True)])
-    assert live.awake and live.sent[-1] == AWAKE_HELLO
+    later = []
+
+    async def go():
+        live.loop = asyncio.get_running_loop()
+        live.loop.call_later = lambda delay, fn: later.append(fn)
+        with pytest.raises(Stop):
+            await live._receive(FakeSession([msg(heard="Jarvis"), msg(done=True)]))
+    asyncio.run(go())
+    assert live.awake and len(later) == 1
+    later[0]()
+    assert live.sent[-1] == AWAKE_HELLO
+
+
+def test_no_extra_hello_when_jarvis_acts(live):
+    from jarvis.live import AWAKE_HELLO
+
+    live.sleep()
+    live.loop = None
+    live.wake_up("name")
+    live._spoke_since_wake = True  # e.g. a tool call or speech came first
+    live._hello_if_quiet()
+    assert AWAKE_HELLO not in live.sent
 
 
 def test_so_jao_puts_jarvis_to_sleep_not_the_pc(live, monkeypatch):
