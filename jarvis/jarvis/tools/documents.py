@@ -12,13 +12,19 @@ MAX_CHARS = 30_000
 TEXT_SUFFIXES = {".txt", ".md", ".csv", ".json", ".py", ".js", ".html", ".css", ".log", ".xml", ".yaml", ".yml"}
 
 
-def extract_text(path: Path) -> str:
+def extract_text(path: Path, max_pages: int = 60) -> str:
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         from pypdf import PdfReader
 
         reader = PdfReader(str(path))
-        return "\n\n".join(f"[page {i + 1}]\n{page.extract_text() or ''}" for i, page in enumerate(reader.pages[:60]))
+        if reader.is_encrypted:
+            try:
+                reader.decrypt("")
+            except Exception as exc:
+                raise ValueError("This PDF is password-protected.") from exc
+        return "\n\n".join(f"[page {i + 1}]\n{page.extract_text() or ''}"
+                           for i, page in enumerate(reader.pages[:max_pages]))
     if suffix == ".docx":
         import docx
 

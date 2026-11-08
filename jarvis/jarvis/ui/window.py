@@ -40,6 +40,7 @@ from jarvis.ui.theme import DANGER, OK, STATE_LABELS, WARN
 RESTART_KEYS = {"voice", "speaking_style", "expressive_voice", "live_model", "input_device", "output_device", "wake_word",
                 "assistant_name", "user_name", "api_key", "allow_interrupt"}
 MAX_CHAT_ROWS = 250
+DOC_SUFFIXES = {".pdf", ".docx", ".pptx", ".xlsx", ".xlsm", ".txt", ".md", ".csv"}
 THUMB_WIDTH = 340
 INSTANCE_KEY = f"jarvis-assistant-{getpass.getuser()}"
 log = logging.getLogger("jarvis.ui")
@@ -738,6 +739,13 @@ class MainWindow(QMainWindow):
         chips.addStretch(1)
         rv.addWidget(self.chips)
 
+        self.doc_chip = QPushButton(objectName="chip")
+        self.doc_chip.setToolTip("Questions you ask now are answered from this document. Click to close it.")
+        self.doc_chip.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.doc_chip.clicked.connect(lambda: self.app.registry.call("close_document", {}, self.app.ctx))
+        self.doc_chip.hide()
+        rv.addWidget(self.doc_chip, 0, Qt.AlignmentFlag.AlignLeft)
+
         row = QHBoxLayout()
         self.input = QLineEdit()
         self.input.setPlaceholderText("Type a message, or just talk...  (Ctrl+K)")
@@ -817,6 +825,15 @@ class MainWindow(QMainWindow):
     def dropEvent(self, event) -> None:  # noqa: N802
         paths = [u.toLocalFile() for u in event.mimeData().urls() if u.isLocalFile()]
         if not paths:
+            return
+        doc = next((p for p in paths if Path(p).suffix.lower() in DOC_SUFFIXES), None)
+        if doc and len(paths) == 1:  # one document: open it for questions
+            result = self.app.registry.call("open_document", {"path": doc}, self.app.ctx)
+            if "error" in result:
+                self._add_system(f"⚠ {result['error']}")
+                return
+            self._send(f"I opened the document '{Path(doc).name}'. Give me a two-sentence summary using "
+                       "ask_document, then ask what I want to know about it.")
             return
         for path in paths[:3]:
             if Path(path).suffix.lower() in {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}:
@@ -1035,6 +1052,10 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "document":
+            name = data.get("name", "")
+            self.doc_chip.setText(f"📄  {name.replace('&', '&&')}  ·  ask anything about it   ✕")
+            self.doc_chip.setVisible(bool(name))
         elif kind == "nudge":
             icon = {"eyes": "👀", "water": "💧", "recap": "🌙"}.get(data.get("kind"), "💡")
             self.toast(icon, data.get("text", ""), theme.ACCENT, 8)

@@ -113,6 +113,6 @@ def test_connection_pill(window):
 
 def test_timers_show_in_planner_countdown(window):
     w, app = window
-    w.big_orb.set_timer(9, time.time() + 90, 120, "eggs")
+    w.big_orb.set_timer(9, time.time() + 95, 120, "eggs")
     w.toggle_planner()
     assert "eggs" in labels(w.planner.tim) and "1:3" in labels(w.planner.tim)
