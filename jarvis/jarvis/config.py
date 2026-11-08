@@ -88,6 +88,7 @@ class Settings:
     sound_effects: bool = True
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
+    currency: str = "₹"  # for the expense tracker
     # wellbeing
     evening_recap: bool = True  # a short recap of the day in the evening
     recap_hour: int = 21

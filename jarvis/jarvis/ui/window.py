@@ -542,6 +542,9 @@ class MainWindow(QMainWindow):
         planner = getattr(self, "planner", None)
         if planner is not None and planner.isVisible() and kind in ("tool", "timer", "timer_end"):
             QTimer.singleShot(0, planner.refresh)  # after this event has been handled
+        dashboard = getattr(self, "dashboard", None)
+        if dashboard is not None and dashboard.isVisible() and kind == "tool":
+            QTimer.singleShot(0, dashboard.refresh)
 
     def _forward(self, kind: str, data: dict) -> None:
         """Worker thread -> Qt thread. After the window is gone, events are dropped quietly."""
@@ -644,6 +647,10 @@ class MainWindow(QMainWindow):
         self.header_label = QLabel("CONVERSATION", objectName="section")
         header.addWidget(self.header_label)
         header.addStretch(1)
+        dash_btn = QPushButton("📊", objectName="small")
+        dash_btn.setToolTip("Dashboard: week, habits, money, goals (Ctrl+D)")
+        dash_btn.clicked.connect(lambda: self.toggle_dashboard())
+        header.addWidget(dash_btn)
         planner_btn = QPushButton("📋", objectName="small")
         planner_btn.setToolTip("Planner: to-dos, reminders, timers, routines (Ctrl+P)")
         planner_btn.clicked.connect(self.toggle_planner)
@@ -781,7 +788,7 @@ class MainWindow(QMainWindow):
                          ("Ctrl+L", self._clear_chat), ("Ctrl+,", self.open_settings),
                          ("Ctrl+K", self.input.setFocus), ("Ctrl+Shift+M", self.toggle_mini),
                          ("Ctrl+F", self.open_search), ("Esc", self._escape), ("F1", self.toggle_help),
-                         ("Ctrl+P", self.toggle_planner)):
+                         ("Ctrl+P", self.toggle_planner), ("Ctrl+D", self.toggle_dashboard)):
             QShortcut(QKeySequence(keys), self, activated=fn)
 
     def _open_logs(self) -> None:
@@ -888,6 +895,11 @@ class MainWindow(QMainWindow):
         elif action == "show_achievements":
             if not (getattr(self, "badges", None) and self.badges.isVisible()):
                 self.toggle_badges()
+            return
+        elif action == "dashboard":
+            tab = theme_name if theme_name in ("week", "habits", "money", "goals") else None
+            if not (getattr(self, "dashboard", None) and self.dashboard.isVisible()) or tab:
+                self.toggle_dashboard(tab or "week")
             return
         elif action == "clear_chat":
             self.chat.clear()
@@ -1257,6 +1269,13 @@ class MainWindow(QMainWindow):
             self.help = HelpPanel(self.right_panel, self._send)
         self.help.toggle()
 
+    def toggle_dashboard(self, tab: str | None = None) -> None:
+        if getattr(self, "dashboard", None) is None:
+            from jarvis.ui.dashboard import DashboardPanel
+
+            self.dashboard = DashboardPanel(self.right_panel, self.app, self._send)
+        self.dashboard.toggle(tab)
+
     def toggle_planner(self) -> None:
         if getattr(self, "planner", None) is None:
             from jarvis.ui.planner import PlannerPanel
@@ -1272,7 +1291,9 @@ class MainWindow(QMainWindow):
         self.badges.toggle()
 
     def _escape(self) -> None:
-        if getattr(self, "planner", None) is not None and self.planner.isVisible():
+        if getattr(self, "dashboard", None) is not None and self.dashboard.isVisible():
+            self.dashboard.hide()
+        elif getattr(self, "planner", None) is not None and self.planner.isVisible():
             self.planner.hide()
         elif getattr(self, "badges", None) is not None and self.badges.isVisible():
             self.badges.hide()

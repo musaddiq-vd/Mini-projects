@@ -42,7 +42,7 @@ class BackgroundServices:
     # -- lifecycle -----------------------------------------------------------
     def start(self) -> None:
         for target in (self._hardware_loop, self._topic_loop, self._proactive_loop, self._recap_loop,
-                       self._health_loop):
+                       self._health_loop, self._goal_loop):
             threading.Thread(target=target, daemon=True).start()
 
     def stop(self) -> None:
@@ -173,6 +173,28 @@ class BackgroundServices:
                              "warm recap of their day, then ask what they'd like to do tomorrow.")
             except Exception as exc:  # one bad tick must not end the loop
                 self.app.events.emit("log", text=f"[recap] {exc}")
+
+    # -- goal follow-up --------------------------------------------------------------------
+    def goal_checkin_due(self, now: datetime | None = None) -> str | None:
+        """Once a day, in the daytime, when awake and free: the follow-up instruction for a due goal step."""
+        from jarvis.tools.goals import checkin_instruction
+
+        now = now or datetime.now()
+        if not (10 <= now.hour < 20) or self.app.state.get("last_goal_checkin") == now.date().isoformat():
+            return None
+        if self.sleeping or self._focusing() or self._practicing():
+            return None
+        return checkin_instruction(now.date())
+
+    def _goal_loop(self) -> None:
+        while not self._stop.wait(120):
+            try:
+                text = self.goal_checkin_due()
+                if text:
+                    self.app.state.set("last_goal_checkin", date.today().isoformat())
+                    self.say(text)
+            except Exception as exc:
+                self.app.events.emit("log", text=f"[goals] {exc}")
 
     # -- health nudges ---------------------------------------------------------------------
     HEALTH_TICK = 30

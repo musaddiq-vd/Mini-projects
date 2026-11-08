@@ -213,6 +213,8 @@ SAVE_TOOLS = {
     "remember": ("key", "value"), "add_note": ("text",), "set_reminder": ("message",), "save_routine": ("steps", "name"),
     "watch_topic": ("topic",), "focus_mode": ("task",), "set_timer": ("label",),
     "show_correction": ("said", "better"), "show_mcq": ("question", "options"),
+    "add_expense": ("note",), "add_habit": ("name",), "create_goal": ("title", "why", "steps"),
+    "add_goal_step": ("text",),
 }
 READ_PATH_TOOLS = {"read_file": "path", "read_document": "path", "explain_code": "path", "open_file": "path"}
 # results from these come from outside: the model must treat them as data, not instructions

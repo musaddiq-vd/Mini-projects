@@ -63,6 +63,9 @@ class PrivacyTab(QWidget):
             ("memory", "🧠  Things Jarvis remembers about you", self._clear_memory),
             ("lists", "📝  Notes, reminders and routines", self._clear_lists),
             ("practice", "🎓  Language practice progress", self._clear_practice),
+            ("money", "💰  Expenses and budgets", lambda: self._clear_file("expenses")),
+            ("habits", "✅  Habits", lambda: self._clear_file("habits")),
+            ("goals", "🎯  Goals", lambda: self._clear_file("goals")),
             ("cache", "🖼  Copies of what Jarvis looked at", self._clear_cache),
             ("logs", "📄  Logs (for fixing problems)", self._clear_logs),
         ]
@@ -129,9 +132,27 @@ class PrivacyTab(QWidget):
             "practice": _human(_size(home / "english.json")) if (home / "english.json").exists() else "nothing yet",
             "cache": f"{_count(len(cache), 'image')} · {_human(sum(_size(f) for f in cache))}",
             "logs": _human(_size(home / "logs")),
+            "money": self._file_fact("expenses", "items", "expense"),
+            "habits": self._file_fact("habits", "habits", "habit"),
+            "goals": self._file_fact("goals", "goals", "goal"),
         }
         for key, (info, btn) in self.rows.items():
             info.setText(facts[key])
+
+    @staticmethod
+    def _file_fact(name: str, key: str, word: str) -> str:
+        from jarvis.datafile import store
+
+        st = store(name, {key: []})
+        if not st.exists():
+            return "nothing yet"
+        return f"{_count(len(st.load()[key]), word)} · {_human(_size(st.path))}"
+
+    @staticmethod
+    def _clear_file(name: str) -> None:
+        from jarvis.datafile import store
+
+        store(name, {}).delete()
 
     def _confirm(self, what: str, action: Callable[[], None]) -> None:
         answer = QMessageBox.question(self, "Delete?", f"Permanently delete {what}?\nThis can't be undone.",
@@ -195,6 +216,8 @@ class PrivacyTab(QWidget):
         for fn in (self._clear_history, self._clear_memory, self._clear_lists, self._clear_practice,
                    self._clear_cache, self._clear_logs):
             fn()
+        for name in ("expenses", "habits", "goals"):
+            self._clear_file(name)
         for key in ("last_session_summary", "seen_headlines", "watch_topics"):
             self.app.state.set(key, [] if key == "watch_topics" else ({} if key == "seen_headlines" else None))
 

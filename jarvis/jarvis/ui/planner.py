@@ -291,9 +291,19 @@ class PlannerPanel(QFrame):
                              f"⏱ {len(self.timers())}   🔁 {len(routines)}")
 
     def _refresh_timers(self) -> None:
-        self.tim.clear()
         now = time.time()
         timers = sorted(self.timers().items(), key=lambda kv: kv[1][0])
+        ids = [tid for tid, _ in timers]
+        rows = getattr(self, "_timer_rows", {})
+        if ids and ids == list(rows):  # same timers: just move the countdowns (no flicker)
+            for tid, (ends, total, label) in timers:
+                lab, bar = rows[tid]
+                frac = max(0.0, min(1.0, (ends - now) / total)) if total else 0
+                lab.setText(f"<b>{_left(ends - now)}</b>  ·  {html.escape(label or 'timer')}")
+                bar.setFixedSize(int(80 * frac) + 2, 6)
+            return
+        self.tim.clear()
+        self._timer_rows = {}
         for tid, (ends, total, label) in timers:
             row = QHBoxLayout()
             frac = max(0.0, min(1.0, (ends - now) / total)) if total else 0
@@ -305,6 +315,7 @@ class PlannerPanel(QFrame):
             row.addWidget(bar)
             row.addWidget(_small("■", "Stop", lambda _, i=tid: self._call("cancel_timer", {"id": i})))
             self.tim.body.addLayout(row)
+            self._timer_rows[tid] = (lab, bar)
         if not timers:
             self.tim.empty("No timers running.")
         self.tim.count.setText(f"{len(timers)}")

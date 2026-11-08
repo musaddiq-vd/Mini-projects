@@ -53,6 +53,11 @@ def start_timer(ctx, seconds: float, label: str, focus: bool = False) -> int:
         if focus:
             if ctx.state is not None:
                 ctx.state.set("focus_until", 0)
+                from datetime import date as _date
+
+                log = (ctx.state.get("focus_log", []) or [])[-400:]  # finished focus sessions, for the dashboard
+                log.append({"date": _date.today().isoformat(), "minutes": round(seconds / 60)})
+                ctx.state.set("focus_log", log)
             ctx.notify(f"Focus session over ({label}). Great work! Suggest a 5 minute break.")
         else:
             ctx.notify(f"Timer done: {label}" if label else "Timer done!")

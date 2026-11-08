@@ -27,6 +27,10 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 🌦 **Rich cards** | Weather shows as a card (big temperature, condition, high/low, rain, humidity, wind); web and news results as clickable link cards (only http/https links, with their site shown). |
 | 🌙 **Evening recap** | In the evening (from 9 pm by default) - or any time you say "aaj ka recap do" - Jarvis sums up your day: what you got done, what's open, what's coming, badges, practice; then asks about tomorrow. |
 | 💧 **Health nudges** | While you use the PC: a 20-20-20 eye break and stretch every 50 minutes and water every 90 (stepping away resets the clock; quiet at night, in focus and practice mode). Only "seconds since last key/mouse input" is read - nothing is recorded. |
+| 💰 **Expenses** | "100 ki chai pi", "kal 450 Uber" -> saved by category; "is mahine kitna kharcha hua?"; monthly budgets with warnings at 80% and 100%; undo. |
+| ✅ **Habits** | "Gym ko daily habit bana do", "2 glass paani piya" -> daily or weekday habits with targets, streaks (weekends don't break weekday habits) and a 7-day view. |
+| 🎯 **Goal coach** | "Mujhe 2 mahine mein 5 km daudna hai" -> Jarvis plans small dated steps until the deadline, tracks progress and follows up once a day on the step that's due. |
+| 📊 **Dashboard** | `Ctrl+D` / 📊 / "dashboard dikhao": your week (messages, tasks, focus minutes, spending), habits with +1 buttons, money with budget bar and charts, goals with tickable steps. |
 | 📋 **Planner** | `Ctrl+P` or the 📋 button: tick and add to-dos, add or cancel reminders ("6:30 pm" / "20 min"), quick 1/5/10/25-minute timers and a focus session, run or delete routines. Guardrails and undo apply here too. |
 | 📶 **Connection pill** | Under the clock: Online (with the model), Connecting, Reconnecting or Offline at a glance. |
 | 📅 **Today strip** | Under the orb: next reminder, running timer, open to-dos, streak and badges - click a chip to ask about it. |

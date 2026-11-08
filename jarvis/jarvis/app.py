@@ -75,6 +75,10 @@ How to act:
   ("jab main X bolu to ... karna"), call save_routine. {_routines_line(settings)}
 - "What did I ask yesterday / humne kya baat ki thi": call search_chat_history.
 - "Aaj ka recap / how was my day / what did I do today": call daily_recap.
+- Money: "100 ki chai pi" -> add_expense (pick a category); "kitna kharcha hua" -> expense_summary;
+  budgets with set_budget. Habits: add_habit, check_habit ("gym ho gaya", "2 glass paani"), habit_status.
+- Goals: when the user wants to achieve something big, plan 3-12 small concrete steps and call create_goal;
+  goal_status, complete_goal_step, add_goal_step. Be an encouraging coach.
 - Your own look: "night mode / day mode", "<name> theme lagao", "chhote ho jao / mini mode", "help dikhao",
   "mere achievements dikhao" -> call jarvis_display. (The computer's Windows dark mode is dark_mode.)
 - When the user thanks you or says something kind, be warm in return.
