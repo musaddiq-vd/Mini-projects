@@ -31,6 +31,7 @@ from jarvis.ui.fx import AnimatedBackground, ToastHost, Typewriter, add_glow, gr
 from jarvis.ui.hotkey import HOTKEY_TEXT, GlobalHotkey
 from jarvis.ui.mini import MiniWindow, OrbGroup
 from jarvis.ui.orb import Orb
+from jarvis.ui.richtext import has_markup, to_html
 from jarvis.ui.settings_dialog import SettingsDialog, apply_settings
 from jarvis.ui import theme
 from jarvis.ui.theme import DANGER, OK, STATE_LABELS, WARN
@@ -275,18 +276,92 @@ class ChatView(QScrollArea):
         self._anims: list[QPropertyAnimation] = []
         self._stick = True
         self.animate = True  # off while old history is put back
+        self._last_day = None
+        self.query = ""
         self.verticalScrollBar().rangeChanged.connect(self._on_range)
         self.verticalScrollBar().valueChanged.connect(self._on_scroll)
+        self.jump = QPushButton("↓  Latest", self.viewport(), objectName="jump")
+        self.jump.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.jump.clicked.connect(self.scroll_to_end)
+        self.jump.hide()
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._chat_menu)
+
+    def scroll_to_end(self) -> None:
+        self._stick = True
+        bar = self.verticalScrollBar()
+        anim = QPropertyAnimation(bar, b"value", self)
+        anim.setDuration(350)
+        anim.setEndValue(bar.maximum())
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.start()
+        self._scroll_anim = anim
+        self.jump.hide()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self.jump.adjustSize()
+        self.jump.move(self.viewport().width() - self.jump.width() - 14,
+                       self.viewport().height() - self.jump.height() - 10)
 
     def _on_scroll(self, value: int) -> None:
         self._stick = value >= self.verticalScrollBar().maximum() - 30
+        if self._stick:
+            self.jump.hide()
+
+    def _chat_menu(self, pos) -> None:
+        menu = QMenu(self)
+        target = self.childAt(pos)
+        bubble_text = None
+        while target is not None and target is not self:
+            if getattr(target, "_copy_text", None) is not None:
+                bubble_text = target._copy_text
+                break
+            target = target.parentWidget()
+        if bubble_text is not None:
+            menu.addAction("Copy message").triggered.connect(lambda: QApplication.clipboard().setText(bubble_text))
+        menu.addAction("Copy whole chat").triggered.connect(
+            lambda: QApplication.clipboard().setText(self.toPlainText()))
+        menu.exec(self.mapToGlobal(pos))
+
+    def _day_separator(self, when: datetime) -> None:
+        day = when.date()
+        if day == self._last_day:
+            return
+        self._last_day = day
+        today = datetime.now().date()
+        text = "TODAY" if day == today else "YESTERDAY" if (today - day).days == 1 else when.strftime("%a, %d %b").upper()
+        line = QLabel(f"──────   {text}   ──────", objectName="dayline")
+        line.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        row = self._add_row(line, "center", animate=False)
+        row._kind = "day"
+
+    def filter(self, query: str) -> int:
+        """Show only rows containing the query; returns how many messages match."""
+        self.query = query.strip().lower()
+        matches = 0
+        for i in range(1, self.col.count()):
+            row = self.col.itemAt(i).widget()
+            if row is None:
+                continue
+            if not self.query:
+                row.setVisible(True)
+                continue
+            if getattr(row, "_kind", "") == "day":
+                row.setVisible(False)
+                continue
+            hit = self.query in getattr(row, "_search", "").lower()
+            row.setVisible(hit)
+            matches += hit
+        return matches
 
     def _on_range(self, _min: int, maximum: int) -> None:
         if self._stick:
             self.verticalScrollBar().setValue(maximum)
 
-    def _add_row(self, widget: QWidget, align: str) -> None:
+    def _add_row(self, widget: QWidget, align: str, text: str = "", animate: bool = True) -> QWidget:
         row = QWidget(objectName="chatRow")
+        row._search = text
         h = QHBoxLayout(row)
         h.setContentsMargins(0, 0, 0, 0)
         if align == "right":
@@ -299,8 +374,14 @@ class ChatView(QScrollArea):
             old = self.col.takeAt(1).widget()
             if old:
                 old.deleteLater()
-        if self.animate:
-            grow_in(row)
+        if self.query and self.query not in text.lower():
+            row.hide()  # a search is open: new rows that don't match stay hidden
+        if not self._stick and self.animate:
+            self.jump.show()
+            self.jump.raise_()
+        if not (self.animate and animate):
+            return row
+        grow_in(row)
         effect = QGraphicsOpacityEffect(row)
         row.setGraphicsEffect(effect)
         anim = QPropertyAnimation(effect, b"opacity", self)
@@ -311,25 +392,28 @@ class ChatView(QScrollArea):
         anim.finished.connect(lambda: (row.setGraphicsEffect(None), self._anims.remove(anim)))
         self._anims.append(anim)
         anim.start()
-        self._stick = True
+        self._stick = self._stick or not self.animate
+        return row
 
     def _max_width(self, share: float) -> int:
         return max(240, int(self.viewport().width() * share))
 
     @staticmethod
-    def _fit(label: QLabel, max_width: int) -> None:
+    def _fit(label: QLabel, max_width: int, text: str | None = None) -> None:
         """Short text gets a snug label, long text wraps at max_width (QLabel can't decide alone)."""
-        longest = max((label.fontMetrics().horizontalAdvance(line) for line in label.text().splitlines()),
-                      default=0)
+        text = label.text() if text is None else text
+        longest = max((label.fontMetrics().horizontalAdvance(line) for line in text.splitlines()), default=0)
         label.setMinimumWidth(min(longest + 6, max_width))
 
     def add_message(self, who: str, text: str, mine: bool, when: datetime | None = None,
                     typewriter: bool = False) -> None:
+        when = when or datetime.now()
+        self._day_separator(when)
         bubble = QFrame(objectName="bubbleMe" if mine else "bubbleAi")
+        bubble._copy_text = text
         v = QVBoxLayout(bubble)
         v.setContentsMargins(12, 8, 12, 10)
         v.setSpacing(2)
-        when = when or datetime.now()
         stamp = when.strftime("%I:%M %p").lstrip("0")
         if when.date() != datetime.now().date():
             stamp = when.strftime("%d %b, ") + stamp
@@ -337,18 +421,27 @@ class ChatView(QScrollArea):
         if mine:
             name.setAlignment(Qt.AlignmentFlag.AlignRight)
         v.addWidget(name)
-        msg = QLabel(text, objectName="msg")
-        msg.setTextFormat(Qt.TextFormat.PlainText)
+        msg = QLabel(objectName="msg")
         msg.setWordWrap(True)
-        msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        msg.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)  # the chat's own menu (Copy) shows
+        html_text = to_html(text, theme.readable(theme.ACCENT)) if has_markup(text) else None
+        if html_text is not None:
+            msg.setTextFormat(Qt.TextFormat.RichText)
+            msg.setText(html_text)
+            msg.setOpenExternalLinks(True)
+            msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        else:
+            msg.setTextFormat(Qt.TextFormat.PlainText)
+            msg.setText(text)
+            msg.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         v.addWidget(msg)
         width = self._max_width(0.78)
-        self._fit(msg, width - 26)
+        self._fit(msg, width - 26, text)
         bubble.setMaximumWidth(width)
         bubble.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Preferred)
-        self._add_row(bubble, "right" if mine else "left")
+        self._add_row(bubble, "right" if mine else "left", text=f"{who} {text}")
         if typewriter and self.animate:
-            msg._typewriter = Typewriter(msg, text)
+            msg._typewriter = Typewriter(msg, text, final_html=html_text)
 
     def add_tool(self, name: str, args: dict, result: dict) -> None:
         ok = "error" not in result
@@ -368,7 +461,7 @@ class ChatView(QScrollArea):
         width = self._max_width(0.9)
         self._fit(chip, width - 22)
         chip.setMaximumWidth(width)
-        self._add_row(chip, "left")
+        self._add_row(chip, "left", text=line)
 
     def add_image(self, path: str, caption: str, accent: str) -> None:
         box = QFrame(objectName="bubbleAi")
@@ -379,24 +472,30 @@ class ChatView(QScrollArea):
         cap = QLabel(caption, objectName="muted")
         cap.setTextFormat(Qt.TextFormat.PlainText)
         v.addWidget(cap)
-        self._add_row(box, "left")
+        self._add_row(box, "left", text=caption)
 
     def add_system(self, text: str) -> None:
         label = QLabel(text, objectName="muted")
         label.setTextFormat(Qt.TextFormat.PlainText)
         label.setWordWrap(True)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._add_row(label, "center")
+        self._add_row(label, "center", text=text)
 
     def toPlainText(self) -> str:  # noqa: N802 - same name as QTextBrowser
         """All shown text, top to bottom."""
         def full(label: QLabel) -> str:  # a message still typing itself out counts in full
             writer = getattr(label, "_typewriter", None)
-            return writer.text if writer else label.text()
+            if writer:
+                return writer.text
+            parent = label.parentWidget()
+            if label.textFormat() == Qt.TextFormat.RichText and getattr(parent, "_copy_text", None) is not None:
+                return parent._copy_text
+            return label.text()
 
         return "\n".join(full(label) for label in self.widget().findChildren(QLabel))
 
     def clear(self) -> None:
+        self._last_day = None
         while self.col.count() > 1:
             w = self.col.takeAt(1).widget()
             if w:
@@ -510,6 +609,14 @@ class MainWindow(QMainWindow):
         header = QHBoxLayout()
         header.addWidget(QLabel("CONVERSATION", objectName="section"))
         header.addStretch(1)
+        search_btn = QPushButton("🔍", objectName="small")
+        search_btn.setToolTip("Search the chat (Ctrl+F)")
+        search_btn.clicked.connect(self.open_search)
+        header.addWidget(search_btn)
+        export_btn = QPushButton("⤓", objectName="small")
+        export_btn.setToolTip("Save the conversation to Documents > Jarvis Chats")
+        export_btn.clicked.connect(self.export_chat)
+        header.addWidget(export_btn)
         self.mode_btn = QPushButton("🌙", objectName="small")
         self.mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.mode_btn.clicked.connect(self.cycle_theme_mode)
@@ -539,6 +646,22 @@ class MainWindow(QMainWindow):
         self._banner_timer.timeout.connect(lambda: self._answer_confirm(False, timed_out=True))
         rv.addWidget(self.banner)
 
+        self.search_bar = QFrame(objectName="card")
+        sb = QHBoxLayout(self.search_bar)
+        sb.setContentsMargins(10, 4, 6, 4)
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search messages...")
+        self.search.textChanged.connect(self._on_search)
+        self.search.setStyleSheet("background: transparent; border: none; padding: 4px;")
+        sb.addWidget(QLabel("🔍"))
+        sb.addWidget(self.search, 1)
+        self.search_count = QLabel("", objectName="muted")
+        sb.addWidget(self.search_count)
+        close_search = QPushButton("✕", objectName="small")
+        close_search.clicked.connect(self.close_search)
+        sb.addWidget(close_search)
+        self.search_bar.hide()
+        rv.addWidget(self.search_bar)
         self.chat = ChatView()
         rv.addWidget(self.chat, 1)
         self.typing = TypingDots()
@@ -604,7 +727,8 @@ class MainWindow(QMainWindow):
     def _shortcuts(self) -> None:
         for keys, fn in (("Ctrl+M", self.mute_btn.toggle), ("Ctrl+Space", self._toggle_sleep),
                          ("Ctrl+L", self._clear_chat), ("Ctrl+,", self.open_settings),
-                         ("Ctrl+K", self.input.setFocus), ("Ctrl+Shift+M", self.toggle_mini)):
+                         ("Ctrl+K", self.input.setFocus), ("Ctrl+Shift+M", self.toggle_mini),
+                         ("Ctrl+F", self.open_search), ("Esc", self.close_search)):
             QShortcut(QKeySequence(keys), self, activated=fn)
 
     def _open_logs(self) -> None:
@@ -883,6 +1007,45 @@ class MainWindow(QMainWindow):
     def _add_system(self, text: str) -> None:
         self.chat.add_system(text)
 
+    # -- search and export -------------------------------------------------------
+    def open_search(self) -> None:
+        self.search_bar.show()
+        self.search.setFocus()
+        self.search.selectAll()
+
+    def close_search(self) -> None:
+        if not self.search_bar.isHidden():
+            self.search.clear()
+            self.search_bar.hide()
+            self.chat.filter("")
+            self.chat.scroll_to_end()
+
+    def _on_search(self, text: str) -> None:
+        n = self.chat.filter(text)
+        self.search_count.setText(f"{n} match{'es' if n != 1 else ''}" if text.strip() else "")
+
+    def export_chat(self) -> Path | None:
+        items = self.history.recent(5000)
+        if not items:
+            self.toast("⤓", "Nothing to save yet.", theme.MUTED)
+            return None
+        folder = Path.home() / "Documents" / "Jarvis Chats"
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / f"Jarvis chat {datetime.now():%Y-%m-%d %H-%M}.md"
+        name = self.app.settings.assistant_name
+        lines = [f"# Conversation with {name}", ""]
+        last_day = None
+        for item in items:
+            when = datetime.fromtimestamp(item.get("t", 0) or 0)
+            if when.date() != last_day:
+                last_day = when.date()
+                lines += ["", f"## {when:%A, %d %B %Y}", ""]
+            who = "You" if item["role"] == "user" else name
+            lines.append(f"**{who}** ({when:%I:%M %p}): {item['text']}  ")
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        self.toast("⤓", f"Saved to Documents › Jarvis Chats ({len(items)} messages)", OK)
+        return path
+
     def _clear_chat(self) -> None:
         self.chat.clear()
         self.history.clear()
@@ -912,6 +1075,7 @@ class MainWindow(QMainWindow):
         self._send(text)
 
     def _send(self, text: str) -> None:
+        self.chat.scroll_to_end()
         if not self.assistant:
             self._add_system("Not connected yet - check Settings.")
             return

@@ -251,9 +251,10 @@ def _alive(widget) -> bool:
 class Typewriter(QObject):
     """Reveals a label's text letter by letter (quick: never longer than ~1 s)."""
 
-    def __init__(self, label: QLabel, text: str, parent=None):
+    def __init__(self, label: QLabel, text: str, parent=None, final_html: str | None = None):
         super().__init__(parent or label)
-        self.label, self.text = label, text
+        self.label, self.text, self.final_html = label, text, final_html
+        label.setTextFormat(Qt.TextFormat.PlainText)
         self.pos = 0
         self.duration = min(0.9, 0.25 + len(text) * 0.008)  # seconds, by the clock (not by frames)
         self.started = time.monotonic()
@@ -270,11 +271,16 @@ class Typewriter(QObject):
         cursor = "▍" if self.pos < len(self.text) else ""
         self.label.setText(self.text[: self.pos] + cursor)
         if self.pos >= len(self.text):
-            self._timer.stop()
+            self.finish()
 
     def finish(self) -> None:
         self._timer.stop()
-        if _alive(self.label):
+        if not _alive(self.label):
+            return
+        if self.final_html is not None:  # formatting (bold, links...) appears once typing is done
+            self.label.setTextFormat(Qt.TextFormat.RichText)
+            self.label.setText(self.final_html)
+        else:
             self.label.setText(self.text)
 
 
