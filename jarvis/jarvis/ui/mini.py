@@ -223,9 +223,10 @@ class MiniWindow(QWidget):
     def _render(self) -> None:
         while self.bubbles.count():
             item = self.bubbles.takeAt(0)
-            if item.widget():
-                item.widget().setParent(None)  # gone right away, not on the next event loop turn
-                item.widget().deleteLater()
+            old = item.widget()
+            if old is not None:
+                old.setParent(None)  # gone right away, not on the next event loop turn
+                old.deleteLater()
         shown = list(self.messages)[-MAX_MESSAGES:]
         self.empty.setVisible(not shown)
         self.bubbles.addStretch(1)
