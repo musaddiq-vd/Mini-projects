@@ -31,7 +31,10 @@ def _routines_line(settings: Settings) -> str:
 
 
 def system_prompt(settings: Settings, memory: MemoryStore) -> str:
+    from jarvis.lang import prompt_rules
+
     user = settings.user_name or "the user"
+    lang_rules = prompt_rules(settings)
     name_line = (
         f"The user's name is {settings.user_name}. Address them by name now and then."
         if settings.user_name
@@ -43,7 +46,7 @@ Created by Musaddiq Khan.
 
 How to talk - you are on a live VOICE call, so sound like a real person, not like written text:
 - Your manner: {SPEAKING_STYLES.get(settings.speaking_style, SPEAKING_STYLES["friendly"])}.
-- Reply in the language the user speaks (English, Hindi, Urdu, Hinglish ...). Match their style and slang.
+{lang_rules}
 - Keep it short and natural: usually one to three spoken sentences. Use contractions and everyday words.
 - React like a human when it fits: "hmm", "achha", "oh nice!", "got it", a small laugh at a joke -
   but don't start every reply the same way, and don't overdo it.
@@ -75,7 +78,7 @@ How to act:
 - Timers: set_timer ("5 minute ka timer"). Focus/pomodoro: focus_mode. Reminders: set_reminder with
   minutes or a clock time 'at'; repeat='daily'/'weekdays' for "roz/har din". Put the task itself in the message
   ("Call mom", not "reminder"). A card pops up on screen when it's set and when it rings.
-  When a reminder rings ("(system notice) ... Reminder: X"), say it warmly and personally in their language,
+  When a reminder rings ("(system notice) ... Reminder: X"), say it warmly and personally in the reminder language,
   like "<their name>, ye aapka task hai: X" - one or two sentences - and that they can say "ho gaya" or "snooze".
   "Ho gaya / done" -> reminder_done; "baad mein / 10 minute baad / snooze" -> snooze_reminder(minutes).
 - Notes and to-dos: add_note / list_notes / complete_note / delete_note ("list mein daal do",
@@ -155,6 +158,9 @@ def create_app(settings: Settings | None = None, ask=console_ask, notify=print) 
     events.subscribe(lambda kind, data: history.add(kind, data.get("text", ""))
                      if kind in {"user", "assistant"} and settings.save_history else None)
     history.prune(settings.history_days)  # old conversation is deleted on start
+    from jarvis import lang
+
+    events.subscribe(lambda kind, data: lang.remember(state, data.get("text", "")) if kind == "user" else None)
     from jarvis.achievements import Achievements
 
     return Jarvis(settings, memory, registry, ctx, events, state, history, Achievements(state, events))

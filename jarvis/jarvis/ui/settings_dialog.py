@@ -96,6 +96,23 @@ class SettingsDialog(QDialog):
         self.expressive = QCheckBox("Expressive voice - the tone follows the mood of the conversation")
         self.expressive.setChecked(s.expressive_voice)
         form.addRow("", self.expressive)
+        from jarvis.lang import LANGUAGES, label
+
+        self.reply_lang = QComboBox()
+        self.reply_lang.addItem("🌐  " + label("auto"), "auto")
+        for code in LANGUAGES:
+            self.reply_lang.addItem(label(code), code)
+        self.reply_lang.setCurrentIndex(max(0, self.reply_lang.findData(s.reply_language)))
+        self.reply_lang.setToolTip("The language Jarvis speaks and writes in. Auto follows whatever you speak.")
+        form.addRow("Jarvis speaks", self.reply_lang)
+        self.reminder_lang = QComboBox()
+        self.reminder_lang.addItem("↻  " + label("same"), "same")
+        self.reminder_lang.addItem("🌐  " + label("auto"), "auto")
+        for code in LANGUAGES:
+            self.reminder_lang.addItem(label(code), code)
+        self.reminder_lang.setCurrentIndex(max(0, self.reminder_lang.findData(s.reminder_language)))
+        self.reminder_lang.setToolTip("The language of reminder pop-ups and of Jarvis saying them.")
+        form.addRow("Reminders in", self.reminder_lang)
         self.city = QLineEdit(s.city)
         self.city.setPlaceholderText("For weather in the morning briefing")
         form.addRow("City", self.city)
@@ -403,6 +420,8 @@ class SettingsDialog(QDialog):
         s.voice = self.voice.currentData() or "Charon"
         s.speaking_style = self.style.currentData() or "friendly"
         s.expressive_voice = self.expressive.isChecked()
+        s.reply_language = self.reply_lang.currentData() or "auto"
+        s.reminder_language = self.reminder_lang.currentData() or "same"
         s.city = self.city.text().strip()
         s.live_model = self.live_model.text().strip() or Settings().live_model
         s.text_model = self.text_model.text().strip() or Settings().text_model

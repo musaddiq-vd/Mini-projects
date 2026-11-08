@@ -19,6 +19,7 @@ from PyQt6.QtGui import QColor, QFont, QGuiApplication, QLinearGradient, QPainte
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QMenu, QPushButton, QVBoxLayout, QWidget
 
 WIDTH = 360
+MAX_WIDTH = 460  # long words (Tamil, German...) may widen a card this far
 MARGIN = 16
 DUE_SECONDS = 15 * 60
 SET_SECONDS = 6
@@ -33,16 +34,21 @@ def clock(ts: float) -> str:
     return text
 
 
-def until(ts: float, now: float | None = None) -> str:
+def until(ts: float, now: float | None = None, lang: str = "en") -> str:
+    from jarvis.lang import words
+
+    w = words(lang)
     mins = max(0, round((ts - (now or time.time())) / 60))
     if mins < 1:
-        return "in under a minute"
+        return w["under_min"]
     if mins < 60:
-        return f"in {mins} min"
+        return w["in_min"].format(n=mins)
     h, m = divmod(mins, 60)
     if h < 24:
-        return f"in {h} h {m} min" if m else f"in {h} h"
-    return f"in {h // 24} day{'s' if h >= 48 else ''}"
+        return w["in_hm"].format(h=h, m=m) if m else w["in_h"].format(h=h)
+    days = h // 24
+    text = w["in_days"].format(d=days)
+    return text.replace("days", "day") if lang == "en" and days == 1 else text
 
 
 def on_accent(accent: str) -> str:
@@ -111,13 +117,17 @@ class Bell(QWidget):
 
 class ReminderPopup(QWidget):
     def __init__(self, kind: str, rid: int, message: str, due: float, accent: str, *,
-                 late: bool = False, repeat: str = "", on_done: Callable[[int], None] | None = None,
+                 late: bool = False, repeat: str = "", lang: str = "en", on_done: Callable[[int], None] | None = None,
                  on_snooze: Callable[[int, int], None] | None = None, on_cancel: Callable[[int], None] | None = None,
                  on_open: Callable[[], None] | None = None, on_closed: Callable[[ReminderPopup], None] | None = None):
         super().__init__(None, Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint
                          | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.WindowDoesNotAcceptFocus)
+        from jarvis.lang import RTL, words
         from jarvis.ui import theme
 
+        w = words(lang)
+        self.lang = lang
+        latin = lang in ("en", "hinglish", "es", "fr", "de")  # letter-spacing breaks joined scripts
         self.kind, self.rid, self.message, self.due = kind, rid, message, due
         self.accent = QColor(accent)
         self.on_closed = on_closed
@@ -131,7 +141,8 @@ class ReminderPopup(QWidget):
         text, muted = theme.TEXT, theme.MUTED
         self.setStyleSheet(
             f"QLabel {{ background: transparent; color: {text}; }}"
-            f"QLabel#rpHead {{ color: {accent}; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; }}"
+            f"QLabel#rpHead {{ color: {accent}; font-size: 11px; font-weight: 700;"
+            f" letter-spacing: {'1.5px' if latin else '0px'}; }}"
             f"QLabel#rpMuted {{ color: {muted}; font-size: 12px; }}"
             f"QPushButton {{ background: transparent; color: {text}; border: 1px solid {muted}; border-radius: 9px;"
             "  padding: 6px 12px; font-size: 12px; }"
@@ -153,14 +164,16 @@ class ReminderPopup(QWidget):
         head_row = QHBoxLayout()
         head_row.setSpacing(4)
         if kind == "due":
-            head = "REMINDER" + (" · MISSED" if late else "") + f" · {clock(due)}"
+            head = w["reminder"] + (f" · {w['missed']}" if late else "") + f" · {clock(due)}"
         else:
-            head = "REMINDER SET" + (" · DAILY" if repeat == "daily" else " · WEEKDAYS" if repeat == "weekdays" else "")
+            head = w["reminder_set"] + (f" · {w['daily']}" if repeat == "daily"
+                                        else f" · {w['weekdays']}" if repeat == "weekdays" else "")
         self.head = QLabel(head, objectName="rpHead")
+        self.head.setWordWrap(True)
         head_row.addWidget(self.head, 1)
         close = QPushButton("✕", objectName="rpClose")
         close.setCursor(Qt.CursorShape.PointingHandCursor)
-        close.setToolTip("Hide")
+        close.setToolTip(w["hide"])
         close.clicked.connect(self.close_animated)
         head_row.addWidget(close, 0, Qt.AlignmentFlag.AlignTop)
         col.addLayout(head_row)
@@ -171,33 +184,35 @@ class ReminderPopup(QWidget):
         f.setBold(True)
         self.text.setFont(f)
         self.text.setMaximumHeight(90)
+        if lang in RTL:
+            self.text.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.text.setCursor(Qt.CursorShape.PointingHandCursor)
         self.text.mousePressEvent = lambda _e: self.on_open and self.on_open()
         col.addWidget(self.text)
-        sub = ("Was due while Jarvis was off" if late else "Your task is due now") if kind == "due" \
-            else f"{clock(due)} · {until(due)}"
+        due_text = w["due_while_off"] if late else w["due_now"]
+        sub = due_text if kind == "due" else f"{clock(due)} · {until(due, lang=lang)}"
         self.sub = QLabel(sub, objectName="rpMuted")
         col.addWidget(self.sub)
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
         if kind == "due":
-            done = QPushButton("✓  Done", objectName="rpPrimary")
+            done = QPushButton("✓  " + w["done"], objectName="rpPrimary")
             done.clicked.connect(lambda: (on_done and on_done(rid), self.close_animated()))
             buttons.addWidget(done)
-            snooze = QPushButton("⏱  Snooze 10 min")
+            snooze = QPushButton("⏱  " + w["snooze"])
             snooze.clicked.connect(lambda: (on_snooze and on_snooze(rid, 10), self.close_animated()))
             buttons.addWidget(snooze)
             more = QPushButton("▾")
-            more.setToolTip("Snooze for…")
+            more.setToolTip(w["snooze_for"])
             menu = QMenu(more)
             for m in SNOOZE_CHOICES:
-                label = f"{m} minutes" if m < 60 else "1 hour"
+                label = w["minutes"].format(n=m) if m < 60 else w["hour"]
                 menu.addAction(label, lambda m=m: (on_snooze and on_snooze(rid, m), self.close_animated()))
             more.setMenu(menu)
             buttons.addWidget(more)
             self.buttons = (done, snooze, more)
         else:
-            cancel = QPushButton("Cancel reminder")
+            cancel = QPushButton(w["cancel"])
             cancel.clicked.connect(lambda: (on_cancel and on_cancel(rid), self.close_animated()))
             buttons.addWidget(cancel)
             self.buttons = (cancel,)
@@ -206,6 +221,8 @@ class ReminderPopup(QWidget):
         buttons.addStretch(1)
         col.addLayout(buttons)
         outer.addLayout(col, 1)
+        need = 16 + 52 + 12 + 12 + sum(b.sizeHint().width() for b in self.buttons) + 8 * len(self.buttons) + 8
+        self.setFixedWidth(max(WIDTH, min(MAX_WIDTH, need)))
         self.adjustSize()
         self._life = QTimer(self)
         self._life.setSingleShot(True)
@@ -284,8 +301,10 @@ class ReminderPopup(QWidget):
 class ReminderPopups:
     """Keeps the pop-ups stacked upwards from the bottom-right corner of the screen."""
 
-    def __init__(self, accent: Callable[[], str], *, on_done, on_snooze, on_cancel, on_open, enabled=lambda: True):
+    def __init__(self, accent: Callable[[], str], *, on_done, on_snooze, on_cancel, on_open, enabled=lambda: True,
+                 language: Callable[[], str] = lambda: "en"):
         self.accent = accent
+        self.language = language
         self.on_done, self.on_snooze, self.on_cancel, self.on_open = on_done, on_snooze, on_cancel, on_open
         self.enabled = enabled
         self.popups: list[ReminderPopup] = []
@@ -296,7 +315,11 @@ class ReminderPopups:
             return None
         if kind == "due":  # its "set" card (if still up) is replaced by the ringing one
             self.close(rid, kinds=("set", "due"))
-        popup = ReminderPopup(kind, rid, message, due, self.accent(), late=late, repeat=repeat,
+        try:
+            lang = self.language()
+        except Exception:
+            lang = "en"
+        popup = ReminderPopup(kind, rid, message, due, self.accent(), late=late, repeat=repeat, lang=lang,
                               on_done=self.on_done, on_snooze=self.on_snooze, on_cancel=self.on_cancel,
                               on_open=self.on_open, on_closed=self._closed)
         self.popups.append(popup)
@@ -332,7 +355,7 @@ class ReminderPopups:
                 break
             if not p._closing:
                 y -= p.height() + 10
-        return QPoint(area.right() - WIDTH - MARGIN, y - popup.height())
+        return QPoint(area.right() - popup.width() - MARGIN, y - popup.height())
 
     def _closed(self, popup: ReminderPopup) -> None:
         self.popups = [p for p in self.popups if p is not popup]
@@ -344,7 +367,7 @@ class ReminderPopups:
             if p._closing:
                 continue
             try:
-                p.move_to(QPoint(area.right() - WIDTH - MARGIN, y - p.height()))
+                p.move_to(QPoint(area.right() - p.width() - MARGIN, y - p.height()))
             except RuntimeError:
                 continue
             y -= p.height() + 10

@@ -761,6 +761,7 @@ class MainWindow(QMainWindow):
         outer.addWidget(right, 6)
         self.setCentralWidget(root)
         self.toasts = ToastHost(root)
+        from jarvis.lang import reminder_language
         from jarvis.ui.reminder_popup import ReminderPopups
 
         self.reminders = ReminderPopups(
@@ -768,7 +769,8 @@ class MainWindow(QMainWindow):
             on_done=lambda rid: self._reminder_action("reminder_done", {"id": rid}),
             on_snooze=lambda rid, m: self._reminder_action("snooze_reminder", {"id": rid, "minutes": m}),
             on_cancel=lambda rid: self._reminder_action("cancel_reminder", {"id": rid}),
-            on_open=self._show_window)
+            on_open=self._show_window,
+            language=lambda: reminder_language(self.app.settings, self.app.state))
         self._glows = [add_glow(b, self.accent, 20 if b.objectName() != "chip" else 14)
                        for b in root.findChildren(QPushButton)]
         self._glows.append(add_glow(self.input, self.accent, 18))
@@ -989,6 +991,12 @@ class MainWindow(QMainWindow):
             self.assistant.wake_up()
         self.orb.flash()
 
+    def _language_notice(self) -> str:
+        from jarvis.lang import prompt_rules
+
+        return ("(system: the user just changed the language settings; this replaces earlier language rules) "
+                + prompt_rules(self.app.settings).replace("\n", " ") + " Reply only with a short confirmation.")
+
     def _reminder_action(self, name: str, args: dict) -> None:
         """A button on a reminder pop-up: run the same tool the voice command uses (off the GUI thread)."""
         import threading
@@ -1079,6 +1087,11 @@ class MainWindow(QMainWindow):
             self.reminders.show("due", data["id"], data.get("message", ""), data.get("due", 0),
                                 late=data.get("late", False), repeat=data.get("repeat", ""))
             self.orb.flash()
+        elif kind == "language":
+            from jarvis.lang import label
+
+            self.toast("🌐", f"Jarvis: {label(data.get('reply', 'auto'))}  ·  Reminders: "
+                       f"{label(data.get('reminders', 'same'))}", theme.ACCENT, 4)
         elif kind == "reminder_closed":
             self.reminders.close(data["id"])
         elif kind == "document":
@@ -1464,6 +1477,8 @@ class MainWindow(QMainWindow):
             self.start_assistant()
         elif changed & RESTART_KEYS:
             self.assistant.restart(fresh="voice" in changed)
+        elif changed & {"reply_language", "reminder_language"}:
+            self.assistant.send_system(self._language_notice())  # no restart: the chat goes on
         if changed:
             self._add_system("Settings saved.")
         return True

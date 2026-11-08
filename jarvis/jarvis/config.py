@@ -104,6 +104,8 @@ class Settings:
     ask_camera: bool = True  # ask before Jarvis takes a photo with the webcam
     notify_capture: bool = True  # flash + notice whenever Jarvis looks at the screen or camera
     speaking_style: str = "friendly"  # see SPEAKING_STYLES
+    reply_language: str = "auto"  # auto (match the user) or a code from jarvis.lang.LANGUAGES
+    reminder_language: str = "same"  # same (as Jarvis), auto, or a language code
     expressive_voice: bool = True  # the voice follows the mood of the conversation (affective dialog)
 
     @property
