@@ -304,6 +304,10 @@ class SettingsDialog(QDialog):
         self.water_minutes.setSuffix(" min")
         self.water_minutes.setValue(s.water_minutes)
         form.addRow("Water every", self.water_minutes)
+        self.offline_voice = QCheckBox("Without internet: answer with the Windows voice and understand simple "
+                                       "English voice commands (\"Jarvis, set a timer for 5 minutes\")")
+        self.offline_voice.setChecked(s.offline_voice)
+        form.addRow(self.offline_voice)
         self._calendar_rows(form)
         self.autostart = QCheckBox("Start Jarvis when Windows starts")
         self.autostart.setEnabled(platform.system() == "Windows")
@@ -463,6 +467,7 @@ class SettingsDialog(QDialog):
         s.health_nudges = self.health.isChecked()
         s.eye_break_minutes = self.eye_minutes.value()
         s.water_minutes = self.water_minutes.value()
+        s.offline_voice = self.offline_voice.isChecked()
         urls = self._calendar_links()
         if urls is None:
             self.tabs.setCurrentIndex(3)

@@ -89,6 +89,10 @@ class LiveAssistant:
         app.ctx.attach_image = self._attach_image
         app.ctx.assistant = self
         self.background = BackgroundServices(app, self.announce)
+        from jarvis.offline import OfflineVoice
+
+        self.offline = OfflineVoice(on_heard=self._offline_heard, name=self.s.assistant_name)
+        self._offline_note = False  # "offline - these still work" shown for the current outage
 
     # -- thread-safe controls -------------------------------------------------
     def _call(self, coro_fn, *args) -> None:
@@ -106,11 +110,58 @@ class LiveAssistant:
             self.events.emit("guardrail", action="hidden", tool="", text=what)
             text += (f" (system: the user typed {_a(what)} {what}; it was hidden for their safety. Don't ask for it - "
                      "remind them kindly never to share it, then help with the rest.)")
+        if self.is_offline() and self._run_offline(text):
+            return  # done on this computer, no internet needed
+        if self.is_offline() and not self._offline_note:
+            self._offline_note = True
+            self.events.emit("log", text="📴 Offline - I'll answer this when the internet is back. Timers, "
+                                          "reminders, notes, your list, volume and opening apps still work now.")
         was_asleep = not self.awake
         self._set_awake(True)
         if was_asleep:
             text = f"(system: awake - the user typed this) {text}"
         self._call(self._send_text, text)
+
+    # -- offline ---------------------------------------------------------------------------
+    def is_offline(self) -> bool:
+        """No live session and the last attempt(s) failed."""
+        return self.session is None and self._failures > 0
+
+    def _run_offline(self, text: str) -> bool:
+        """Run a simple command locally. True when it was one we understand."""
+        if self.mode != "agent":
+            return False
+        from jarvis.offline import parse, reply
+
+        cmd = parse(text, self.s.assistant_name)
+        if cmd is None or cmd.tool not in self.registry.tools:
+            return False
+
+        def work():
+            self.events.emit("tool_start", name=cmd.tool, args=cmd.args)
+            result = self.registry.call(cmd.tool, cmd.args, self.app.ctx)
+            self.events.emit("tool", name=cmd.tool, args=cmd.args, result=result)
+            answer = reply(cmd, result)
+            self.events.emit("assistant", text=f"📴 {answer}")
+            if self.s.offline_voice and not self.muted:
+                self.offline.say(answer)
+
+        threading.Thread(target=work, daemon=True, name="jarvis-offline-cmd").start()
+        return True
+
+    def _offline_heard(self, said: str) -> None:
+        """A voice command heard by the Windows recognizer while offline."""
+        if self.is_offline() and not self.muted:
+            self.send_text(said)
+
+    def _offline_listening(self, on: bool) -> None:
+        if on and self.s.offline_voice and self.mode == "agent" and not self.muted:
+            self.offline.listen()
+            self.events.emit("offline_mode", on=True)
+        else:
+            self.offline.stop_listening()
+            if not on:
+                self.events.emit("offline_mode", on=False)
 
     def send_system(self, text: str) -> None:
         """An instruction from the app itself (briefing, reminder, alert). Doesn't wake the mic."""
@@ -123,6 +174,10 @@ class LiveAssistant:
 
     def notify(self, message: str) -> None:
         self.events.emit("log", text=f"🔔 {message}")
+        if self.is_offline():  # no model to say it: the Windows voice does (and it isn't told late again)
+            if self.s.offline_voice:
+                self.offline.say(message)
+            return
         self.announce(f"(system notice) Tell the user now: {message}")
 
     def _audible(self) -> bool:
@@ -204,6 +259,7 @@ class LiveAssistant:
 
     def stop(self) -> None:
         self._stopping = True
+        self.offline.close()
         if self.loop and self._session_task:
             self.loop.call_soon_threadsafe(self._session_task.cancel)
 
@@ -365,6 +421,9 @@ class LiveAssistant:
         heard, said = [], []
         while True:
             async for msg in session.receive():
+                if self._failures:  # back online: the Windows listener steps aside
+                    self._offline_note = False
+                    self._offline_listening(False)
                 if self._failures and not self._announced:  # the server is talking to us again
                     self._announced = True
                     self.events.emit("log", text="✓ Reconnected.")
@@ -452,6 +511,8 @@ class LiveAssistant:
 
     def _on_connection_error(self, exc: Exception, backoff: float) -> None:
         self._failures += 1
+        if self._failures == 2:  # really offline, not a blip: simple voice commands without internet
+            self._offline_listening(True)
         if self._unconfirmed:  # never answered: send again after reconnecting
             self._pending = (self._unconfirmed + self._pending)[-10:]
             self._unconfirmed = []

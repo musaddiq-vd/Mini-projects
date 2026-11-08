@@ -1190,6 +1190,9 @@ class MainWindow(QMainWindow):
                        f"{label(data.get('reminders', 'same'))}", theme.ACCENT, 4)
         elif kind == "motion" and data.get("state") == "running":
             self.toast("🖱", "Scrolling… say “ruko” or “stop” when it's enough", self.accent, 4)
+        elif kind == "offline_mode" and data.get("on"):
+            self.toast("📴", "No internet - timers, reminders, notes, your list and apps still work. Type, or "
+                       "say “Jarvis, …” in English.", WARN, 8)
         elif kind == "restart_requested":
             self.restart_app()
         elif kind == "reminder_closed":

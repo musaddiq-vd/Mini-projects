@@ -90,6 +90,7 @@ class Settings:
     orb_face: bool = True  # AI face on the orb core
     power_up_wake: bool = True  # big power-up animation + sound when Jarvis wakes
     desktop_widget: bool = False  # a small Jarvis card on the wallpaper
+    offline_voice: bool = True  # without internet: Windows voice replies + simple English voice commands
     widget_corner: str = "top_right"  # top_right | top_left | bottom_right | bottom_left
     currency: str = "₹"  # for the expense tracker
     # Private iCal links (read-only calendar sync). Secret like passwords: encrypted on disk, never logged.
