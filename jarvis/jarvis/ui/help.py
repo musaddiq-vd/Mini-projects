@@ -55,6 +55,35 @@ def _card(icon: str, title: str, examples: list[str], send: Callable[[str], None
     return card
 
 
+SHORTCUTS = [
+    ("Ctrl+Alt+J", "Call Jarvis from any app"), ("Ctrl+K", "Type a message"), ("Ctrl+M", "Mute the mic"),
+    ("Ctrl+Space", "Sleep / wake"), ("Ctrl+P", "Planner"), ("Ctrl+F", "Search the chat"), ("F1", "This help"),
+    ("Ctrl+Shift+M", "Mini mode"), ("Ctrl+L", "Clear the chat"), ("Ctrl+,", "Settings"), ("↑ / ↓", "Earlier messages"),
+    ("Esc", "Close panels"),
+]
+
+
+def _shortcuts_card() -> QFrame:
+    card = QFrame(objectName="card")
+    v = QVBoxLayout(card)
+    v.setContentsMargins(12, 10, 12, 12)
+    v.addWidget(QLabel("⌨  Keyboard shortcuts", objectName="h2"))
+    grid = QGridLayout()
+    grid.setHorizontalSpacing(14)
+    grid.setVerticalSpacing(6)
+    for i, (keys, what) in enumerate(SHORTCUTS):
+        key = QLabel(keys)
+        key.setStyleSheet("font-family: Consolas, monospace; font-weight: 700; padding: 2px 8px; "
+                          "border: 1px solid rgba(127,127,127,90); border-radius: 6px;")
+        key.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+        grid.addWidget(key, i // 2, (i % 2) * 2)
+        grid.addWidget(QLabel(what, objectName="muted"), i // 2, (i % 2) * 2 + 1)
+    grid.setColumnStretch(1, 1)
+    grid.setColumnStretch(3, 1)
+    v.addLayout(grid)
+    return card
+
+
 class HelpPanel(QFrame):
     """Overlay over the conversation. Esc, the ✕ or any example closes it."""
 
@@ -79,8 +108,10 @@ class HelpPanel(QFrame):
         inner = QWidget()
         grid = QGridLayout(inner)
         grid.setSpacing(10)
+        grid.setContentsMargins(0, 0, 12, 0)  # room for the scrollbar
         for i, (icon, title, examples) in enumerate(TOPICS):
             grid.addWidget(_card(icon, title, examples, self._pick), i // 2, i % 2)
+        grid.addWidget(_shortcuts_card(), len(TOPICS) // 2 + 1, 0, 1, 2)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)

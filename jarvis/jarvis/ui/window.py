@@ -537,6 +537,12 @@ class MainWindow(QMainWindow):
         if not app.settings.effective_api_key and app.practice_on:
             QTimer.singleShot(0, lambda: self.set_practice(True))
 
+    def _planner_follow(self, kind: str) -> None:
+        """Keep an open planner in sync when Jarvis changes lists by voice."""
+        planner = getattr(self, "planner", None)
+        if planner is not None and planner.isVisible() and kind in ("tool", "timer", "timer_end"):
+            QTimer.singleShot(0, planner.refresh)  # after this event has been handled
+
     def _forward(self, kind: str, data: dict) -> None:
         """Worker thread -> Qt thread. After the window is gone, events are dropped quietly."""
         try:
@@ -563,6 +569,14 @@ class MainWindow(QMainWindow):
         self.clock = QLabel(objectName="muted")
         self.clock.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lv.addWidget(self.clock)
+        pill_row = QHBoxLayout()
+        pill_row.addStretch(1)
+        self.net_pill = QLabel("")
+        self.net_pill.setToolTip("Connection to the AI")
+        pill_row.addWidget(self.net_pill)
+        pill_row.addStretch(1)
+        lv.addLayout(pill_row)
+        self._set_net("offline" if not self.app.settings.effective_api_key else "connecting")
         self.big_orb = Orb(self.accent, face=self.app.settings.orb_face)
         self.orb = OrbGroup(self.big_orb)  # every orb call also reaches the mini orb
         lv.addWidget(self.big_orb, 1)
@@ -630,6 +644,10 @@ class MainWindow(QMainWindow):
         self.header_label = QLabel("CONVERSATION", objectName="section")
         header.addWidget(self.header_label)
         header.addStretch(1)
+        planner_btn = QPushButton("📋", objectName="small")
+        planner_btn.setToolTip("Planner: to-dos, reminders, timers, routines (Ctrl+P)")
+        planner_btn.clicked.connect(self.toggle_planner)
+        header.addWidget(planner_btn)
         badges_btn = QPushButton("🏆", objectName="small")
         badges_btn.setToolTip("Achievements")
         badges_btn.clicked.connect(self.toggle_badges)
@@ -762,7 +780,8 @@ class MainWindow(QMainWindow):
         for keys, fn in (("Ctrl+M", self.mute_btn.toggle), ("Ctrl+Space", self._toggle_sleep),
                          ("Ctrl+L", self._clear_chat), ("Ctrl+,", self.open_settings),
                          ("Ctrl+K", self.input.setFocus), ("Ctrl+Shift+M", self.toggle_mini),
-                         ("Ctrl+F", self.open_search), ("Esc", self._escape), ("F1", self.toggle_help)):
+                         ("Ctrl+F", self.open_search), ("Esc", self._escape), ("F1", self.toggle_help),
+                         ("Ctrl+P", self.toggle_planner)):
             QShortcut(QKeySequence(keys), self, activated=fn)
 
     def _open_logs(self) -> None:
@@ -989,6 +1008,7 @@ class MainWindow(QMainWindow):
 
     # -- events ---------------------------------------------------------------------
     def _on_event(self, kind: str, data: dict) -> None:
+        self._planner_follow(kind)
         if kind == "level":
             self.orb.set_level(data["value"])
         elif kind == "state":
@@ -1086,6 +1106,7 @@ class MainWindow(QMainWindow):
             elif text.startswith("✓ Reconnected"):
                 self.toast("📶", "Back online.", OK)
             elif text.startswith("[connection lost]") and not self._offline_toast:
+                self._set_net("reconnecting")
                 self._offline_toast = True
                 self.toast("📡", "Connection lost - reconnecting...", WARN)
             if text.startswith("✓ Reconnected"):
@@ -1113,8 +1134,27 @@ class MainWindow(QMainWindow):
         if any(w in low for w in JOKE_WORDS):
             self._joke_pending = True
 
+    def _set_net(self, status: str) -> None:
+        """Small pill under the clock: Online / Connecting / Reconnecting / Offline."""
+        text, color = {
+            "online": ("● Online", OK), "connecting": ("● Connecting…", WARN),
+            "reconnecting": ("● Reconnecting…", WARN), "offline": ("● Offline", DANGER),
+        }.get(status, ("● Offline", DANGER))
+        if status == "online":
+            text += f"  ·  {self.app.settings.live_model}"
+        self.net_status = status
+        self.net_pill.setText(text)
+        self.net_pill.setStyleSheet(f"color: {color}; border: 1px solid {color}; border-radius: 9px; "
+                                    "padding: 1px 10px; font-size: 10px; font-weight: 600; background: transparent;")
+
     def _on_state(self, state: str) -> None:
         prev, self._last_state = self._last_state, state
+        if state == "connecting":
+            self._set_net("reconnecting" if getattr(self, "net_status", "") == "online" else "connecting")
+        elif state == "offline":
+            self._set_net("offline")
+        elif state != "thinking":
+            self._set_net("online")
         self.orb.set_state(state)
         self.state_label.setText(STATE_LABELS.get(state, state.upper()))
         self._set_state_style(state)
@@ -1194,6 +1234,13 @@ class MainWindow(QMainWindow):
             self.help = HelpPanel(self.right_panel, self._send)
         self.help.toggle()
 
+    def toggle_planner(self) -> None:
+        if getattr(self, "planner", None) is None:
+            from jarvis.ui.planner import PlannerPanel
+
+            self.planner = PlannerPanel(self.right_panel, self.app, lambda: self.big_orb.timers, self._send)
+        self.planner.toggle()
+
     def toggle_badges(self) -> None:
         if getattr(self, "badges", None) is None:
             from jarvis.ui.badges import BadgesPanel
@@ -1202,7 +1249,9 @@ class MainWindow(QMainWindow):
         self.badges.toggle()
 
     def _escape(self) -> None:
-        if getattr(self, "badges", None) is not None and self.badges.isVisible():
+        if getattr(self, "planner", None) is not None and self.planner.isVisible():
+            self.planner.hide()
+        elif getattr(self, "badges", None) is not None and self.badges.isVisible():
             self.badges.hide()
         elif getattr(self, "help", None) is not None and self.help.isVisible():
             self.help.close_panel()

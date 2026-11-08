@@ -24,6 +24,8 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 📸 **Screenshots** | "Screenshot lo aur kholo" saves it to *Pictures/Jarvis Screenshots*, opens it and shows it in the chat. |
 | 📂 **Drag & drop** | Drop a file or image on the window and Jarvis reads/looks at it. |
 | 🏆 **Achievements** | 19 badges you unlock just by using Jarvis (Early Bird, Night Owl, Timer Master, List Maker, Week Warrior, Perfect Score...). Unlocking one bursts confetti with a fanfare; the 🏆 button shows them all with progress bars. |
+| 📋 **Planner** | `Ctrl+P` or the 📋 button: tick and add to-dos, add or cancel reminders ("6:30 pm" / "20 min"), quick 1/5/10/25-minute timers and a focus session, run or delete routines. Guardrails and undo apply here too. |
+| 📶 **Connection pill** | Under the clock: Online (with the model), Connecting, Reconnecting or Offline at a glance. |
 | 📅 **Today strip** | Under the orb: next reminder, running timer, open to-dos, streak and badges - click a chip to ask about it. |
 | 🗣 **Voice control of the window** | "Night mode karo", "Sunset theme lagao", "chhote ho jao", "help dikhao", "mere achievements dikhao". |
 | ❓ **What can I say?** | `F1` or the **?** button opens example commands by topic - click one to try it. An empty chat shows a welcome card with ideas. |
