@@ -84,6 +84,7 @@ class LiveAssistant:
         self._spoke_since_wake = False
         self.sfx = SoundFX(self.s.sound_effects, self.s.sound_volume,
                            find_device(self.s.output_device, "output")).attach(self.events)
+        self.sfx.power_up = self.s.power_up_wake
         app.ctx.notify = self.notify
         app.ctx.attach_image = self._attach_image
         app.ctx.assistant = self

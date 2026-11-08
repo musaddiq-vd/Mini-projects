@@ -87,6 +87,12 @@ def build_sounds() -> dict[str, np.ndarray]:
         "reminder": _seq(_mix(_tone(1046, 0.22, release=0.18), _tone(1568, 0.22, release=0.18) * 0.4),
                          _mix(_tone(1318, 0.22, release=0.18), _tone(1976, 0.22, release=0.18) * 0.4),
                          _mix(_tone(1568, 0.5, release=0.4), _sparkle(0.5, 3200) * 0.4), gap=0.06),
+        "powerup": _mix(
+            _tone(180, 0.5, release=0.05, sweep_to=880, harmonics=(1.0, 0.35, 0.2)) * 0.55,  # the charge
+            _noise(0.5, 0.25),
+            _pad(_mix(_tone(523, 0.75, release=0.6), _tone(659, 0.75, release=0.6) * 0.8,  # the burst chord
+                      _tone(784, 0.75, release=0.6) * 0.7, _tone(1046, 0.75, release=0.6) * 0.6,
+                      _noise(0.12, 0.7), _sparkle(0.75, 3400) * 0.6), 0.5)),
         "alarm": _seq(*[_seq(_tone(1318, 0.12, release=0.08), _tone(1046, 0.12, release=0.08), gap=0.02)
                         for _ in range(3)], gap=0.12),
         "love": _seq(_tone(1568, 0.07, release=0.05), _tone(2093, 0.12, release=0.08), gap=0.01),
@@ -110,6 +116,7 @@ class SoundFX:
     def __init__(self, enabled: bool = True, volume: int = 60, device: int | None = None):
         self.enabled = enabled
         self.volume = volume
+        self.power_up = True  # the big wake-up sound instead of the short chime
         self.device = device
         self.sounds = build_sounds()
         self.busy_until = 0.0  # monotonic time until an effect is audible (echo guard)
@@ -167,7 +174,7 @@ class SoundFX:
             elif state == "sleeping" and prev != "sleeping":
                 self.play("sleep")
             elif prev == "sleeping" and awake:
-                self.play("wake")
+                self.play("powerup" if self.power_up else "wake")
         elif kind == "tool_start":
             self.play("action")
         elif kind == "tool":

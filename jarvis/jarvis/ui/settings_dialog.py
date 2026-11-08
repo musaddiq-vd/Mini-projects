@@ -162,6 +162,9 @@ class SettingsDialog(QDialog):
         self.orb_face = QCheckBox("Show the AI face on the core (LED eyes, voice waveform, feelings)")
         self.orb_face.setChecked(self.result_settings.orb_face)
         v.addWidget(self.orb_face)
+        self.power_up = QCheckBox("Power-up animation and sound when Jarvis wakes up")
+        self.power_up.setChecked(self.result_settings.power_up_wake)
+        v.addWidget(self.power_up)
         v.addStretch()
         return w
 
@@ -437,6 +440,7 @@ class SettingsDialog(QDialog):
         s.sound_effects = self.sfx.isChecked()
         s.sound_volume = self.sfx_volume.value()
         s.orb_face = self.orb_face.isChecked()
+        s.power_up_wake = self.power_up.isChecked()
         s.morning_briefing = self.briefing.isChecked()
         s.proactive = self.proactive.isChecked()
         s.proactive_minutes = self.proactive_minutes.value()

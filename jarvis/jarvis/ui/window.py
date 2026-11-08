@@ -1315,7 +1315,10 @@ class MainWindow(QMainWindow):
         else:
             self.typing.hide_now()
         if prev == "sleeping" and state in AWAKE_STATES:
-            self.orb.flash()
+            if self.app.settings.power_up_wake:
+                self.orb.power_up()
+            else:
+                self.orb.flash()
         if state == "sleeping":
             how = self.assistant.how_to_wake() if self.assistant else "press Wake"
             mode = self.assistant.wake_mode if self.assistant else ""
@@ -1517,6 +1520,8 @@ class MainWindow(QMainWindow):
             self._apply_theme()
         if "history_days" in changed and self.app.history:
             self.app.history.prune(self.app.settings.history_days)
+        if self.assistant is not None and "power_up_wake" in changed:
+            self.assistant.sfx.power_up = self.app.settings.power_up_wake
         if self.assistant is not None and changed & {"sound_effects", "sound_volume"}:
             self.assistant.sfx.enabled = self.app.settings.sound_effects
             self.assistant.sfx.volume = self.app.settings.sound_volume

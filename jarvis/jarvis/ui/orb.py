@@ -19,7 +19,7 @@ from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer
 from PyQt6.QtGui import QColor, QConicalGradient, QFont, QPainter, QPainterPath, QPen, QRadialGradient
 from PyQt6.QtWidgets import QWidget
 
-from jarvis.ui import aiface, cuteface
+from jarvis.ui import aiface, cuteface, powerup
 from jarvis.ui.theme import DANGER, OK, state_color
 
 N_BARS = 72
@@ -44,6 +44,7 @@ class Orb(QWidget):
         self.zzz: list[list] = []  # [age, drift]
         self._zzz_timer = 0.0
         self.flash_t = 0.0
+        self.power: dict | None = None  # the wake-up power-up animation while it runs
         self.boot = 0.0  # 0 -> 1 during the start-up animation
         # cute moments: the AI core briefly turns into a bubbly anime face, then morphs back
         self.cute = 0.0  # 0 = AI core, 1 = cute face (smoothly animated)
@@ -126,6 +127,12 @@ class Orb(QWidget):
         self.flash_t = 1.0
         self.ripples.append([0.0, QColor("#ffffff")])
 
+    def power_up(self) -> None:
+        """The big wake-up: energy gathers into the core and bursts out (about 1.7 s)."""
+        self.power = powerup.new_state()
+        self.power["t"] = 0.001
+        self.cute_until = 0.0  # a cute face would hide the core
+
     def pulse(self, ok: bool = True) -> None:
         self.ripples.append([0.0, QColor(OK if ok else DANGER)])
 
@@ -196,6 +203,10 @@ class Orb(QWidget):
         self.timers = {k: v for k, v in self.timers.items() if v[0] > now_wall - 1}
 
         self.flash_t = max(0.0, self.flash_t - dt * 1.6)
+        if self.power is not None:
+            self.power["t"] += dt / powerup.DURATION
+            if self.power["t"] >= 1:
+                self.power = None
         self.boot = min(1.0, self.boot + dt / 1.8)
         # cute morph
         target = 1.0 if (self.face and now < self.cute_until) else 0.0
@@ -244,7 +255,8 @@ class Orb(QWidget):
         base = min(w, h - wave_h) * 0.26
         color = state_color(self.state, self.accent)
         breathing = 0.05 * math.sin(self.t * 1.6) if self.state == "sleeping" else 0.015 * math.sin(self.t * 2.4)
-        r = base * (1 + self.level * 0.22 + breathing + self.flash_t * 0.12)
+        pt = self.power["t"] if self.power else 0.0
+        r = base * (1 + self.level * 0.22 + breathing + self.flash_t * 0.12 + powerup.glow_boost(pt) * 0.08)
         boot = 1 - (1 - self.boot) ** 3  # ease-out
         if boot < 1:
             r *= 0.35 + 0.65 * boot
@@ -261,7 +273,9 @@ class Orb(QWidget):
         self._ticks(p, cx, cy, r, color)
         if self.state == "thinking":
             self._satellites(p, cx, cy, r, color)
-        core_r = r * 0.62
+        if self.power:
+            powerup.draw(p, self.power, cx, cy, r, color)
+        core_r = r * 0.62 * powerup.core_scale(pt)
         base_opacity = p.opacity()
         if self.cute < 1:
             p.setOpacity(base_opacity * (1 - self.cute))
@@ -284,6 +298,13 @@ class Orb(QWidget):
         self._wave(p, w, h, wave_h, color)
         if self.boot < 1:
             self._boot_text(p, cx, cy + r * 1.95, color)
+        if self.power and powerup.text_alpha(pt) > 0:
+            p.setOpacity(1.0)
+            p.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            c = QColor(color)
+            c.setAlphaF(powerup.text_alpha(pt))
+            p.setPen(c)
+            p.drawText(QRectF(cx - 140, cy + r * 1.62, 280, 22), Qt.AlignmentFlag.AlignCenter, "◆  ONLINE  ◆")
         p.end()
 
     def _boot_text(self, p, cx, y, color) -> None:
