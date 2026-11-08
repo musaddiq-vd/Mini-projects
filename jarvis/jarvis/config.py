@@ -88,6 +88,11 @@ class Settings:
     sound_effects: bool = True
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
+    # privacy
+    save_history: bool = True  # keep the conversation on this computer (Settings > Privacy)
+    history_days: int = 30  # delete saved conversation older than this (0 = keep forever)
+    ask_camera: bool = True  # ask before Jarvis takes a photo with the webcam
+    notify_capture: bool = True  # flash + notice whenever Jarvis looks at the screen or camera
     speaking_style: str = "friendly"  # see SPEAKING_STYLES
     expressive_voice: bool = True  # the voice follows the mood of the conversation (affective dialog)
 
@@ -119,7 +124,14 @@ def load_settings(path: Path | None = None) -> Settings:
     for key in ("text_model", "live_model"):
         if data.get(key) in OUTDATED_MODELS:
             data.pop(key)
-    return Settings(**data)
+    from jarvis import secure
+
+    stored_key = data.get("api_key", "")
+    data["api_key"] = secure.unprotect(stored_key)
+    settings = Settings(**data)
+    if stored_key and not stored_key.startswith(secure.PREFIX) and secure.available():
+        save_settings(settings, path)  # an old plain-text key: encrypt it on disk right away
+    return settings
 
 
 def save_settings(settings: Settings, path: Path | None = None) -> Path:
@@ -127,8 +139,12 @@ def save_settings(settings: Settings, path: Path | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     # Only store what differs from the defaults, so improved defaults reach old installs.
+    from jarvis import secure
+
     defaults = asdict(Settings())
     data = {k: v for k, v in asdict(settings).items() if v != defaults[k]}
+    if data.get("api_key"):
+        data["api_key"] = secure.protect(data["api_key"])  # never stored in plain text on Windows
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     tmp.replace(path)
     return path

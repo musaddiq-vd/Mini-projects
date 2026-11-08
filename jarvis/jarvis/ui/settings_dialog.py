@@ -42,6 +42,15 @@ class SettingsDialog(QDialog):
         self.tabs.addTab(self._features_tab(), "Features")
         self.tabs.addTab(self._memory_tab(), "Memory")
         self.tabs.addTab(self._tools_tab(), "Tools")
+        from jarvis.ui.privacy import PrivacyTab
+
+        from PyQt6.QtWidgets import QScrollArea
+
+        self.privacy = PrivacyTab(app, self.result_settings)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(self.privacy)
+        self.tabs.addTab(scroll, "🔒 Privacy")
 
         buttons = QHBoxLayout()
         buttons.addWidget(QLabel("Jarvis · by Musaddiq Khan", objectName="muted"))
@@ -344,6 +353,7 @@ class SettingsDialog(QDialog):
 
             if self.autostart.isChecked() != autostart_enabled():
                 set_autostart(self.autostart.isChecked())
+        self.privacy.apply_to(s)
         self.accept()
 
 

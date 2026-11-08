@@ -60,6 +60,36 @@ class ChatHistory:
                 out.append(item)
         return out
 
+    def prune(self, days: int) -> int:
+        """Delete messages older than `days` (0 = keep everything). Returns how many were removed."""
+        if days <= 0:
+            return 0
+        cutoff = time.time() - days * 86400
+        with self._lock:
+            try:
+                lines = self.path.read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                return 0
+            kept = []
+            for line in lines:
+                try:
+                    if json.loads(line).get("t", 0) >= cutoff:
+                        kept.append(line)
+                except json.JSONDecodeError:
+                    continue
+            removed = len(lines) - len(kept)
+            if removed:
+                tmp = self.path.with_suffix(".tmp")
+                tmp.write_text("".join(k + "\n" for k in kept), encoding="utf-8")
+                tmp.replace(self.path)
+            return removed
+
+    def size(self) -> int:
+        try:
+            return self.path.stat().st_size
+        except OSError:
+            return 0
+
     def clear(self) -> None:
         with self._lock:
             try:

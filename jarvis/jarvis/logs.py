@@ -36,6 +36,7 @@ def setup_logging(level: int = logging.INFO, console: bool = False) -> Path | No
         path = log_dir() / "jarvis.log"
         handler = logging.handlers.RotatingFileHandler(path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
         handler.setFormatter(fmt)
+        handler.addFilter(RedactFilter())
         log.addHandler(handler)
     except OSError:
         path = None
@@ -43,12 +44,32 @@ def setup_logging(level: int = logging.INFO, console: bool = False) -> Path | No
         stream = logging.StreamHandler(sys.stderr)
         stream.setFormatter(fmt)
         stream.setLevel(logging.WARNING)
+        stream.addFilter(RedactFilter())
         log.addHandler(stream)
     _install_hooks()
     log._jarvis_ready = True
     log._jarvis_file = path
     log.info("---- Jarvis starting ----")
     return path
+
+
+class RedactFilter(logging.Filter):
+    """Masks secrets (cards, OTPs, keys...) in every log line, including error details."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        from jarvis.guardrails import redact
+
+        try:
+            message = record.getMessage()
+        except Exception:
+            return True
+        clean = redact(message)[0]
+        if record.exc_info and not record.exc_text:
+            record.exc_text = logging.Formatter().formatException(record.exc_info)
+        if record.exc_text:
+            record.exc_text = redact(record.exc_text)[0]
+        record.msg, record.args = clean, None
+        return True
 
 
 def on_crash(callback: Callable[[str], None]) -> None:

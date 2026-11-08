@@ -47,12 +47,35 @@ def _seen_path(ctx) -> Path | None:
         return None
 
 
+KEEP_SEEN = 5
+
+
+def clear_seen_cache() -> int:
+    """Delete the copies of what Jarvis looked at (done when the window closes). Returns how many."""
+    from jarvis.config import home_dir
+
+    count = 0
+    for f in (home_dir() / "cache").glob("seen_*.jpg"):
+        try:
+            f.unlink()
+            count += 1
+        except OSError:
+            pass
+    return count
+
+
+def _captured(ctx, what: str) -> None:
+    """Tell the window so it can flash and show a notice: you always know when Jarvis looks."""
+    if ctx.events is not None:
+        ctx.events.emit("capture", what=what)
+
+
 def _keep_seen(ctx, jpeg: bytes) -> str | None:
     path = _seen_path(ctx)
     if path is None:
         return None
     try:
-        for old in sorted(path.parent.glob("seen_*.jpg"))[:-20]:  # keep the last 20
+        for old in sorted(path.parent.glob("seen_*.jpg"))[:-KEEP_SEEN + 1 or None]:  # keep only a few
             old.unlink(missing_ok=True)
         path.write_bytes(jpeg)
         return str(path)
@@ -72,6 +95,7 @@ def take_screenshot(ctx, monitor: int = 1, open: bool = True):  # noqa: A002 - t
     from jarvis.tools.files import open_path
 
     image = grab_screen(int(monitor or 1))
+    _captured(ctx, "screen")
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
     path = SCREENSHOT_DIR / f"Screenshot {datetime.now():%Y-%m-%d %H-%M-%S}.png"
     image.save(path)
@@ -98,6 +122,7 @@ def look_at_screen(ctx, monitor: int = 1):
     if ctx.attach_image is None:
         return {"error": "Seeing images isn't available in this mode."}
     jpeg = screenshot_jpeg(int(monitor or 1))
+    _captured(ctx, "screen")
     ctx.attach_image(jpeg)
     out = {"result": "Screenshot attached. Describe or answer based on it. (To save or open it for the "
                      "user, call take_screenshot.)"}
@@ -115,6 +140,8 @@ def look_at_screen(ctx, monitor: int = 1):
 def look_at_camera(ctx):
     if ctx.attach_image is None:
         return {"error": "Seeing images isn't available in this mode."}
+    if getattr(ctx.settings, "ask_camera", True) and not ctx.confirm.confirm("Let Jarvis take a photo with your camera?"):
+        return "The user didn't allow the camera. Respect that and don't ask again right away."
     try:
         import cv2
     except ImportError:
@@ -130,6 +157,7 @@ def look_at_camera(ctx):
     finally:
         cam.release()
     jpeg = _to_jpeg(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+    _captured(ctx, "camera")
     ctx.attach_image(jpeg)
     out = {"result": "Photo attached. Describe or answer based on it."}
     seen = _keep_seen(ctx, jpeg)

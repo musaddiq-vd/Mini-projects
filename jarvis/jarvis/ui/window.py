@@ -954,6 +954,9 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "capture":
+            if self.app.settings.notify_capture:
+                self.flash_capture(data.get("what", "screen"))
         elif kind == "guardrail":
             if data.get("action") == "blocked":
                 self.toast("🛡", "Blocked for your safety - Jarvis never sends or saves passwords, OTPs, "
@@ -1068,7 +1071,11 @@ class MainWindow(QMainWindow):
             self.orb.flash()
         if state == "sleeping":
             how = self.assistant.how_to_wake() if self.assistant else "press Wake"
-            self.hint.setText(how[0].upper() + how[1:])
+            mode = self.assistant.wake_mode if self.assistant else ""
+            # privacy at a glance: is anything still being heard while asleep?
+            where = {"wake_word": "🔒 offline wake word - nothing leaves your PC",
+                     "name": "☁ listening for your name online"}.get(mode, "🔇 mic off until you press Wake")
+            self.hint.setText(f"{how[0].upper() + how[1:]}  ·  {where}")
             self.caption.setText("")
         else:
             self.hint.setText("")
@@ -1253,6 +1260,32 @@ class MainWindow(QMainWindow):
         data = QSettings("MusaddiqKhan", "Jarvis").value("geometry")
         return bool(isinstance(data, QByteArray) and self.restoreGeometry(data))
 
+    # -- privacy: you always see when Jarvis looks ----------------------------------------
+    def flash_capture(self, what: str) -> None:
+        """A camera-shutter flash over the window and a notice, every time the screen or camera is captured."""
+        from PyQt6.QtWidgets import QGraphicsOpacityEffect
+
+        flash = QWidget(self.centralWidget())
+        flash.setStyleSheet("background: white;")
+        flash.setGeometry(self.centralWidget().rect())
+        flash.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        effect = QGraphicsOpacityEffect(flash)
+        flash.setGraphicsEffect(effect)
+        flash.show()
+        flash.raise_()
+        anim = QPropertyAnimation(effect, b"opacity", flash)
+        anim.setDuration(420)
+        anim.setStartValue(0.55)
+        anim.setEndValue(0.0)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        anim.finished.connect(flash.deleteLater)
+        anim.start()
+        icon, text = ("📷", "Jarvis took a photo with your camera") if what == "camera" else \
+            ("👁", "Jarvis looked at your screen")
+        self.toast(icon, text, theme.ACCENT, 3)
+        if self.tray and not self.isVisible():
+            self.tray.showMessage(self.app.settings.assistant_name, text)
+
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt naming
         if self._quitting:  # Qt asks every window again while quitting
             event.accept()
@@ -1260,6 +1293,12 @@ class MainWindow(QMainWindow):
         if self.hotkey:
             self.hotkey.stop()
             self.hotkey = None
+        try:
+            from jarvis.tools.vision import clear_seen_cache
+
+            clear_seen_cache()  # copies of what Jarvis looked at don't outlive the session
+        except Exception:
+            pass
         self._leave_mini()
         if not self._closing and self.isVisible():
             self.save_geometry()

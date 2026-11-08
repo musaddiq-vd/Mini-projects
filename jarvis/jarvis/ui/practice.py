@@ -153,10 +153,14 @@ class PracticePanel(QWidget):
 
     plan_ready = pyqtSignal(bool)  # emitted from the worker thread; Qt queues it onto the GUI thread
 
+    @property
+    def store(self):
+        """Always the current progress store (it is replaced when progress is deleted in Settings)."""
+        return self.app.english
+
     def __init__(self, app, say, parent=None):
         super().__init__(parent)
         self.app = app
-        self.store = app.english
         self.say = say  # callable(str) or None when not connected
         self.current: Task | None = None
         self._loading = False

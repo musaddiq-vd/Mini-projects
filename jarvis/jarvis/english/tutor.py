@@ -22,8 +22,12 @@ from jarvis.tools import Tool, ToolRegistry
 class Tutor:
     def __init__(self, app, store: EnglishStore | None = None):
         self.app = app
-        self.store = store or app.english
+        self._store = store
         self.registry = self._build_registry()
+
+    @property
+    def store(self) -> EnglishStore:
+        return self._store or self.app.english
 
     # -- prompt -------------------------------------------------------------------------
     def prompt(self) -> str:

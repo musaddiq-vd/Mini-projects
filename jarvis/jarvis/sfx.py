@@ -63,6 +63,15 @@ def _sparkle(dur: float, base: float = 2400) -> np.ndarray:
     return out
 
 
+def _noise(dur: float, amp: float = 0.5) -> np.ndarray:
+    n = int(RATE * dur)
+    return np.random.default_rng(3).uniform(-amp, amp, n) * _env(n, attack=0.002, release=dur / 3)
+
+
+def _pad(sound: np.ndarray, before: float) -> np.ndarray:
+    return np.concatenate([np.zeros(int(RATE * before)), sound])
+
+
 def build_sounds() -> dict[str, np.ndarray]:
     s = {
         "startup": _mix(_tone(260, 0.55, release=0.3, sweep_to=1040), _sparkle(0.55) * 0.6),
@@ -78,6 +87,8 @@ def build_sounds() -> dict[str, np.ndarray]:
         "alarm": _seq(*[_seq(_tone(1318, 0.12, release=0.08), _tone(1046, 0.12, release=0.08), gap=0.02)
                         for _ in range(3)], gap=0.12),
         "love": _seq(_tone(1568, 0.07, release=0.05), _tone(2093, 0.12, release=0.08), gap=0.01),
+        "shutter": _mix(_noise(0.05, 0.6), _tone(2400, 0.04, release=0.015, harmonics=(1.0,)),
+                        _pad(_noise(0.07, 0.4), 0.09)),
         "alert": _seq(_tone(880, 0.09, release=0.05), _tone(880, 0.09, release=0.05),
                       _tone(1175, 0.18, release=0.1), gap=0.06),
     }
@@ -157,6 +168,8 @@ class SoundFX:
             self.play("error" if "error" in data.get("result", {}) else "success")
         elif kind == "log" and str(data.get("text", "")).startswith("🔔"):
             self.play("notify")
+        elif kind == "capture":
+            self.play("shutter")
         elif kind in ("confirm_needed", "guardrail"):
             self.play("alert")
         elif kind == "timer_end" and data.get("done"):

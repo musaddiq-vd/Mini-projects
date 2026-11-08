@@ -136,5 +136,6 @@ def create_app(settings: Settings | None = None, ask=console_ask, notify=print) 
     ctx = ToolContext(settings, memory, UndoStack(), ConfirmGate(ask), notify, state=state, events=events)
     history = ChatHistory(home / "history.jsonl")
     events.subscribe(lambda kind, data: history.add(kind, data.get("text", ""))
-                     if kind in {"user", "assistant"} else None)
+                     if kind in {"user", "assistant"} and settings.save_history else None)
+    history.prune(settings.history_days)  # old conversation is deleted on start
     return Jarvis(settings, memory, registry, ctx, events, state, history)
