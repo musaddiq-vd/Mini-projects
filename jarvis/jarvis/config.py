@@ -53,7 +53,9 @@ class Settings:
     # Folders the file tools may touch. Empty = your home folder.
     allowed_roots: list[str] = field(default_factory=list)
     # Look and behaviour
-    theme_color: str = "#00d4ff"
+    theme_color: str = "#00d4ff"  # custom accent; a theme's own accent when it matches a theme
+    theme_name: str = "Jarvis Blue"
+    theme_mode: str = "dark"  # dark | light | auto (light by day, dark at night)
     allow_interrupt: bool = False  # talk over Jarvis (needs headphones)
     morning_briefing: bool = True  # greet + weather + news on the first start of the day
     proactive: bool = True  # friendly check-in after a long quiet spell
@@ -65,7 +67,7 @@ class Settings:
     name_wake: bool = True
     sound_effects: bool = True
     sound_volume: int = 60  # 0..100
-    orb_face: bool = True  # cute eyes on the orb
+    orb_face: bool = True  # AI face on the orb core
 
     @property
     def effective_api_key(self) -> str:

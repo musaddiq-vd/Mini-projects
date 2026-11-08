@@ -44,17 +44,21 @@ class AnimatedBackground(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
+        from jarvis.ui import theme
+
         base = QLinearGradient(0, 0, w, h)
-        base.setColorAt(0.0, QColor("#05080c"))
-        base.setColorAt(1.0, QColor("#0b141d"))
+        base.setColorAt(0.0, QColor(theme.P.bg_top))
+        base.setColorAt(1.0, QColor(theme.P.bg_bottom))
+        light = theme.P.light
         p.fillRect(self.rect(), base)
 
         # aurora blobs
         a = self.accent
         blobs = [
-            (0.22 + 0.08 * math.sin(self.t * 0.13), 0.35 + 0.1 * math.cos(self.t * 0.11), 0.55, a, 38),
-            (0.80 + 0.06 * math.cos(self.t * 0.09), 0.70 + 0.08 * math.sin(self.t * 0.12), 0.5, QColor("#6a5cff"), 26),
-            (0.55 + 0.1 * math.sin(self.t * 0.07 + 2), 0.05 + 0.05 * math.cos(self.t * 0.1), 0.45, a, 20),
+            (0.22 + 0.08 * math.sin(self.t * 0.13), 0.35 + 0.1 * math.cos(self.t * 0.11), 0.55, a, 30 if light else 38),
+            (0.80 + 0.06 * math.cos(self.t * 0.09), 0.70 + 0.08 * math.sin(self.t * 0.12), 0.5,
+             QColor(theme.SECOND), 24 if light else 26),
+            (0.55 + 0.1 * math.sin(self.t * 0.07 + 2), 0.05 + 0.05 * math.cos(self.t * 0.1), 0.45, a, 18 if light else 20),
         ]
         p.setPen(Qt.PenStyle.NoPen)
         for bx, by, size, color, alpha in blobs:
@@ -70,7 +74,7 @@ class AnimatedBackground(QWidget):
 
         # faint grid, scrolling slowly
         grid = QColor(a)
-        grid.setAlpha(10)
+        grid.setAlpha(16 if light else 10)
         p.setPen(QPen(grid, 1))
         step = 44
         off = (self.t * 6) % step
@@ -137,8 +141,10 @@ class Toast(QFrame):
     def __init__(self, parent: QWidget, icon: str, text: str, color: str, seconds: float = 4.5):
         super().__init__(parent)
         self.setObjectName("toast")
+        from jarvis.ui import theme
+
         self.setStyleSheet(
-            f"QFrame#toast {{ background: rgba(12,20,28,235); border: 1px solid {color}; border-radius: 12px; }}"
+            f"QFrame#toast {{ background: {theme.P.toast_bg}; border: 1px solid {color}; border-radius: 12px; }}"
             "QFrame#toast QLabel { background: transparent; }")
         h = QHBoxLayout(self)
         h.setContentsMargins(14, 10, 16, 10)
@@ -149,7 +155,7 @@ class Toast(QFrame):
         label = QLabel(text)
         label.setWordWrap(True)
         label.setMaximumWidth(300)
-        label.setStyleSheet("color:#e6f1f7; font-size: 13px;")
+        label.setStyleSheet(f"color:{theme.TEXT}; font-size: 13px;")
         h.addWidget(label, 1)
         self.adjustSize()
         self.setFixedWidth(min(360, max(220, self.sizeHint().width())))

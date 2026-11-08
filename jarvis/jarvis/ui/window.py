@@ -32,7 +32,8 @@ from jarvis.ui.hotkey import HOTKEY_TEXT, GlobalHotkey
 from jarvis.ui.mini import MiniWindow, OrbGroup
 from jarvis.ui.orb import Orb
 from jarvis.ui.settings_dialog import SettingsDialog, apply_settings
-from jarvis.ui.theme import DANGER, MUTED, OK, STATE_LABELS, WARN, stylesheet, valid_color
+from jarvis.ui import theme
+from jarvis.ui.theme import DANGER, OK, STATE_LABELS, WARN
 
 RESTART_KEYS = {"voice", "live_model", "input_device", "output_device", "wake_word",
                 "assistant_name", "user_name", "api_key", "allow_interrupt"}
@@ -137,14 +138,14 @@ class StatsBar(QWidget):
         for i, (name, value, extra) in enumerate(self.values):
             x = i * (cell + gap)
             bad = value > 90 if name != "BAT" else value < 20 and not extra
-            color = QColor(DANGER if bad else WARN if (name != "BAT" and value > 70) else self.accent)
-            p.setPen(QColor(MUTED))
+            color = QColor(DANGER if bad else WARN if (name != "BAT" and value > 70) else theme.readable(self.accent))
+            p.setPen(QColor(theme.MUTED))
             p.drawText(QRectF(x, 0, cell, 14), Qt.AlignmentFlag.AlignLeft, name)
             p.setPen(color)
             p.drawText(QRectF(x, 0, cell, 14), Qt.AlignmentFlag.AlignRight, f"{extra}{value:.0f}%")
             track = QRectF(x, 19, cell, 5)
             p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QColor(255, 255, 255, 18))
+            p.setBrush(theme.P.track)
             p.drawRoundedRect(track, 2.5, 2.5)
             p.setBrush(color)
             p.drawRoundedRect(QRectF(x, 19, cell * min(value, 100) / 100, 5), 2.5, 2.5)
@@ -156,7 +157,7 @@ class StatusDot(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.color = QColor(MUTED)
+        self.color = QColor(theme.MUTED)
         self.t = 0.0
         self.setFixedSize(14, 14)
         timer = QTimer(self)
@@ -188,7 +189,7 @@ class TypingDots(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.text = ""
-        self.color = QColor(MUTED)
+        self.color = QColor(theme.MUTED)
         self.t = 0.0
         self.setFixedHeight(22)
         self._timer = QTimer(self)
@@ -220,7 +221,7 @@ class TypingDots(QWidget):
             c.setAlpha(int(110 + 145 * bounce))
             p.setBrush(c)
             p.drawEllipse(QRectF(8 + k * 12, 8 - 4 * bounce, 7, 7))
-        p.setPen(QColor(MUTED))
+        p.setPen(QColor(theme.MUTED))
         p.setFont(QFont("Segoe UI", 9))
         p.drawText(QRectF(52, 0, self.width() - 52, self.height()), Qt.AlignmentFlag.AlignVCenter, self.text)
         p.end()
@@ -411,7 +412,7 @@ class MainWindow(QMainWindow):
         self.thread: threading.Thread | None = None
         self._closing = False
         self._last_state = ""
-        self.accent = valid_color(app.settings.theme_color)
+        self.accent = theme.accent_for(app.settings.theme_name, app.settings.theme_color)
         self.history = app.history or ChatHistory(home_dir() / "history.jsonl")  # saved by the core
         self.mini: MiniWindow | None = None
         self.hotkey: GlobalHotkey | None = None
@@ -509,6 +510,10 @@ class MainWindow(QMainWindow):
         header = QHBoxLayout()
         header.addWidget(QLabel("CONVERSATION", objectName="section"))
         header.addStretch(1)
+        self.mode_btn = QPushButton("🌙", objectName="small")
+        self.mode_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.mode_btn.clicked.connect(self.cycle_theme_mode)
+        header.addWidget(self.mode_btn)
         clear = QPushButton("🧹 Clear", objectName="small")
         clear.setToolTip("Clear the conversation view (Ctrl+L)")
         clear.clicked.connect(self._clear_chat)
@@ -572,6 +577,9 @@ class MainWindow(QMainWindow):
 
         self._clock_timer = QTimer(self)
         self._clock_timer.timeout.connect(self._update_clock)
+        self._theme_timer = QTimer(self)
+        self._theme_timer.timeout.connect(self._check_auto_theme)
+        self._theme_timer.start(60_000)
         self._clock_timer.start(1000)
         self._update_clock()
 
@@ -633,6 +641,22 @@ class MainWindow(QMainWindow):
         self._send(f"I dropped this file into the window: {names}. Read or look at it and tell me "
                    f"briefly what it is, then ask what I want to do with it.")
 
+    # -- day / night ------------------------------------------------------------------
+    def cycle_theme_mode(self) -> None:
+        s = self.app.settings
+        s.theme_mode = {"dark": "light", "light": "auto"}.get(s.theme_mode, "dark")
+        save_settings(s)
+        self._apply_theme()
+        label = {"dark": "Night mode", "light": "Day mode", "auto": "Auto: day by day, night by night"}[s.theme_mode]
+        self.toast("🌓", label, self.accent, 2.5)
+
+    def _check_auto_theme(self) -> None:
+        """In auto mode, switch when the sun 'sets' or 'rises'."""
+        if self.app.settings.theme_mode == "auto" and theme.resolve_mode("auto") != self._applied_mode:
+            self._apply_theme()
+
+    _applied_mode = "dark"
+
     # -- mini mode and hotkey -------------------------------------------------------
     def toggle_mini(self) -> None:
         if self.mini and self.mini.isVisible():
@@ -678,8 +702,13 @@ class MainWindow(QMainWindow):
         self.activateWindow()
 
     def _apply_theme(self) -> None:
-        self.accent = valid_color(self.app.settings.theme_color)
-        QApplication.instance().setStyleSheet(stylesheet(self.accent))
+        s = self.app.settings
+        self.accent = theme.accent_for(s.theme_name, s.theme_color)
+        self._applied_mode = theme.resolve_mode(s.theme_mode)
+        QApplication.instance().setStyleSheet(theme.apply(s.theme_name, s.theme_mode, self.accent))
+        if hasattr(self, "mode_btn"):
+            self.mode_btn.setText({"dark": "🌙", "light": "☀", "auto": "🌓"}.get(s.theme_mode, "🌙"))
+            self.mode_btn.setToolTip(f"Theme: {s.theme_mode} - click to switch (dark → light → auto)")
         self.orb.set_accent(self.accent)
         self.orb.set_face(self.app.settings.orb_face)
         if self.mini:
@@ -699,8 +728,8 @@ class MainWindow(QMainWindow):
         self._set_state_style(self._last_state or "connecting")
 
     def _set_state_style(self, state: str) -> None:
-        color = {"thinking": WARN, "muted": DANGER, "sleeping": MUTED, "connecting": MUTED,
-                 "offline": MUTED, "speaking": OK}.get(state, self.accent)
+        color = {"thinking": WARN, "muted": DANGER, "sleeping": theme.MUTED, "connecting": theme.MUTED,
+                 "offline": theme.MUTED, "speaking": OK}.get(state, theme.readable(self.accent))
         self.state_label.setStyleSheet(f"color:{color};")
         self.dot.color = QColor(color)
 
@@ -804,7 +833,7 @@ class MainWindow(QMainWindow):
         if state == "thinking":
             self.typing.show_text(f"{name} is working on it...", WARN)
         elif state == "connecting":
-            self.typing.show_text("Connecting...", MUTED)
+            self.typing.show_text("Connecting...", theme.MUTED)
         else:
             self.typing.hide_now()
         if prev == "sleeping" and state in AWAKE_STATES:
@@ -826,7 +855,7 @@ class MainWindow(QMainWindow):
         self._caption_live = True
         if len(text) > 140:
             text = "…" + text[-140:]
-        color = OK if who == "assistant" else "#d8e6ef"
+        color = (theme.readable(OK) if who == "assistant" else theme.TEXT)
         icon = "🔊" if who == "assistant" else "🎙"
         self.caption.setStyleSheet(f"color:{color};")
         self.caption.setText(f"{icon}  {text}")
@@ -907,7 +936,7 @@ class MainWindow(QMainWindow):
             return False
         changed = apply_settings(self.app.settings, dialog.result_settings)
         save_settings(self.app.settings)
-        if changed & {"theme_color", "assistant_name", "orb_face"}:
+        if changed & {"theme_color", "theme_name", "theme_mode", "assistant_name", "orb_face"}:
             self._apply_theme()
         if self.assistant is not None and changed & {"sound_effects", "sound_volume"}:
             self.assistant.sfx.enabled = self.app.settings.sound_effects

@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
 
 from jarvis.app import Jarvis
 from jarvis.config import VOICES, Settings
-from jarvis.ui.theme import valid_color
+from jarvis.ui.theme import MODES, THEMES, valid_color
 
 WAKE_WORDS = ["", "hey_jarvis", "alexa", "hey_mycroft", "hey_rhasspy"]
 PRESET_COLORS = ["#00d4ff", "#00ff9c", "#ff3df2", "#ffb547", "#ff5c6c", "#8b7bff", "#ffffff"]
@@ -90,7 +90,21 @@ class SettingsDialog(QDialog):
     def _look_tab(self) -> QWidget:
         w = QWidget()
         v = QVBoxLayout(w)
-        v.addWidget(QLabel("Accent colour", objectName="section"))
+        v.addWidget(QLabel("Theme", objectName="section"))
+        form = QFormLayout()
+        self.theme_name = QComboBox()
+        self.theme_name.addItems(list(THEMES))
+        self.theme_name.setCurrentText(self.result_settings.theme_name)
+        self.theme_name.currentTextChanged.connect(lambda name: self._set_color(THEMES[name][0]))
+        form.addRow("Style", self.theme_name)
+        self.theme_mode = QComboBox()
+        for m, label in zip(MODES, ("🌙  Night (dark)", "☀  Day (light)", "🌓  Auto - day by day, night by night")):
+            self.theme_mode.addItem(label, m)
+        self.theme_mode.setCurrentIndex(max(0, self.theme_mode.findData(self.result_settings.theme_mode)))
+        form.addRow("Mode", self.theme_mode)
+        v.addLayout(form)
+        v.addSpacing(10)
+        v.addWidget(QLabel("Accent colour (optional - overrides the theme's)", objectName="section"))
         row = QHBoxLayout()
         self.color = valid_color(self.result_settings.theme_color)
         self.swatches: list[QPushButton] = []
@@ -294,6 +308,8 @@ class SettingsDialog(QDialog):
         s.live_model = self.live_model.text().strip() or Settings().live_model
         s.text_model = self.text_model.text().strip() or Settings().text_model
         s.theme_color = self.color
+        s.theme_name = self.theme_name.currentText()
+        s.theme_mode = self.theme_mode.currentData() or "dark"
         s.input_device = self.mic.currentData() or ""
         s.output_device = self.spk.currentData() or ""
         s.allow_interrupt = self.interrupt.isChecked()
