@@ -89,6 +89,7 @@ class Bridge(QObject):
 
     event = pyqtSignal(str, dict)
     confirm = pyqtSignal(str, object)  # question, reply callback
+    assistant_ready = pyqtSignal(object)  # the LiveAssistant (or the error), built off the GUI thread
     hotkey = pyqtSignal()
 
 
@@ -525,6 +526,7 @@ class MainWindow(QMainWindow):
 
         bridge.event.connect(self._on_event)
         bridge.confirm.connect(self._on_confirm)
+        bridge.assistant_ready.connect(self._assistant_ready)
         app.events.subscribe(self._forward)
 
         self.setMinimumSize(760, 560)  # fits small laptop screens; rows wrap instead of overflowing
@@ -1144,16 +1146,48 @@ class MainWindow(QMainWindow):
 
     # -- assistant lifecycle ------------------------------------------------------
     def start_assistant(self) -> None:
+        """Build the voice assistant on a background thread (loading Gemini takes ~2 s), so the window opens
+        and animates right away. Messages typed meanwhile are kept and sent once it's ready."""
         if not self.app.settings.effective_api_key:
             self._add_system("Add your Gemini API key in Settings to start.")
             return
-        from jarvis.live import LiveAssistant
+        if self._booting:
+            return
+        self._booting = True
+        self._add_system(f"Starting... say \"{self.app.settings.assistant_name}\", or type below.")
 
-        self.assistant = LiveAssistant(self.app)
+        def build():
+            try:
+                from jarvis.live import LiveAssistant
+
+                made = LiveAssistant(self.app)
+            except Exception as exc:  # shown in the chat instead of a silent failure
+                log.exception("couldn't start the assistant")
+                made = exc
+            try:
+                self.bridge.assistant_ready.emit(made)
+            except RuntimeError:
+                pass  # the window closed meanwhile
+
+        threading.Thread(target=build, daemon=True, name="jarvis-boot").start()
+
+    _booting = False
+    _typed_early: list[str] = []
+
+    def _assistant_ready(self, made) -> None:
+        self._booting = False
+        if isinstance(made, Exception):
+            self._add_system(f"⚠ Couldn't start: {type(made).__name__}: {made}")
+            return
+        if self._quitting:
+            return
+        self.assistant = made
         if self.app.practice_on:  # continue where the user left off
             self.set_practice(True)
         self.thread = self.assistant.run_in_thread()
-        self._add_system(f"Starting... say \"{self.app.settings.assistant_name}\", or type below.")
+        early, self._typed_early = self._typed_early, []
+        for text in early:
+            self.assistant.send_text(text)
 
     # -- events ---------------------------------------------------------------------
     def _on_event(self, kind: str, data: dict) -> None:
@@ -1551,6 +1585,10 @@ class MainWindow(QMainWindow):
     def _send(self, text: str) -> None:
         self.chat.scroll_to_end()
         if not self.assistant:
+            if self._booting:  # still starting: keep it, it goes out in a moment
+                self._typed_early = (self._typed_early + [text])[-10:]
+                self._add_bubble("You", text, mine=True)
+                return
             self._add_system("Not connected yet - check Settings.")
             return
         self.assistant.send_text(text)
