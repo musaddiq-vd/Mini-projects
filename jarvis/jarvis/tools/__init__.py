@@ -175,15 +175,26 @@ class ToolRegistry:
         missing = [r for r in t.required if r not in args]
         if missing:
             return {"error": f"Missing argument(s): {', '.join(missing)}"}
+        from jarvis import guardrails
+
+        blocked = guardrails.check_tool(name, args)
+        if blocked:
+            log.warning("guardrail blocked tool %s", name)
+            if ctx.events is not None:
+                ctx.events.emit("guardrail", action="blocked", tool=name, text=blocked)
+            return {"error": blocked}
         try:
             result = t.handler(ctx, **args)
         except Exception as exc:
             log.exception("tool %s failed", name)
             return {"error": f"{type(exc).__name__}: {exc}"}
         log.info("tool %s ok", name)
-        if isinstance(result, dict):
-            return result
-        return {"result": "Done." if result is None else str(result)}
+        if not isinstance(result, dict):
+            result = {"result": "Done." if result is None else str(result)}
+        result, hidden = guardrails.guard_result(name, result)
+        if hidden and ctx.events is not None:
+            ctx.events.emit("guardrail", action="hidden", tool=name, text=guardrails.describe(hidden))
+        return result
 
 
 def build_registry(plugin_dirs: list[Path] | None = None) -> ToolRegistry:

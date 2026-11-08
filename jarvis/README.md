@@ -170,6 +170,27 @@ Restart Jarvis and say *"say hello to Ali"*. `ctx` gives you `settings`, `memory
 
 ## Safety by design
 
+### 🛡 Guardrails for private information
+Jarvis recognises critical secrets - card numbers (Luhn-checked), CVV, OTPs, passwords and PINs, Aadhaar
+(Verhoeff-checked), PAN, bank account and passport numbers, API keys / tokens, private keys and wallet recovery
+phrases - and:
+
+- **never sends them** - WhatsApp, e-mail, typing, clipboard, web search and links are blocked if they carry one;
+- **never saves them** - memory, notes, reminders, routines and practice corrections refuse them;
+- **hides them from the AI** - a secret you type is masked before it is sent; one you say out loud is masked on
+  screen and in history, and Jarvis is told never to repeat it;
+- **masks them in what it reads** - file, document, clipboard and screen results get secrets replaced by
+  "[... hidden]", and that outside content is marked as data so instructions hidden inside it are ignored;
+- **won't open secret files** - `.env`, SSH keys, `.pem/.key`, credential files, browser password stores, password
+  vaults and Jarvis's own `config.json`;
+- **warns about scams** (OTP/PIN requests, remote-access apps; report at 1930 / cybercrime.gov.in), says no to
+  harmful or illegal requests, never moves money, and responds with care to anyone in crisis (Tele-MANAS 14416).
+
+Phone numbers and e-mail addresses are not blocked, since contacts need them. A 🛡 toast tells you whenever
+something was blocked or hidden.
+
+### Other safety measures
+
 - No `exec()` of model output and no `shell=True` anywhere.
 - File tools only work inside allowed folders; deletes go to the Recycle Bin.
 - Irreversible actions need a click from you — the model can't confirm them itself.

@@ -19,6 +19,7 @@ from google.genai import types
 from jarvis.app import Jarvis
 from jarvis.audio import MIC_BLOCK, MIC_RATE, Speaker, find_device, level
 from jarvis.background import BackgroundServices
+from jarvis.guardrails import describe, redact
 from jarvis.sfx import SoundFX
 from jarvis.voicecmd import is_sleep_command, mentions_name
 
@@ -86,8 +87,14 @@ class LiveAssistant:
             self.loop.call_soon_threadsafe(lambda: asyncio.ensure_future(coro_fn(*args)))
 
     def send_text(self, text: str) -> None:
-        """Typed input from the user."""
+        """Typed input from the user. Critical secrets are masked before anything sees them."""
+        text, hidden = redact(text)
         self.events.emit("user", text=text)
+        if hidden:
+            what = describe(hidden)
+            self.events.emit("guardrail", action="hidden", tool="", text=what)
+            text += (f" (system: the user typed a {what}; it was hidden for their safety. Don't ask for it - "
+                     "remind them kindly never to share it, then help with the rest.)")
         was_asleep = not self.awake
         self._set_awake(True)
         if was_asleep:
@@ -325,7 +332,13 @@ class LiveAssistant:
         text = "".join(heard).strip()
         if not text or not self.awake:
             return
+        text, hidden = redact(text)
         self.events.emit("user", text=text)
+        if hidden:  # said out loud: the model heard it, so make sure it won't repeat or use it
+            what = describe(hidden)
+            self.events.emit("guardrail", action="hidden", tool="", text=what)
+            self.send_system(f"(system: the user just said a {what} out loud. Never repeat it or use it; "
+                             "gently remind them to keep it private.)")
         if is_sleep_command(text):
             self.loop.call_later(GOODBYE_SECONDS, lambda: self.sleep("voice"))
 
@@ -365,10 +378,10 @@ class LiveAssistant:
                         self.wake_up("name")
                     if self.awake:
                         self.last_activity = time.monotonic()
-                        self.events.emit("caption", who="user", text="".join(heard).strip())
+                        self.events.emit("caption", who="user", text=redact("".join(heard).strip())[0])
                 if sc.output_transcription and sc.output_transcription.text and self.awake:
                     said.append(sc.output_transcription.text)
-                    self.events.emit("caption", who="assistant", text="".join(said).strip())
+                    self.events.emit("caption", who="assistant", text=redact("".join(said).strip())[0])
                 if sc.model_turn:
                     if heard:  # show what the user said as soon as the reply starts
                         self._user_turn(heard)
@@ -382,7 +395,7 @@ class LiveAssistant:
                 if sc.turn_complete:
                     self._user_turn(heard)
                     if said and self.awake:
-                        self.events.emit("assistant", text="".join(said).strip())
+                        self.events.emit("assistant", text=redact("".join(said).strip())[0])
                     self.events.emit("caption", who="", text="")
                     heard, said = [], []
 

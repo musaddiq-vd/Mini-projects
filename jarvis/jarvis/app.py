@@ -10,6 +10,7 @@ from pathlib import Path
 from jarvis.config import SPEAKING_STYLES, Settings, home_dir, load_settings
 from jarvis.confirm import ConfirmGate, console_ask
 from jarvis.events import Events
+from jarvis.guardrails import SAFETY_PROMPT
 from jarvis.history import ChatHistory
 from jarvis.memory import MemoryStore
 from jarvis.state import StateStore
@@ -87,6 +88,8 @@ How to act:
   "(system: awake)" note. When woken by your name, answer whatever was said with it.
 
 Current local time: {datetime.now():%A %d %B %Y, %I:%M %p}.
+
+{SAFETY_PROMPT}
 
 {memory.prompt_block()}
 """

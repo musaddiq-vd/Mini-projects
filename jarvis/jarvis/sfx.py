@@ -157,7 +157,7 @@ class SoundFX:
             self.play("error" if "error" in data.get("result", {}) else "success")
         elif kind == "log" and str(data.get("text", "")).startswith("🔔"):
             self.play("notify")
-        elif kind == "confirm_needed":
+        elif kind in ("confirm_needed", "guardrail"):
             self.play("alert")
         elif kind == "timer_end" and data.get("done"):
             self.play("alarm")

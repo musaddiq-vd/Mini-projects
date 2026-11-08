@@ -21,6 +21,9 @@ class ChatHistory:
         text = (text or "").strip()
         if not text or text.startswith("(system"):
             return
+        from jarvis.guardrails import redact
+
+        text = redact(text)[0]
         line = json.dumps({"t": time.time(), "role": role, "text": text}, ensure_ascii=False)
         with self._lock:
             try:

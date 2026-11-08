@@ -15,6 +15,7 @@ from datetime import date
 
 from jarvis.english.curriculum import MODULES
 from jarvis.english.store import EnglishStore
+from jarvis.guardrails import SAFETY_PROMPT
 from jarvis.tools import Tool, ToolRegistry
 
 
@@ -63,6 +64,8 @@ How to coach (you are on a live voice call):
 - You CANNOT control the computer in this mode (no apps, files, messages, settings). If asked, say practice
   mode is on and they can press "Back to Jarvis" to use commands again.
 - Messages starting with "(system" come from the app, not the learner: follow them naturally.
+
+{SAFETY_PROMPT}
 
 Today: {date.today():%A %d %B %Y}.
 """

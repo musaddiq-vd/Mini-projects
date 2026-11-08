@@ -62,10 +62,10 @@ def test_example_plugin_works(ctx):
 
 
 def test_files_stay_inside_allowed_folder(registry, ctx, sandbox, tmp_path):
-    outside = tmp_path / "secret.txt"
+    outside = tmp_path / "notes.txt"
     outside.write_text("no")
     assert "outside" in registry.call("read_file", {"path": str(outside)}, ctx)["error"]
-    assert "outside" in registry.call("read_file", {"path": str(sandbox / ".." / "secret.txt")}, ctx)["error"]
+    assert "outside" in registry.call("read_file", {"path": str(sandbox / ".." / "notes.txt")}, ctx)["error"]
 
 
 def test_write_move_folder_and_undo(registry, ctx, sandbox):

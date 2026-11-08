@@ -954,6 +954,14 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "guardrail":
+            if data.get("action") == "blocked":
+                self.toast("🛡", "Blocked for your safety - Jarvis never sends or saves passwords, OTPs, "
+                                 "card or ID numbers.", DANGER, 6)
+                self._add_system("🛡 A risky action was blocked to protect your private information.")
+            else:
+                self.toast("🛡", f"Your {data.get('text', 'private info')} was hidden for your safety.", WARN, 5)
+            self.orb.emote("surprised", 1.6)
         elif kind == "practice_answer":
             if data.get("correct"):
                 self.orb.transform("happy", 1.3)
