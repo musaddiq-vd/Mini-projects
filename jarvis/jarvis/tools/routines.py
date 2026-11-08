@@ -1,5 +1,5 @@
-"""Routines: one phrase runs several actions. "Jab main 'work mode' bolu to VS Code aur Chrome kholo
-aur lofi chalao" saves a routine; saying "work mode" later runs it. Steps are plain sentences that the
+"""Routines: one phrase runs several actions. "When I say 'work mode', open VS Code and Chrome and play
+lofi" saves a routine; saying "work mode" later runs it. Steps are plain sentences that the
 model carries out with its normal tools, so every safety check (confirmations etc.) still applies."""
 
 from __future__ import annotations

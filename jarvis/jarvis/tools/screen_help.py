@@ -1,4 +1,4 @@
-"""'Is error ko theek karo': read the error in the window the user is working in and say how to fix it.
+"""'Fix this error': read the error in the window the user is working in and say how to fix it.
 
 Captures only that window (sharper text, less of the screen leaves the PC), asks the text model for the
 problem, the cause, a few steps and corrected code, and shows a fix card with a Copy button.

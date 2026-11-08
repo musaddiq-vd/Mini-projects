@@ -1557,12 +1557,11 @@ class MainWindow(QMainWindow):
 
     def _restore_history(self) -> None:
         items = self.history.recent(30)
-        if not items:
-            from jarvis.ui.help import welcome_card
+        from jarvis.ui.welcome import WelcomeCard
 
-            self._welcome_row = self.chat._add_row(
-                welcome_card(self.app.settings.assistant_name, self.app.settings.user_name, self._send),
-                "center", text="welcome", animate=False)
+        if not items:
+            self.welcome = WelcomeCard(self.app, self._send)
+            self._welcome_row = self.chat._add_row(self.welcome, "center", text="welcome", animate=False)
             return
         name = self.app.settings.assistant_name
         self.chat.animate = False
@@ -1571,6 +1570,8 @@ class MainWindow(QMainWindow):
             self.chat.add_message("You" if mine else name, item["text"], mine,
                                   when=datetime.fromtimestamp(item.get("t", 0) or 0))
         self.chat.add_system("──────  earlier conversation  ·  Ctrl+L clears it  ──────")
+        self.welcome = WelcomeCard(self.app, self._send, compact=True)  # a fresh "welcome back" each start
+        self._welcome_row = self.chat._add_row(self.welcome, "center", text="welcome", animate=False)
         self.chat.animate = True
 
     # -- controls ---------------------------------------------------------------
@@ -1663,10 +1664,12 @@ class MainWindow(QMainWindow):
 
         root = Path(__file__).resolve().parents[2]
         launcher = root / "jarvis_launcher.pyw"
+        windowless = Path(sys.executable).with_name("pythonw.exe")
+        exe = str(windowless) if windowless.exists() else sys.executable
         if getattr(sys, "frozen", False):
             QProcess.startDetached(sys.executable, sys.argv[1:])
         elif launcher.exists():
-            QProcess.startDetached(sys.executable, [str(launcher)], str(root))
+            QProcess.startDetached(exe, [str(launcher)], str(root))
         else:
             QProcess.startDetached(sys.executable, ["-m", "jarvis"], str(root))
         self._quit()

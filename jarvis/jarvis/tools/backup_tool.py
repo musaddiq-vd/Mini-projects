@@ -1,4 +1,4 @@
-"""Make a backup by voice: "mera data backup kar do"."""
+"""Make a backup by voice ("back up my data")."""
 
 from __future__ import annotations
 

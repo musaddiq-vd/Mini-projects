@@ -1,4 +1,4 @@
-"""Scrolling the screen by voice: "neeche scroll karo", "page down", "dheere dheere neeche jao" ... "ruko".
+"""Scrolling the screen by voice: "scroll down", "page down", "keep scrolling slowly" ... "stop".
 
 Scrolls the window the user is looking at (the top window that isn't Jarvis) with arrow / page keys, which
 browsers, PDFs, Word and editors all understand. Continuous scrolling runs until stop_moving, the user switches
@@ -102,8 +102,11 @@ def scroll_screen(ctx, direction: str, amount: str = "little", keep_going: bool 
         end = time.monotonic() + MAX_SCROLL_S
         while not _stop.is_set() and time.monotonic() < end:
             fg = _win.foreground()
-            if fg is not None and fg.hwnd != w.hwnd and fg.pid != os.getpid():
-                break  # the user went to another window
+            if fg is not None and fg.hwnd != w.hwnd:
+                if fg.pid != os.getpid():
+                    break  # the user went to another app
+                _stop.wait(interval)  # Jarvis is in front: pause, never type into its own window
+                continue
             try:
                 _press(key)
             except Exception:

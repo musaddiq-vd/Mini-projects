@@ -153,6 +153,7 @@ class Toast(QFrame):
         ic.setStyleSheet("font-size: 18px;")
         h.addWidget(ic)
         label = QLabel(text)
+        label.setTextFormat(Qt.TextFormat.PlainText)  # titles can come from other people (calendar invites)
         label.setWordWrap(True)
         label.setMaximumWidth(300)
         label.setStyleSheet(f"color:{theme.TEXT}; font-size: 13px;")

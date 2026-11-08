@@ -15,8 +15,7 @@ from jarvis.tools import tool
 CHUNK = 1400
 MAX_PAGES = 300
 STOP = {"the", "a", "an", "is", "are", "was", "what", "which", "who", "how", "does", "do", "in", "on", "of", "to",
-        "and", "or", "for", "this", "that", "it", "me", "my", "kya", "hai", "ka", "ki", "ke", "me", "mein", "is",
-        "batao", "bata", "document", "file", "pdf", "about", "tell", "please"}
+        "and", "or", "for", "this", "that", "it", "me", "my", "kya", "hai", "ka", "ki", "ke", "mein", "batao", "bata", "document", "file", "pdf", "about", "tell", "please"}
 SUMMARY_WORDS = ("summar", "overview", "saar", "kya hai is", "what is this", "main points", "gist", "tldr", "short me")
 _cache: dict[str, tuple[float, list[tuple[str, str]]]] = {}
 

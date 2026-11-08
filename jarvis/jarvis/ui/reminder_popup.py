@@ -178,6 +178,7 @@ class ReminderPopup(QWidget):
         head_row.addWidget(close, 0, Qt.AlignmentFlag.AlignTop)
         col.addLayout(head_row)
         self.text = QLabel(message)
+        self.text.setTextFormat(Qt.TextFormat.PlainText)
         self.text.setWordWrap(True)
         f = QFont(self.font())
         f.setPointSizeF(12.5 if kind == "due" else 11)

@@ -211,3 +211,20 @@ def test_scrolling_stops_when_the_user_switches_window(registry, ctx, fake_scree
     fake_screen.state["fg"] = SimpleNamespace(hwnd=99, pid=1, app_name="word", title="x")
     time.sleep(0.25)
     assert not motion.scrolling()
+
+
+def test_scrolling_pauses_when_jarvis_is_in_front(registry, ctx, fake_screen):
+    import os
+
+    from jarvis.tools import motion
+
+    registry.call("scroll_screen", {"direction": "down", "keep_going": True, "speed": "fast"}, ctx)
+    time.sleep(0.15)
+    fake_screen.state["fg"] = SimpleNamespace(hwnd=22, pid=os.getpid(), app_name="python", title="Jarvis")
+    time.sleep(0.05)
+    n = len(fake_screen.pressed)
+    time.sleep(0.25)
+    assert motion.scrolling() and len(fake_screen.pressed) == n  # no keys typed into Jarvis
+    fake_screen.state["fg"] = fake_screen.reader
+    time.sleep(0.2)
+    assert len(fake_screen.pressed) > n  # carries on when the page is back in front

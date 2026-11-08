@@ -87,7 +87,7 @@ def wait_for(cond, secs=3.0):
 
 
 def test_offline_commands_run_locally(live):
-    live._failures = 1  # the last connection attempt failed
+    live._failures, live._net_error = 1, True  # the last attempt failed: no network
     assert live.is_offline()
     live.send_text("milk list me daal do")
     assert wait_for(lambda: any(k == "assistant" for k, _ in live.events_seen))
@@ -99,7 +99,7 @@ def test_offline_commands_run_locally(live):
 
 
 def test_other_messages_wait_for_the_internet(live):
-    live._failures = 1
+    live._failures, live._net_error = 1, True
     live.send_text("what's the weather in Pune?")
     assert live._pending == ["what's the weather in Pune?"] or live._pending[-1].endswith("Pune?")
     assert any(k == "log" and "Offline" in d["text"] for k, d in live.events_seen)
@@ -114,7 +114,7 @@ def test_online_does_not_use_the_offline_path(live):
 def test_reminders_are_spoken_offline_not_saved_for_later(live):
     sent = []
     live.send_system = sent.append
-    live._failures = 3
+    live._failures, live._net_error = 3, True
     live.notify("Reminder: drink water")
     assert live.spoken == ["Reminder: drink water"] and sent == []
     live._failures = 0
@@ -133,6 +133,15 @@ def test_listening_starts_after_two_failures_and_stops_when_back(live):
 
 
 def test_practice_mode_stays_separate(live):
-    live._failures = 1
+    live._failures, live._net_error = 1, True
     live.mode = "practice"
     assert live._run_offline("5 minute ka timer") is False
+
+
+def test_a_rejected_setting_is_not_offline(live):
+    live._on_connection_error(RuntimeError("received 1007 (invalid frame payload data) Request contains an "
+                                           "invalid argument."), 1)
+    live._on_connection_error(RuntimeError("1007 invalid argument"), 2)
+    assert not live.is_offline() and "<listening>" not in live.spoken  # the internet is fine
+    live._on_connection_error(OSError("getaddrinfo failed"), 4)
+    assert live.is_offline()

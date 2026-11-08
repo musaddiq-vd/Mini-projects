@@ -117,6 +117,7 @@ class MiniWindow(QWidget):
 
         # what's next
         self.next_chip = QLabel(objectName="miniNext")
+        self.next_chip.setTextFormat(Qt.TextFormat.PlainText)
         self.next_chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.next_chip.setWordWrap(True)
         v.addWidget(self.next_chip)
@@ -173,8 +174,8 @@ class MiniWindow(QWidget):
             "  border-radius: 9px; padding: 5px 8px; font-size: 11px; }"
             f"QLineEdit:focus {{ border-color: {a}; }}"
             f"QPushButton#miniSend {{ background: {a}; color: #06121a; border: none; border-radius: 9px;"
-            "  font-weight: 700; font-size: 15px; }"
-            "QPushButton#miniChatBtn { background: rgba(10,15,20,210); color: #d8e6ef;"
+            "  font-weight: 700; font-size: 15px; padding: 0px; }"
+            "QPushButton#miniChatBtn { background: rgba(10,15,20,210); color: #d8e6ef; padding: 0px;"
             "  border: 1px solid rgba(255,255,255,60); border-radius: 15px; font-size: 13px; }"
             f"QPushButton#miniChatBtn:hover {{ border-color: {a}; }}")
         self.caption.setStyleSheet("color:#d8e6ef; background: transparent;")
@@ -233,6 +234,7 @@ class MiniWindow(QWidget):
         for who, text in shown:
             mine = who == "user"
             b = QLabel(text if len(text) <= 220 else text[:217] + "…", objectName="bubbleMe" if mine else "bubbleJarvis")
+            b.setTextFormat(Qt.TextFormat.PlainText)
             b.setWordWrap(True)
             b.setMaximumWidth(OPEN_SIZE[0] - 60)
             b.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)

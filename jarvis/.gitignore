@@ -4,7 +4,17 @@
 config.json
 memory.json
 state.json
+history.jsonl
+english.json
+expenses.json
+habits.json
+goals.json
+calendar.json
 *.secret.json
+Jarvis-backup-*.zip
+backups/
+logs/
+cache/
 
 # Python
 __pycache__/
@@ -13,6 +23,7 @@ __pycache__/
 build/
 dist/
 .pytest_cache/
+.ruff_cache/
 
 # Virtual environments
 .venv/

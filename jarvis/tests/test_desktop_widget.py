@@ -75,3 +75,17 @@ def test_voice_and_settings_turn_it_on_and_off(qt, app):
     assert not w.desk.isVisible() and load_settings().desktop_widget is False
     w.desk.close()
     w.reminders.close_all()
+
+
+def test_invite_titles_are_plain_text(qt, app):
+    from PyQt6.QtCore import Qt
+
+    from jarvis.ui.desktop_widget import DesktopWidget
+    from jarvis.ui.reminder_popup import ReminderPopup
+
+    d = DesktopWidget(app, "#00d4ff")
+    assert all(lb.textFormat() == Qt.TextFormat.PlainText for lb in d.info)
+    p = ReminderPopup("due", 1, "<b>hi</b><img src='http://x/y.png'>", time.time(), "#00d4ff")
+    assert p.text.textFormat() == Qt.TextFormat.PlainText
+    d.close()
+    p.close()

@@ -103,7 +103,7 @@ _NOT_SECRETS = {"reset", "change", "update", "manager", "forgot", "forget", "bho
 
 
 def _looks_like_password(separator: str, value: str) -> bool:
-    """'password: hello1234' or 'pin 4321' -> yes; 'password reset karna hai' -> no."""
+    """'password: hello1234' or 'pin 4321' -> yes; 'I need a password reset' -> no."""
     if value.lower() in _NOT_SECRETS:
         return False
     explicit = bool(separator.strip())

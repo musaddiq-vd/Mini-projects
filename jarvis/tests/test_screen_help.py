@@ -65,9 +65,10 @@ def test_no_error_visible_and_offline(registry, ctx, screen):
 
 
 def test_secrets_on_screen_are_masked(registry, ctx, screen):
-    ctx._llm = FakeLLM(json.dumps({**FIX, "code": "API_KEY = 'AIzaSyD3x4mpl3K3yV4lu3Th4tIsL0ng3n0ugh12345'"}))
+    fake_key = "AI" + "za" + "Sy" + "x" * 37  # built here so no key-shaped text sits in the repo
+    ctx._llm = FakeLLM(json.dumps({**FIX, "code": f"API_KEY = '{fake_key}'"}))
     out = registry.call("fix_on_screen", {}, ctx)
-    assert "AIzaSyD3x4mpl3" not in json.dumps(out)
+    assert fake_key not in json.dumps(out)
 
 
 def test_only_the_working_window_is_captured(monkeypatch):

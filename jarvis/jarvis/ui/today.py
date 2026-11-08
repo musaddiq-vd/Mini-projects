@@ -10,7 +10,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QPushButton, QSizePolicy, QWidget
 
 
 def _left(seconds: float) -> str:

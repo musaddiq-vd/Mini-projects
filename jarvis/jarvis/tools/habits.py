@@ -1,6 +1,6 @@
 """Habit tracker: daily (or weekday) habits with a per-day target, streaks and a weekly view.
 
-"Gym ko habit bana do", "2 glass paani piya", "aaj padhai ho gayi", "meri habits kaisi chal rahi hain?"
+"Make gym a daily habit", "I drank 2 glasses of water", "studied today", "how are my habits going?"
 Stored in ~/.jarvis/habits.json.
 """
 

@@ -1,4 +1,5 @@
-"""Smart file search: "kal wala PDF jisme invoice tha" -> find_files(query='invoice', file_type='pdf', modified='kal').
+"""Smart file search: "yesterday's PDF that had an invoice" -> find_files(query='invoice', file_type='pdf',
+modified='yesterday').
 
 Looks at file names and, for documents, the text inside. Only inside the allowed folders, never in secret
 folders, skips system/app folders, and has a time budget so it can't hang.

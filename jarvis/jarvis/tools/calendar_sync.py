@@ -95,11 +95,16 @@ def fetch(url: str, get=None) -> str:
     if status >= 400:
         raise ValueError(f"The calendar server had a problem (error {status}). I'll try again later.")
     chunks, size = [], 0
-    for chunk in resp.iter_content(64 * 1024):
-        size += len(chunk)
-        if size > MAX_BYTES:
-            raise ValueError("That calendar is too big to read (over 8 MB).")
-        chunks.append(chunk)
+    try:
+        for chunk in resp.iter_content(64 * 1024):
+            size += len(chunk)
+            if size > MAX_BYTES:
+                raise ValueError("That calendar is too big to read (over 8 MB).")
+            chunks.append(chunk)
+    finally:
+        close = getattr(resp, "close", None)
+        if close:
+            close()
     raw = b"".join(chunks)
     text = raw.decode(getattr(resp, "encoding", None) or "utf-8", errors="replace") if raw else ""
     if "BEGIN:VCALENDAR" not in text[:4096].upper():

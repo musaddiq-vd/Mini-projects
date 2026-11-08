@@ -1,4 +1,4 @@
-"""Search past conversations: "kal maine kya poocha tha?", "what did we say about the trip?"."""
+"""Search past conversations: "what did I ask yesterday?", "what did we say about the trip?"."""
 
 from __future__ import annotations
 

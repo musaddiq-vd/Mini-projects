@@ -1,4 +1,4 @@
-"""'Aaj ka recap' - a summary of the user's day with Jarvis, and a nudge to plan tomorrow."""
+"""The daily recap: a summary of the user's day with Jarvis, and a nudge to plan tomorrow."""
 
 from __future__ import annotations
 

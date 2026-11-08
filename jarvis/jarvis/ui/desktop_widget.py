@@ -2,7 +2,7 @@
 
 A glassy card behind all other windows with a live orb, the time and date, and what's next (meeting,
 reminder), open to-dos and today's habits. Clicks go straight through it to the desktop, so it never gets
-in the way. Pick the corner in Settings > Look, or say "desktop widget lagao / hatao".
+in the way. Pick the corner in Settings > Look, or ask Jarvis to show or hide it.
 """
 
 from __future__ import annotations
@@ -85,6 +85,7 @@ class DesktopWidget(QWidget):
         self.info: list[QLabel] = []
         for _ in range(3):
             lb = QLabel()
+            lb.setTextFormat(Qt.TextFormat.PlainText)  # meeting titles come from other people's invites
             lb.setFont(QFont("Segoe UI", 9))
             col.addWidget(lb)
             self.info.append(lb)
@@ -98,10 +99,13 @@ class DesktopWidget(QWidget):
         self.tick()
 
     def _style(self) -> None:
-        self.clock.setStyleSheet("color: #ffffff; background: transparent;")
-        self.date.setStyleSheet(f"color: {self.accent}; background: transparent; letter-spacing: 1px;")
+        # sizes live here (not only in setFont) so the app's theme stylesheet can't shrink them
+        self.clock.setStyleSheet("color: #ffffff; background: transparent; font-family: 'Segoe UI Light';"
+                                 " font-size: 30pt;")
+        self.date.setStyleSheet(f"color: {self.accent}; background: transparent; letter-spacing: 1px;"
+                                " font-size: 10pt;")
         for lb in self.info:
-            lb.setStyleSheet("color: #e3edf3; background: transparent;")
+            lb.setStyleSheet("color: #e3edf3; background: transparent; font-size: 9pt;")
 
     def set_accent(self, accent: str) -> None:
         self.accent = accent

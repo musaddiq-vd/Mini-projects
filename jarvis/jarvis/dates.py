@@ -1,9 +1,9 @@
-"""Understanding everyday dates in English and Hinglish.
+"""Understanding everyday dates, in English and in common Hindi words written in Latin letters.
 
-parse_day("kal", past=True)  -> yesterday   (for expenses, "what did I spend")
-parse_day("kal", past=False) -> tomorrow    (for goals, plans)
-Also: today/aaj, parso, '3 din pehle', '2 days ago', 'in 3 weeks', 'next month', 'monday', '12 nov',
-'12/11', '2026-12-31', 'end of month'.
+The Hindi word for "yesterday" and "tomorrow" is the same, so the caller says which way to read it:
+past=True for things that happened (expenses), past=False for plans (goals, deadlines).
+Also understood: today, the day after, "3 days ago", "in 3 weeks", "next month", weekdays, "12 nov",
+"12/11", "2026-12-31", "end of month" (and their Hindi equivalents).
 """
 
 from __future__ import annotations

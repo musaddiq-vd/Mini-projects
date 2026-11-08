@@ -1,7 +1,6 @@
 """The weekly report."""
 
 import sys
-import time
 from datetime import date, datetime, timedelta
 
 import pytest

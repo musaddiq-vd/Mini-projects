@@ -117,7 +117,7 @@ def label(code: str) -> str:
 
 
 def find(name: str) -> str | None:
-    """'Hindi', 'हिंदी', 'hi', 'hinglish' -> a code; None when unknown."""
+    """A language name in English or in its own script, or a code -> the code; None when unknown."""
     n = (name or "").strip().lower()
     if n in LANGUAGES or n in ("auto", "same"):
         return n

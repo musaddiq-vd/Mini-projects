@@ -1,7 +1,7 @@
 """The weekly report: spending, habits, goals, tasks, focus and the coming week, as a card in the chat.
 
 Weeks run Monday to Sunday. Every Sunday evening Jarvis offers it by itself (background.py); the user can
-also ask any time ("is hafte ka report", "last week ka summary").
+also ask any time ("this week's report", "how was last week?").
 """
 
 from __future__ import annotations

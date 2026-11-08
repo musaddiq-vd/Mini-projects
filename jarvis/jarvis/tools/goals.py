@@ -1,6 +1,6 @@
 """Goal coach: a big goal broken into small dated steps, with progress and a daily follow-up.
 
-"Mujhe 3 mahine mein Python seekhna hai" -> the model plans steps and calls create_goal; due dates are spread
+"I want to learn Python in 3 months" -> the model plans steps and calls create_goal; due dates are spread
 evenly until the deadline. Stored in ~/.jarvis/goals.json.
 """
 

@@ -124,8 +124,8 @@ class LiveAssistant:
 
     # -- offline ---------------------------------------------------------------------------
     def is_offline(self) -> bool:
-        """No live session and the last attempt(s) failed."""
-        return self.session is None and self._failures > 0
+        """No live session and the last attempt failed because of the network (not a rejected setting)."""
+        return self.session is None and self._failures > 0 and self._net_error
 
     def _run_offline(self, text: str) -> bool:
         """Run a simple command locally. True when it was one we understand."""
@@ -509,9 +509,14 @@ class LiveAssistant:
                 recv.cancel()
                 self.session = None
 
+    _net_error = False
+
     def _on_connection_error(self, exc: Exception, backoff: float) -> None:
         self._failures += 1
-        if self._failures == 2:  # really offline, not a blip: simple voice commands without internet
+        low_text = str(exc).lower()
+        # 1007/1008 = the server rejected a setting (e.g. while switching voice modes): the internet is fine
+        self._net_error = not any(m in low_text for m in ("invalid argument", "1007", "1008", "api key", "permission"))
+        if self._failures == 2 and self._net_error:  # really offline: simple voice commands without internet
             self._offline_listening(True)
         if self._unconfirmed:  # never answered: send again after reconnecting
             self._pending = (self._unconfirmed + self._pending)[-10:]

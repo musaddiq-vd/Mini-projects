@@ -37,7 +37,7 @@ def _find(items: list[dict], ref) -> dict | None:
 
 
 def parse_due(text: str, today: date | None = None) -> str | None:
-    """'kal' / 'friday' / '12 nov' / 'kal tak' -> '2026-11-09'. '' -> ''. None when not understood."""
+    """'tomorrow' / 'friday' / '12 nov' / 'by tomorrow' -> '2026-11-09'. '' -> ''. None when not understood."""
     from jarvis.dates import parse_day
 
     t = (text or "").strip().lower()
