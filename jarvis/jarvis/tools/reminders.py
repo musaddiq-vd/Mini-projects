@@ -12,6 +12,8 @@ from jarvis.tools import tool
 
 MAX_MINUTES = 7 * 24 * 60
 STATE_KEY = "reminders"
+RUNG_KEY = "reminders_rung"  # reminders that rang and wait for Done / Snooze (newest last)
+DONE_KEY = "reminders_done"  # finished tasks, for the evening recap
 
 _timers: dict[int, threading.Timer] = {}
 _mem: dict[int, dict] = {}  # used when there is no state store (tests, text mode)
@@ -81,6 +83,31 @@ def next_repeat(due: float, repeat: str, now: float | None = None) -> float:
             return d.timestamp()
 
 
+def _emit(ctx, kind: str, **data) -> None:
+    if ctx.events is not None:
+        try:
+            ctx.events.emit(kind, **data)
+        except Exception:
+            pass
+
+
+def _rung(ctx) -> list[dict]:
+    if ctx.state is None:
+        return list(_mem_rung)
+    return list(ctx.state.get(RUNG_KEY, []) or [])
+
+
+def _set_rung(ctx, items: list[dict]) -> None:
+    items = [r for r in items if time.time() - r.get("at", 0) < 2 * 86400][-20:]  # old ones fade out
+    if ctx.state is None:
+        _mem_rung[:] = items
+    else:
+        ctx.state.set(RUNG_KEY, items)
+
+
+_mem_rung: list[dict] = []
+
+
 def _schedule(ctx, rid: int, due: float, message: str, missed_due: float | None = None) -> None:
     def fire():
         with _lock:
@@ -93,6 +120,11 @@ def _schedule(ctx, rid: int, due: float, message: str, missed_due: float | None 
                 items[rid] = item
             _save(ctx, items)
         late = f" (it was due at {_fmt(missed_due)} while I was off)" if missed_due else ""
+        with _lock:
+            _set_rung(ctx, [r for r in _rung(ctx) if r["id"] != rid]
+                      + [{"id": rid, "message": message, "at": time.time(), "repeat": repeat}])
+        _emit(ctx, "reminder_due", id=rid, message=message, due=missed_due or due, late=bool(missed_due),
+              repeat=repeat)
         ctx.notify(f"Reminder: {message}{late}")
         if item and repeat in REPEATS:
             _schedule(ctx, rid, item["due"], message)
@@ -161,6 +193,7 @@ def set_reminder(ctx, message: str, minutes: float | None = None, at: str | None
         items[rid] = {"id": rid, "due": due, "message": message, "repeat": repeat}
         _save(ctx, items)
     _schedule(ctx, rid, due, message)
+    _emit(ctx, "reminder_set", id=rid, message=message, due=due, repeat=repeat)
     every = {"daily": " and every day after that", "weekdays": " and every weekday after that"}.get(repeat, "")
     return f"Reminder #{rid} set for {_fmt(due)}{every}."
 
@@ -187,4 +220,55 @@ def cancel_reminder(ctx, id: int):  # noqa: A002 - matches the tool argument nam
         timer = _timers.pop(rid, None)
     if timer:
         timer.cancel()
+    _emit(ctx, "reminder_closed", id=rid)
     return f"Cancelled reminder #{rid}." if found else f"No reminder #{rid}."
+
+
+def _pick_rung(ctx, rid: int | None) -> dict | None:
+    items = _rung(ctx)
+    if rid:
+        return next((r for r in items if r["id"] == int(rid)), None)
+    return items[-1] if items else None
+
+
+@tool(
+    "reminder_done",
+    "The user finished the task of a reminder that just rang ('ho gaya', 'done', 'kar liya'). Without an id it "
+    "means the latest one.",
+    {"id": {"type": "integer"}},
+)
+def reminder_done(ctx, id: int = 0):  # noqa: A002
+    with _lock:
+        item = _pick_rung(ctx, id)
+        if item is None:
+            return {"error": "No reminder is waiting to be marked done."}
+        _set_rung(ctx, [r for r in _rung(ctx) if r["id"] != item["id"]])
+        if ctx.state is not None:
+            done = list(ctx.state.get(DONE_KEY, []) or [])
+            done.append({"message": item["message"], "at": time.time()})
+            ctx.state.set(DONE_KEY, done[-100:])
+    _emit(ctx, "reminder_closed", id=item["id"])
+    return {"result": f"Marked done: {item['message']}. Congratulate the user in a few words."}
+
+
+@tool(
+    "snooze_reminder",
+    "Ring a reminder that just went off again later ('snooze', '10 minute baad yaad dilana'). Default 10 minutes; "
+    "without an id it means the latest one.",
+    {"minutes": {"type": "number"}, "id": {"type": "integer"}},
+)
+def snooze_reminder(ctx, minutes: float = 10, id: int = 0):  # noqa: A002
+    try:
+        minutes = float(minutes or 10)
+    except (TypeError, ValueError):
+        return {"error": "Minutes must be a number."}
+    if not 1 <= minutes <= 24 * 60:
+        return {"error": "Snooze for 1 minute up to a day."}
+    with _lock:
+        item = _pick_rung(ctx, id)
+        if item is None:
+            return {"error": "No reminder has rung recently to snooze. Set a new one instead."}
+        _set_rung(ctx, [r for r in _rung(ctx) if r["id"] != item["id"]])
+    _emit(ctx, "reminder_closed", id=item["id"])
+    out = set_reminder(ctx, item["message"], minutes=minutes)
+    return {"result": f"Snoozed: '{item['message']}' - " + out.replace("Reminder #", "now reminder #")}

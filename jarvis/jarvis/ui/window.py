@@ -761,6 +761,14 @@ class MainWindow(QMainWindow):
         outer.addWidget(right, 6)
         self.setCentralWidget(root)
         self.toasts = ToastHost(root)
+        from jarvis.ui.reminder_popup import ReminderPopups
+
+        self.reminders = ReminderPopups(
+            lambda: self.accent,
+            on_done=lambda rid: self._reminder_action("reminder_done", {"id": rid}),
+            on_snooze=lambda rid, m: self._reminder_action("snooze_reminder", {"id": rid, "minutes": m}),
+            on_cancel=lambda rid: self._reminder_action("cancel_reminder", {"id": rid}),
+            on_open=self._show_window)
         self._glows = [add_glow(b, self.accent, 20 if b.objectName() != "chip" else 14)
                        for b in root.findChildren(QPushButton)]
         self._glows.append(add_glow(self.input, self.accent, 18))
@@ -981,6 +989,18 @@ class MainWindow(QMainWindow):
             self.assistant.wake_up()
         self.orb.flash()
 
+    def _reminder_action(self, name: str, args: dict) -> None:
+        """A button on a reminder pop-up: run the same tool the voice command uses (off the GUI thread)."""
+        import threading
+
+        def run():
+            try:
+                self.app.registry.call(name, args, self.app.ctx)
+            except Exception:
+                log.exception("reminder action %s failed", name)
+
+        threading.Thread(target=run, daemon=True).start()
+
     def _show_window(self) -> None:
         self._leave_mini()
         self.showNormal()
@@ -1052,6 +1072,15 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "reminder_set":
+            self.reminders.show("set", data["id"], data.get("message", ""), data.get("due", 0),
+                                repeat=data.get("repeat", ""))
+        elif kind == "reminder_due":
+            self.reminders.show("due", data["id"], data.get("message", ""), data.get("due", 0),
+                                late=data.get("late", False), repeat=data.get("repeat", ""))
+            self.orb.flash()
+        elif kind == "reminder_closed":
+            self.reminders.close(data["id"])
         elif kind == "document":
             name = data.get("name", "")
             self.doc_chip.setText(f"📄  {name.replace('&', '&&')}  ·  ask anything about it   ✕")
@@ -1461,6 +1490,7 @@ class MainWindow(QMainWindow):
     def _quit(self) -> None:
         """The app doesn't quit on its own (mini mode hides this window), so quit explicitly."""
         self._quitting = True
+        self.reminders.close_all()
         if self.mini:
             self.mini.close()
         QTimer.singleShot(0, QApplication.instance().quit)

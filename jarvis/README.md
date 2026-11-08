@@ -92,7 +92,7 @@ turn it on the first time.
 | To-do & notes | "Milk aur bread list mein daal do" · "Meri list batao" · "Milk ho gaya" · "Note karo: wifi password router pe hai" · undo works |
 | Routines | "Save a routine called work mode: open VS Code, open Chrome, play lofi" - then just say "work mode" |
 | Past chats | "Kal maine kya poocha tha?" · "What did we say about the Goa trip?" |
-| Reminders | "Remind me in 20 minutes to call mom" · "Roz subah 9 baje vitamins ki yaad dilana" (daily / weekdays) · "Shaam 6:30 baje chai ki yaad dilana" - kept across restarts; one that came due while Jarvis was closed is told when it starts |
+| Reminders | "Remind me in 20 minutes to call mom" · "Roz subah 9 baje vitamins ki yaad dilana" (daily / weekdays) · "Shaam 6:30 baje chai ki yaad dilana" - kept across restarts; one that came due while Jarvis was closed is told when it starts. A card pops up at the bottom-right of the screen when it's set (with Cancel) and when it rings (chime, Done / Snooze 5-60 min), even when Jarvis is minimised; Jarvis says "ye aapka task hai…" and understands "ho gaya" / "10 minute baad" |
 | Undo | "Undo" reverses file changes, brightness, dark mode, clipboard and saved memories |
 
 ### On its own

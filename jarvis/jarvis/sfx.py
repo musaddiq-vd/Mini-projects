@@ -84,6 +84,9 @@ def build_sounds() -> dict[str, np.ndarray]:
                       _tone(165, 0.16, release=0.1, harmonics=(1.0, 0.6, 0.4, 0.3)), gap=0.03),
         "notify": _seq(_tone(784, 0.14, release=0.12), _tone(988, 0.14, release=0.12),
                        _tone(1175, 0.35, release=0.25), gap=0.02),
+        "reminder": _seq(_mix(_tone(1046, 0.22, release=0.18), _tone(1568, 0.22, release=0.18) * 0.4),
+                         _mix(_tone(1318, 0.22, release=0.18), _tone(1976, 0.22, release=0.18) * 0.4),
+                         _mix(_tone(1568, 0.5, release=0.4), _sparkle(0.5, 3200) * 0.4), gap=0.06),
         "alarm": _seq(*[_seq(_tone(1318, 0.12, release=0.08), _tone(1046, 0.12, release=0.08), gap=0.02)
                         for _ in range(3)], gap=0.12),
         "love": _seq(_tone(1568, 0.07, release=0.05), _tone(2093, 0.12, release=0.08), gap=0.01),
@@ -169,7 +172,9 @@ class SoundFX:
             self.play("action")
         elif kind == "tool":
             self.play("error" if "error" in data.get("result", {}) else "success")
-        elif kind == "log" and str(data.get("text", "")).startswith("🔔"):
+        elif kind == "reminder_due":
+            self.play("reminder")
+        elif kind == "log" and str(data.get("text", "")).startswith("🔔") and "Reminder:" not in str(data["text"]):
             self.play("notify")
         elif kind == "nudge":
             self.play("notify")
