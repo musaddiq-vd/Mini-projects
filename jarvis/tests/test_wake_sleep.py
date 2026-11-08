@@ -65,7 +65,7 @@ def test_effects_follow_events(monkeypatch):
     fx.on_event("log", {"text": "🔔 Reminder: tea"})  # the reminder chime comes with reminder_due instead
     fx.on_event("reminder_due", {"id": 1, "message": "tea"})
     fx.on_event("log", {"text": "🔔 Timer done!"})
-    assert played == ["startup", "sleep", "wake", "action", "success", "error", "reminder", "notify"]
+    assert played == ["startup", "sleep", "powerup", "action", "success", "error", "reminder", "notify"]
 
 
 def test_disabled_effects_are_silent():

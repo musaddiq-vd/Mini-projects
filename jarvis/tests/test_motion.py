@@ -22,6 +22,15 @@ def settle(qt, ms):
         time.sleep(0.005)
 
 
+def finish(qt, m, limit=3.0):
+    """Wait until the mover's animation has ended (slow machines need longer)."""
+    from PyQt6.QtCore import QAbstractAnimation
+
+    end = time.time() + limit
+    while time.time() < end and m._anim is not None and m._anim.state() == QAbstractAnimation.State.Running:
+        settle(qt, 20)
+
+
 @pytest.fixture
 def win(qt):
     from PyQt6.QtWidgets import QWidget
@@ -42,12 +51,12 @@ def test_nudge_and_edges(qt, win):
     m = WindowMover(lambda: win)
     y0 = win.y()
     m.nudge("down", "little")
-    settle(qt, 450)
+    finish(qt, m)
     assert win.y() == y0 + 70
     m.nudge("down", "lot")
     m.nudge("down", "lot")
     m.nudge("down", "lot")
-    settle(qt, 450)
+    finish(qt, m)
     area = win.screen().availableGeometry()
     assert win.frameGeometry().bottom() <= area.bottom() + 1  # never off screen
     assert m.nudge("sideways") == "unknown direction"
@@ -59,10 +68,10 @@ def test_place_corners_and_halves(qt, win):
     m = WindowMover(lambda: win)
     area = win.screen().availableGeometry()
     m.place("top_left")
-    settle(qt, 550)
+    finish(qt, m)
     assert (win.x(), win.y()) == (area.left() + 12, area.top() + 12)
     m.place("bottom_right")
-    settle(qt, 550)
+    finish(qt, m)
     assert win.frameGeometry().right() == area.right() - 12
     m.place("right_half")
     settle(qt, 50)
@@ -131,7 +140,7 @@ def test_main_window_moves_by_voice(qt, isolated_home, sandbox):
     w.resize(500, 400)  # the test screen is small
     settle(qt, 50)
     app.registry.call("jarvis_display", {"action": "place", "place": "top_left"}, app.ctx)
-    settle(qt, 600)
+    finish(qt, w.mover)
     area = w.screen().availableGeometry()
     fits = w.frameGeometry().width() + 24 <= area.width()
     assert w.y() == area.top() + 12 and w.x() == (area.left() + 12 if fits else area.left())
