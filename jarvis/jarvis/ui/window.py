@@ -527,7 +527,7 @@ class MainWindow(QMainWindow):
         bridge.confirm.connect(self._on_confirm)
         app.events.subscribe(self._forward)
 
-        self.setMinimumSize(1000, 660)
+        self.setMinimumSize(760, 560)  # fits small laptop screens; rows wrap instead of overflowing
         self.setAcceptDrops(True)
         self._build()
         self._build_tray()
@@ -572,6 +572,7 @@ class MainWindow(QMainWindow):
         lv.addWidget(self.title)
         self.clock = QLabel(objectName="muted")
         self.clock.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.clock.setWordWrap(True)
         lv.addWidget(self.clock)
         pill_row = QHBoxLayout()
         pill_row.addStretch(1)
@@ -611,7 +612,9 @@ class MainWindow(QMainWindow):
         self.today.on_badges = lambda: self.toggle_badges()
         lv.addWidget(self.today)
 
-        controls = QHBoxLayout()
+        from jarvis.ui.flow import flow_widget
+
+        controls_box, controls = flow_widget(6, center=True)  # 2 rows when the window is narrow
         self.mute_btn = QPushButton("🎙  Mute")
         self.mute_btn.setCheckable(True)
         self.mute_btn.setToolTip("Mute the microphone (Ctrl+M)")
@@ -627,7 +630,7 @@ class MainWindow(QMainWindow):
         mini_btn.clicked.connect(self.toggle_mini)
         for b in (self.mute_btn, self.sleep_btn, mini_btn, settings_btn):
             controls.addWidget(b)
-        lv.addLayout(controls)
+        lv.addWidget(controls_box)
         self.practice_btn = QPushButton("🎓  English Practice", objectName="primary")
         self.practice_btn.setToolTip("Practice speaking, listening, reading and grammar with your tutor. "
                                      "Jarvis's computer commands are off until you come back.")
@@ -636,6 +639,7 @@ class MainWindow(QMainWindow):
         lv.addWidget(self.practice_btn)
         credit = QLabel(f"Jarvis v{__version__} · by Musaddiq Khan", objectName="muted")
         credit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        credit.setWordWrap(True)
         lv.addWidget(credit)
         outer.addWidget(left, 5)
 
@@ -726,17 +730,15 @@ class MainWindow(QMainWindow):
         self.typing.hide()
         rv.addWidget(self.typing)
 
-        self.chips = QWidget()
-        chips = QHBoxLayout(self.chips)
-        chips.setContentsMargins(0, 0, 0, 0)
-        chips.setSpacing(6)
+        from jarvis.ui.flow import flow_widget
+
+        self.chips, chips = flow_widget(6)  # wraps to a second line in a narrow window
         for label, prompt in QUICK_ACTIONS:
             b = QPushButton(label, objectName="chip")
             b.setToolTip(prompt)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
             b.clicked.connect(lambda _, t=prompt: self._send(t))
             chips.addWidget(b)
-        chips.addStretch(1)
         rv.addWidget(self.chips)
 
         self.doc_chip = QPushButton(objectName="chip")
@@ -901,8 +903,15 @@ class MainWindow(QMainWindow):
         self.practice_btn.style().polish(self.practice_btn)
 
     # -- voice control of this window ------------------------------------------------------
-    def ui_command(self, action: str, theme_name: str = "") -> None:
+    def _shown_window(self):
+        return self.mini if self.mini and self.mini.isVisible() else self
+
+    def ui_command(self, action: str, theme_name: str = "", opts: dict | None = None) -> None:
         s = self.app.settings
+        opts = opts or {}
+        if action in ("minimize", "maximize", "move", "glide", "place", "bigger", "smaller", "stop"):
+            self._window_motion(action, opts)
+            return
         if action in ("night_mode", "day_mode", "auto_mode"):
             s.theme_mode = {"night_mode": "dark", "day_mode": "light", "auto_mode": "auto"}[action]
         elif action == "theme" and theme_name in theme.THEMES:
@@ -936,6 +945,43 @@ class MainWindow(QMainWindow):
         save_settings(s)
         self._apply_theme()
         self.orb.flash()
+
+    def _window_motion(self, action: str, opts: dict) -> None:
+        """Voice control of Jarvis' own window (or the mini orb when it's showing)."""
+        if not hasattr(self, "mover"):
+            from jarvis.ui.mover import WindowMover
+
+            self.mover = WindowMover(self._shown_window)
+        if action == "stop":
+            self.mover.stop()
+            return
+        target = self._shown_window()
+        if action == "minimize":
+            self.mover.stop()
+            if target is self:
+                self.showMinimized()
+            else:
+                self.mini.hide()  # the orb goes away; Ctrl+Alt+J or the tray brings Jarvis back
+            return
+        if action == "maximize":
+            self._show_window()
+            self.showMaximized()
+            return
+        if target is self and self.isMinimized():
+            self.showNormal()
+        if action == "move":
+            self.mover.nudge(opts.get("direction", ""), opts.get("amount") or "little")
+        elif action == "glide":
+            self.mover.glide(opts.get("direction", ""), opts.get("speed") or "normal")
+        elif action == "place":
+            self.mover.place(opts.get("place", ""))
+        elif action in ("bigger", "smaller"):
+            if self.mover.resize(action == "bigger") == "fixed":
+                self.toast("🔍", "The mini orb has one size - say 'full window' for the big one.", self.accent, 3)
+        if target is self.mini:
+            from PyQt6.QtCore import QSettings
+
+            QTimer.singleShot(600, lambda: QSettings("MusaddiqKhan", "Jarvis").setValue("mini_pos", self.mini.pos()))
 
     # -- day / night ------------------------------------------------------------------
     def cycle_theme_mode(self) -> None:
@@ -1092,6 +1138,8 @@ class MainWindow(QMainWindow):
 
             self.toast("🌐", f"Jarvis: {label(data.get('reply', 'auto'))}  ·  Reminders: "
                        f"{label(data.get('reminders', 'same'))}", theme.ACCENT, 4)
+        elif kind == "motion" and data.get("state") == "running":
+            self.toast("🖱", "Scrolling… say “ruko” or “stop” when it's enough", self.accent, 4)
         elif kind == "reminder_closed":
             self.reminders.close(data["id"])
         elif kind == "document":
@@ -1108,7 +1156,7 @@ class MainWindow(QMainWindow):
             if data.get("kind") in ("eyes", "water"):
                 self.orb.transform("happy", 2.0)
         elif kind == "ui_command":
-            self.ui_command(data.get("action", ""), data.get("theme", ""))
+            self.ui_command(data.get("action", ""), data.get("theme", ""), data)
         elif kind == "achievement":
             from jarvis.ui.fx import Confetti
 

@@ -32,9 +32,9 @@ class TodayStrip(QWidget):
         self.app = app
         self.timers = timers  # id -> (ends, total, label), from the orb
         self.send = send
-        h = QHBoxLayout(self)
-        h.setContentsMargins(0, 0, 0, 0)
-        h.setSpacing(6)
+        from jarvis.ui.flow import FlowLayout
+
+        h = FlowLayout(self, 6)  # chips wrap to a second line instead of widening the window
         self.chips: dict[str, QPushButton] = {}
         for key, ask in (("meeting", "What's on my calendar today?"), ("reminder", "What reminders do I have?"), ("timer", "How much time is left on my timers?"),
                          ("todo", "What's on my to-do list?"), ("streak", None), ("badges", None)):
@@ -45,7 +45,6 @@ class TodayStrip(QWidget):
                 b.clicked.connect(lambda _, q=ask: self.send(q))
             h.addWidget(b)
             self.chips[key] = b
-        h.addStretch(1)
         self.on_badges: Callable[[], None] | None = None
         self.chips["badges"].clicked.connect(lambda: self.on_badges and self.on_badges())
         self.chips["streak"].clicked.connect(lambda: self.on_badges and self.on_badges())

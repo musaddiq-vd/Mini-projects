@@ -109,10 +109,11 @@ def list_windows(ctx):
 
 @tool(
     "window_control",
-    "Focus (switch to), minimize, maximize or restore a window by app name or title, "
-    "or minimize everything ('show desktop').",
+    "Focus (switch to), minimize, maximize, restore or snap (left/right half) a window of ANOTHER app by "
+    "name or title, or minimize everything ('show desktop'). For your own window use jarvis_display.",
     {
-        "action": {"type": "string", "enum": ["focus", "minimize", "maximize", "restore", "show_desktop"]},
+        "action": {"type": "string", "enum": ["focus", "minimize", "maximize", "restore", "show_desktop",
+                                               "snap_left", "snap_right"]},
         "name": {"type": "string", "description": "App name or part of the title (not needed for show_desktop)"},
     },
     required=["action"],
@@ -132,6 +133,12 @@ def window_control(ctx, action: str, name: str = ""):
     w = targets[0]
     if action == "focus":
         _win.focus(w.hwnd)
+    elif action in ("snap_left", "snap_right"):
+        _win.show(w.hwnd, _win.SW_RESTORE)
+        _win.focus(w.hwnd)
+        time.sleep(0.15)
+        _press("win", "left" if action == "snap_left" else "right")
+        return f"{w.app_name} is on the {action[5:]} half."
     else:
         _win.show(w.hwnd, {"minimize": _win.SW_MINIMIZE, "maximize": _win.SW_MAXIMIZE,
                            "restore": _win.SW_RESTORE}[action])

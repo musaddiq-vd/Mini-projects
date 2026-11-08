@@ -26,6 +26,8 @@ def _chip(text: str, send: Callable[[str], None], quoted: bool = False) -> QPush
 
 TOPICS: list[tuple[str, str, list[str]]] = [
     ("🚀", "Apps & windows", ["Open Spotify", "Close YouTube", "Minimize everything", "Switch to VS Code"]),
+    ("🕹", "Move by voice", ["Apni window right corner me le jao", "Dheere dheere neeche chalte raho",
+                           "Is page ko neeche scroll karte raho", "Ruko", "Chrome ko left half me lagao"]),
     ("🔊", "System", ["Volume 40 percent", "Brightness 70", "Turn on dark mode", "How is my battery?"]),
     ("👁", "Screen & files", ["What's on my screen?", "Screenshot lo aur kholo", "Read my latest download",
                              "Open the last screenshot"]),
@@ -168,5 +170,6 @@ def welcome_card(name: str, user: str, send: Callable[[str], None]) -> QFrame:
         grid.addWidget(_chip(ex, send), i // 2, i % 2)
     v.addLayout(grid)
     tip = QLabel("Press F1 any time to see everything I can do.", objectName="muted")
+    tip.setWordWrap(True)
     v.addWidget(tip)
     return card
