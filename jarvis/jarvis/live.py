@@ -66,6 +66,11 @@ class LiveAssistant:
         # turned off if the model doesn't support expressive dialog (remembered per model)
         self._affective_ok = app.state.get("affective_unsupported") != self.s.live_model
         self._pending: list[str] = []  # texts typed before the session was up
+        # texts sent before the server's first answer: if the server then rejects the session,
+        # they are sent again after reconnecting instead of being lost
+        self._unconfirmed: list[str] = []
+        self._confirmed = False
+        self._announced = False  # "Reconnected" shown for the current outage
         self._woken_by_name = False  # woke mid-speech: make sure Jarvis answers
         self._spoke_since_wake = False
         self.sfx = SoundFX(self.s.sound_effects, self.s.sound_volume,
@@ -196,6 +201,8 @@ class LiveAssistant:
 
     async def _send_text(self, text: str) -> None:
         if self.session:
+            if not self._confirmed:
+                self._unconfirmed = (self._unconfirmed + [text])[-10:]
             await self.session.send_realtime_input(text=text)
         else:
             self._pending.append(text)  # not connected yet: send as soon as we are
@@ -326,10 +333,17 @@ class LiveAssistant:
         heard, said = [], []
         while True:
             async for msg in session.receive():
-                if self._failures:  # the server answered: this connection really works
+                if self._failures and not self._announced:  # the server is talking to us again
+                    self._announced = True
                     self.events.emit("log", text="✓ Reconnected.")
                     log.info("reconnected after %d failed attempt(s)", self._failures)
+                if msg.server_content or msg.tool_call:
+                    # the model really answered (setup messages alone don't count: a session can
+                    # still be rejected after them) - what we sent has arrived
+                    self._confirmed = True
+                    self._unconfirmed = []
                     self._failures = 0
+                    self._announced = False
                 if msg.session_resumption_update and msg.session_resumption_update.new_handle:
                     self.resume_handle = msg.session_resumption_update.new_handle
                 if msg.go_away:
@@ -379,9 +393,11 @@ class LiveAssistant:
             self.speaker.start()
         async with self.client.aio.live.connect(model=self.s.live_model, config=self._config()) as session:
             self.session = session
+            self._confirmed = False
+            self._unconfirmed = []
             pending, self._pending = self._pending, []
             for text in pending:
-                await session.send_realtime_input(text=text)
+                await self._send_text(text)
             self._emit_state()
             if not self._connected_once:
                 self._connected_once = True
@@ -400,6 +416,9 @@ class LiveAssistant:
 
     def _on_connection_error(self, exc: Exception, backoff: float) -> None:
         self._failures += 1
+        if self._unconfirmed:  # never answered: send again after reconnecting
+            self._pending = (self._unconfirmed + self._pending)[-10:]
+            self._unconfirmed = []
         text = str(exc)
         low = text.lower()
         if self._affective_ok and self.s.expressive_voice and ("affective" in low or "invalid argument" in low):

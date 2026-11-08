@@ -257,3 +257,26 @@ def test_repeated_errors_drop_the_handle(live):
     assert live.resume_handle == "old-handle"  # one blip: try to resume the conversation
     live._on_connection_error(Exception("network down"), 2)
     assert live.resume_handle is None
+
+
+def test_text_is_resent_when_the_server_rejects_the_session(live):
+    class Session:
+        def __init__(self):
+            self.sent = []
+
+        async def send_realtime_input(self, text=None, **kw):
+            self.sent.append(text)
+
+    live.session = Session()
+    asyncio.run(live._send_text("what is 15 times 12?"))
+    assert live._unconfirmed == ["what is 15 times 12?"]
+    live._on_connection_error(Exception("1007 invalid argument"), 1)
+    assert live._pending == ["what is 15 times 12?"] and live._unconfirmed == []
+
+
+def test_answered_text_is_not_resent(live):
+    live.session = type("S", (), {"send_realtime_input": lambda self, **k: asyncio.sleep(0)})()
+    asyncio.run(live._send_text("hello"))
+    run_receive(live, [msg(said="hi", done=True)])  # the server answered
+    live._on_connection_error(Exception("network"), 1)
+    assert live._pending == []
