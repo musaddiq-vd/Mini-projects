@@ -4,6 +4,7 @@ numpy==2.4.6
 sounddevice==0.5.6
 psutil==7.2.2
 requests==2.34.2
+tzdata==2025.2  # time zones for calendar sync (Windows has no system copy)
 ddgs==9.16.1
 send2trash==2.1.0
 

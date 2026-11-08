@@ -89,6 +89,9 @@ class Settings:
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
     currency: str = "₹"  # for the expense tracker
+    # Private iCal links (read-only calendar sync). Secret like passwords: encrypted on disk, never logged.
+    calendar_urls: list[str] = field(default_factory=list)
+    calendar_reminder_minutes: int = 10  # spoken reminder before a meeting (0 = off)
     # wellbeing
     evening_recap: bool = True  # a short recap of the day in the evening
     recap_hour: int = 21
@@ -135,9 +138,17 @@ def load_settings(path: Path | None = None) -> Settings:
 
     stored_key = data.get("api_key", "")
     data["api_key"] = secure.unprotect(stored_key)
-    settings = Settings(**data)
-    if stored_key and not stored_key.startswith(secure.PREFIX) and secure.available():
-        save_settings(settings, path)  # an old plain-text key: encrypt it on disk right away
+    urls = data.get("calendar_urls")
+    if not isinstance(urls, list):
+        urls = []
+    plain_urls = any(isinstance(u, str) and u and not u.startswith(secure.PREFIX) for u in urls)
+    data["calendar_urls"] = [u for u in (secure.unprotect(u) for u in urls if isinstance(u, str)) if u]
+    try:
+        settings = Settings(**data)
+    except TypeError:
+        return Settings()
+    if (stored_key and not stored_key.startswith(secure.PREFIX) or plain_urls) and secure.available():
+        save_settings(settings, path)  # old plain-text secrets: encrypt them on disk right away
     return settings
 
 
@@ -152,6 +163,8 @@ def save_settings(settings: Settings, path: Path | None = None) -> Path:
     data = {k: v for k, v in asdict(settings).items() if v != defaults[k]}
     if data.get("api_key"):
         data["api_key"] = secure.protect(data["api_key"])  # never stored in plain text on Windows
+    if data.get("calendar_urls"):
+        data["calendar_urls"] = [secure.protect(u) for u in data["calendar_urls"]]
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     tmp.replace(path)
     return path

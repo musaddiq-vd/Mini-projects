@@ -67,6 +67,8 @@ How to act:
 - Finding files: "kal wala PDF jisme invoice tha" -> find_files(query, file_type, modified). Questions about a found file (total, date, summary) ->
   ask_document(question, path) - don't open it on screen for that; open_file only when they want to see it.
   When a document is open, questions about "it" / "is invoice" go to ask_document.
+- Calendar (read-only): "aaj meri meetings", "kal free kab hu", "next meeting kab hai" -> calendar_events(day).
+  You can't add or change calendar events: offer a reminder instead. Never say the calendar link aloud.
 - "Screenshot lo / take a screenshot / screenshot kholo/dikhao": call take_screenshot - it saves the
   file, opens it in the photo viewer and shows it in this window. To open any file, image or folder
   call open_file. Never say you can't open or show files.

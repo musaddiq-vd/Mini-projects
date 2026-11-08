@@ -273,6 +273,7 @@ class SettingsDialog(QDialog):
         self.water_minutes.setSuffix(" min")
         self.water_minutes.setValue(s.water_minutes)
         form.addRow("Water every", self.water_minutes)
+        self._calendar_rows(form)
         self.autostart = QCheckBox("Start Jarvis when Windows starts")
         self.autostart.setEnabled(platform.system() == "Windows")
         self.autostart.setChecked(autostart_enabled())
@@ -283,6 +284,63 @@ class SettingsDialog(QDialog):
         t.setWordWrap(True)
         form.addRow(t)
         return w
+
+    def _calendar_rows(self, form: QFormLayout) -> None:
+        s = self.result_settings
+        form.addRow(QLabel("CALENDAR", objectName="section"))
+        self.cal_links = QLineEdit(" ".join(s.calendar_urls))
+        self.cal_links.setEchoMode(QLineEdit.EchoMode.Password)
+        self.cal_links.setPlaceholderText("Private iCal link(s): https://…/basic.ics or webcal://…")
+        self.cal_links.setToolTip("Google Calendar: Settings > your calendar > Integrate calendar > Secret address in "
+                                  "iCal format.\nOutlook: Settings > Calendar > Shared calendars > Publish > ICS.\n"
+                                  "Several links: separate them with spaces. They're encrypted on this PC.")
+        show = QPushButton("Show")
+        show.setCheckable(True)
+        show.toggled.connect(lambda on: self.cal_links.setEchoMode(
+            QLineEdit.EchoMode.Normal if on else QLineEdit.EchoMode.Password))
+        row = QHBoxLayout()
+        row.addWidget(self.cal_links)
+        row.addWidget(show)
+        form.addRow("iCal links", row)
+        self.cal_minutes = QSpinBox()
+        self.cal_minutes.setRange(0, 60)
+        self.cal_minutes.setSpecialValueText("off")
+        self.cal_minutes.setSuffix(" min before")
+        self.cal_minutes.setValue(s.calendar_reminder_minutes)
+        form.addRow("Meeting reminder", self.cal_minutes)
+        self.cal_status = QLabel(self._calendar_status(), objectName="muted")
+        self.cal_status.setWordWrap(True)
+        form.addRow(self.cal_status)
+
+    def _calendar_status(self) -> str:
+        from jarvis.tools import calendar_sync as cal
+
+        if not cal.links(self.result_settings):
+            return "Read-only: Jarvis reads your meetings and reminds you before they start. It can't change them."
+        data = cal.data_file().load()
+        if data.get("links") != cal.links_key(cal.links(self.result_settings)):
+            return "Syncing in a moment…"
+        lines = []
+        for v in data.get("sources", {}).values():
+            if v.get("ok"):
+                lines.append(f"✓ {v.get('name')} · {v.get('count', 0)} events")
+            else:
+                lines.append(f"⚠ {v.get('name')}: {v.get('error')}")
+        return "\n".join(lines) or "Syncing in a moment…"
+
+    def _calendar_links(self) -> list[str] | None:
+        """The typed links, or None (with the reason shown) when one can't be used."""
+        from types import SimpleNamespace
+
+        from jarvis.tools import calendar_sync as cal
+
+        urls = cal.links(SimpleNamespace(calendar_urls=[self.cal_links.text()]))
+        for u in urls:
+            problem = cal.check_link(u)
+            if problem:
+                self.cal_status.setText("⚠ " + problem)
+                return None
+        return urls
 
     def _memory_tab(self) -> QWidget:
         w = QWidget()
@@ -369,6 +427,13 @@ class SettingsDialog(QDialog):
         s.health_nudges = self.health.isChecked()
         s.eye_break_minutes = self.eye_minutes.value()
         s.water_minutes = self.water_minutes.value()
+        urls = self._calendar_links()
+        if urls is None:
+            self.tabs.setCurrentIndex(3)
+            self.cal_links.setFocus()
+            return
+        s.calendar_urls = urls
+        s.calendar_reminder_minutes = self.cal_minutes.value()
         if not s.effective_api_key:
             self.tabs.setCurrentIndex(0)
             self.api_key.setFocus()

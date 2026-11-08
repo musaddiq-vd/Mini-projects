@@ -36,7 +36,7 @@ class TodayStrip(QWidget):
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(6)
         self.chips: dict[str, QPushButton] = {}
-        for key, ask in (("reminder", "What reminders do I have?"), ("timer", "How much time is left on my timers?"),
+        for key, ask in (("meeting", "What's on my calendar today?"), ("reminder", "What reminders do I have?"), ("timer", "How much time is left on my timers?"),
                          ("todo", "What's on my to-do list?"), ("streak", None), ("badges", None)):
             b = QPushButton(objectName="chip")
             b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -57,6 +57,7 @@ class TodayStrip(QWidget):
     def refresh(self) -> None:
         st = self.app.state
         now = time.time()
+        self._meeting(now)
         upcoming = sorted((r for r in st.get("reminders", []) or [] if r.get("due", 0) > now), key=lambda r: r["due"])
         if upcoming:
             r = upcoming[0]
@@ -83,6 +84,28 @@ class TodayStrip(QWidget):
             self._set("badges", f"🏆 {got}" if got else None, f"{got} achievements unlocked - click to see them")
         if not any(b.isVisibleTo(self) for b in self.chips.values()):
             self._set("todo", "✨ All clear today", "No reminders, timers or to-dos - enjoy!")
+
+    def _meeting(self, now: float) -> None:
+        try:
+            from jarvis.tools.calendar_sync import next_event
+
+            e = next_event(self.app.settings, now)
+        except Exception:
+            e = None
+        if not e:
+            self._set("meeting", None)
+            return
+        title = e["title"]
+        short = title[:18] + ("…" if len(title) > 18 else "")
+        if e["start"] <= now:
+            text, tip = f"📅 Now · {short}", f"In progress: {title} (until {_when(e['end'])})"
+        elif e["start"] - now < 3600:
+            text, tip = f"📅 in {max(1, int((e['start'] - now) // 60))} min · {short}", f"{title} at {_when(e['start'])}"
+        else:
+            text, tip = f"📅 {_when(e['start'])} · {short}", f"Next meeting: {title} at {_when(e['start'])}"
+        if e.get("location"):
+            tip += f"\n📍 {e['location']}"
+        self._set("meeting", text, tip)
 
     def _set(self, key: str, text: str | None, tip: str = "") -> None:
         b = self.chips[key]

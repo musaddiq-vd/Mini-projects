@@ -17,9 +17,10 @@ OUTSIDE = (
     "• Your voice and messages go to <b>Google Gemini</b> so Jarvis can answer.<br>"
     "• The screen or camera only when you ask (you'll see a flash and a notice).<br>"
     "• Web and news searches go to <b>DuckDuckGo</b>; weather to <b>Open-Meteo</b> (city name only).<br>"
+    "• If you link a calendar, Jarvis downloads it from your calendar provider (nothing is uploaded).<br>"
     "• Nothing else: no analytics, no tracking, no accounts.<br><br>"
     "<b>Protection</b><br>"
-    "• Your API key is encrypted with your Windows account.<br>"
+    "• Your API key and calendar links are encrypted with your Windows account.<br>"
     "• Guardrails never send or save passwords, OTPs, card, bank or ID numbers and keys, and mask them "
     "in history and logs.<br>"
     "• While asleep with the offline wake word, no audio leaves your PC."
@@ -66,6 +67,7 @@ class PrivacyTab(QWidget):
             ("money", "💰  Expenses and budgets", lambda: self._clear_file("expenses")),
             ("habits", "✅  Habits", lambda: self._clear_file("habits")),
             ("goals", "🎯  Goals", lambda: self._clear_file("goals")),
+            ("calendar", "📅  Calendar copy (links stay in Settings)", lambda: self._clear_file("calendar")),
             ("cache", "🖼  Copies of what Jarvis looked at", self._clear_cache),
             ("logs", "📄  Logs (for fixing problems)", self._clear_logs),
         ]
@@ -135,6 +137,7 @@ class PrivacyTab(QWidget):
             "money": self._file_fact("expenses", "items", "expense"),
             "habits": self._file_fact("habits", "habits", "habit"),
             "goals": self._file_fact("goals", "goals", "goal"),
+            "calendar": self._file_fact("calendar", "events", "event"),
         }
         for key, (info, btn) in self.rows.items():
             info.setText(facts[key])
@@ -216,7 +219,7 @@ class PrivacyTab(QWidget):
         for fn in (self._clear_history, self._clear_memory, self._clear_lists, self._clear_practice,
                    self._clear_cache, self._clear_logs):
             fn()
-        for name in ("expenses", "habits", "goals"):
+        for name in ("expenses", "habits", "goals", "calendar"):
             self._clear_file(name)
         for key in ("last_session_summary", "seen_headlines", "watch_topics"):
             self.app.state.set(key, [] if key == "watch_topics" else ({} if key == "seen_headlines" else None))

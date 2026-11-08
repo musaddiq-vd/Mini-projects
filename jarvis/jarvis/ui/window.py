@@ -1057,8 +1057,10 @@ class MainWindow(QMainWindow):
             self.doc_chip.setText(f"📄  {name.replace('&', '&&')}  ·  ask anything about it   ✕")
             self.doc_chip.setVisible(bool(name))
         elif kind == "nudge":
-            icon = {"eyes": "👀", "water": "💧", "recap": "🌙"}.get(data.get("kind"), "💡")
-            self.toast(icon, data.get("text", ""), theme.ACCENT, 8)
+            icon = {"eyes": "👀", "water": "💧", "recap": "🌙", "meeting": "📅"}.get(data.get("kind"), "💡")
+            text = data.get("text", "")
+            self.toast(icon, text[1:].strip() if text[:1] == icon[:1] else text, theme.ACCENT,
+                       15 if data.get("kind") == "meeting" else 8)
             if self.tray and not self.isActiveWindow():
                 self.tray.showMessage(self.app.settings.assistant_name, data.get("text", ""))
             if data.get("kind") in ("eyes", "water"):
