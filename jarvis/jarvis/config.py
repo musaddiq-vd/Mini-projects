@@ -88,6 +88,12 @@ class Settings:
     sound_effects: bool = True
     sound_volume: int = 60  # 0..100
     orb_face: bool = True  # AI face on the orb core
+    # wellbeing
+    evening_recap: bool = True  # a short recap of the day in the evening
+    recap_hour: int = 21
+    health_nudges: bool = True  # eye breaks and water reminders while you use the PC
+    eye_break_minutes: int = 50
+    water_minutes: int = 90
     # privacy
     save_history: bool = True  # keep the conversation on this computer (Settings > Privacy)
     history_days: int = 30  # delete saved conversation older than this (0 = keep forever)

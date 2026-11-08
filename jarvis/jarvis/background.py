@@ -41,7 +41,8 @@ class BackgroundServices:
 
     # -- lifecycle -----------------------------------------------------------
     def start(self) -> None:
-        for target in (self._hardware_loop, self._topic_loop, self._proactive_loop):
+        for target in (self._hardware_loop, self._topic_loop, self._proactive_loop, self._recap_loop,
+                       self._health_loop):
             threading.Thread(target=target, daemon=True).start()
 
     def stop(self) -> None:
@@ -149,6 +150,75 @@ class BackgroundServices:
         if fresh:
             self.say("(system: watched topics) Tell the user about these new headlines briefly: " + " | ".join(fresh))
         return fresh
+
+    # -- evening recap -------------------------------------------------------------------
+    def recap_due(self, now: datetime | None = None) -> bool:
+        now = now or datetime.now()
+        if not self.s.evening_recap or not (self.s.recap_hour <= now.hour <= 23):
+            return False
+        if self.app.state.get("last_recap") == now.date().isoformat():
+            return False
+        if self.sleeping or self._focusing() or self._practicing():
+            return False
+        today_start = datetime.combine(now.date(), datetime.min.time()).timestamp()
+        return any(i.get("t", 0) >= today_start for i in (self.app.history.recent(50) if self.app.history else []))
+
+    def _recap_loop(self) -> None:
+        while not self._stop.wait(60):
+            try:
+                if self.recap_due():
+                    self.app.state.set("last_recap", date.today().isoformat())
+                    self.app.events.emit("nudge", kind="recap", text="🌙 Your evening recap")
+                    self.say("(system: evening recap) It's evening. Call daily_recap and give the user a short, "
+                             "warm recap of their day, then ask what they'd like to do tomorrow.")
+            except Exception as exc:  # one bad tick must not end the loop
+                self.app.events.emit("log", text=f"[recap] {exc}")
+
+    # -- health nudges ---------------------------------------------------------------------
+    HEALTH_TICK = 30
+    AWAY_SECONDS = 120  # no input this long = a natural break
+
+    def health_step(self, idle: float, now: float, hour: int) -> str | None:
+        """Advance the break timers by one tick; returns 'eyes' / 'water' when a nudge is due."""
+        if not hasattr(self, "_eye_since"):
+            self._eye_since, self._water_active = now, 0.0
+        if idle >= self.AWAY_SECONDS:  # the user stepped away: that counts as a break
+            self._eye_since = now
+            return None
+        self._water_active += self.HEALTH_TICK
+        if not self.s.health_nudges or not (8 <= hour < 23) or self._focusing() or self._practicing():
+            return None
+        if now - self._eye_since >= self.s.eye_break_minutes * 60:
+            self._eye_since = now
+            return "eyes"
+        if self._water_active >= self.s.water_minutes * 60:
+            self._water_active = 0.0
+            return "water"
+        return None
+
+    def _health_loop(self) -> None:
+        from jarvis.idle import seconds_idle
+
+        texts = {
+            "eyes": ("👀 Eye break: look at something 20 feet away for 20 seconds, then stretch a little.",
+                     "(system: health nudge) The user has been on the computer a long time. In one short, friendly "
+                     "sentence, suggest the 20-20-20 eye break and a quick stretch."),
+            "water": ("💧 Time for a glass of water.",
+                      "(system: health nudge) In one short, friendly sentence, remind the user to drink some water."),
+        }
+        while not self._stop.wait(self.HEALTH_TICK):
+            try:
+                kind = self.health_step(seconds_idle(), time.time(), datetime.now().hour)
+            except Exception:
+                continue
+            if kind:
+                toast, instruction = texts[kind]
+                try:
+                    self.app.events.emit("nudge", kind=kind, text=toast)
+                    if not self.sleeping:  # asleep: the notice alone, no voice
+                        self.say(instruction)
+                except Exception:
+                    pass
 
     def _proactive_loop(self) -> None:
         while not self._stop.wait(60):

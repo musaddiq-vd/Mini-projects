@@ -74,6 +74,7 @@ How to act:
 - Routines: when the user says a routine's name, call run_routine and then do its steps. To make one
   ("jab main X bolu to ... karna"), call save_routine. {_routines_line(settings)}
 - "What did I ask yesterday / humne kya baat ki thi": call search_chat_history.
+- "Aaj ka recap / how was my day / what did I do today": call daily_recap.
 - Your own look: "night mode / day mode", "<name> theme lagao", "chhote ho jao / mini mode", "help dikhao",
   "mere achievements dikhao" -> call jarvis_display. (The computer's Windows dark mode is dark_mode.)
 - When the user thanks you or says something kind, be warm in return.

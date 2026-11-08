@@ -1023,6 +1023,13 @@ class MainWindow(QMainWindow):
                 self._emote("wink")
             elif any(w in data["text"].lower() for w in CELEBRATE_WORDS):
                 self._emote("star")
+        elif kind == "nudge":
+            icon = {"eyes": "👀", "water": "💧", "recap": "🌙"}.get(data.get("kind"), "💡")
+            self.toast(icon, data.get("text", ""), theme.ACCENT, 8)
+            if self.tray and not self.isActiveWindow():
+                self.tray.showMessage(self.app.settings.assistant_name, data.get("text", ""))
+            if data.get("kind") in ("eyes", "water"):
+                self.orb.transform("happy", 2.0)
         elif kind == "ui_command":
             self.ui_command(data.get("action", ""), data.get("theme", ""))
         elif kind == "achievement":
@@ -1090,7 +1097,11 @@ class MainWindow(QMainWindow):
             elif data["name"] == "complete_note":
                 self._emote("wink")
             self.orb.action(f"{'✓' if ok else '✗'}  {pretty_tool(data['name'])}", OK if ok else DANGER)
-            self.chat.add_tool(data["name"], data.get("args", {}), result)
+            card = self._rich_card(data["name"], result) if ok else None
+            if card is not None:  # a card says more than the plain action chip
+                self.chat._add_row(card, "left", text=f"{data['name']} {result.get('place', '')} {result.get('query', '')}")
+            else:
+                self.chat.add_tool(data["name"], data.get("args", {}), result)
             image = result.get("image") if ok else None
             if image and Path(image).exists():
                 caption = Path(image).name if "Screenshot" in Path(image).name else "What I saw"
@@ -1113,6 +1124,18 @@ class MainWindow(QMainWindow):
                 self._offline_toast = False
             if text.startswith("🔔") and self.tray and not self.isActiveWindow():
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
+
+    def _rich_card(self, name: str, result: dict):
+        from jarvis.ui.cards import links_card, weather_card
+
+        try:
+            if name == "get_weather":
+                return weather_card(result)
+            if name == "web_search":
+                return links_card(result)
+        except Exception:
+            log.exception("couldn't draw a card for %s", name)
+        return None
 
     _joke_pending = False
     _offline_toast = False

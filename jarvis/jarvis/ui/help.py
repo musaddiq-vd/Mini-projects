@@ -37,7 +37,7 @@ TOPICS: list[tuple[str, str, list[str]]] = [
                                "Save a routine called work mode: open VS Code and Chrome", "work mode"]),
     ("💬", "Messages", ["WhatsApp mom: I'll be late", "Draft an email to my boss about leave tomorrow"]),
     ("🧠", "Memory & chat", ["Remember that my city is Pune", "What do you know about me?",
-                            "Kal maine kya poocha tha?", "Undo"]),
+                            "Kal maine kya poocha tha?", "Aaj ka recap do", "Undo"]),
     ("💻", "Code", ["Write a Python snake game in a folder called snake", "Explain main.py"]),
     ("😄", "Fun", ["Tell me a joke", "Thank you Jarvis!", "Sing me a short song about chai"]),
 ]

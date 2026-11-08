@@ -28,7 +28,7 @@ class Events:
         with self._lock:
             self._subs.append(handler)
 
-    def emit(self, kind: str, **data) -> None:
+    def emit(self, kind: str, /, **data) -> None:  # "/": data may itself contain a "kind" key
         with self._lock:
             subs = list(self._subs)
         for handler in subs:

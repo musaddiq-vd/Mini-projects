@@ -24,6 +24,9 @@ Powered by the Gemini Live API for low-latency, natural voice conversation, with
 | 📸 **Screenshots** | "Screenshot lo aur kholo" saves it to *Pictures/Jarvis Screenshots*, opens it and shows it in the chat. |
 | 📂 **Drag & drop** | Drop a file or image on the window and Jarvis reads/looks at it. |
 | 🏆 **Achievements** | 19 badges you unlock just by using Jarvis (Early Bird, Night Owl, Timer Master, List Maker, Week Warrior, Perfect Score...). Unlocking one bursts confetti with a fanfare; the 🏆 button shows them all with progress bars. |
+| 🌦 **Rich cards** | Weather shows as a card (big temperature, condition, high/low, rain, humidity, wind); web and news results as clickable link cards (only http/https links, with their site shown). |
+| 🌙 **Evening recap** | In the evening (from 9 pm by default) - or any time you say "aaj ka recap do" - Jarvis sums up your day: what you got done, what's open, what's coming, badges, practice; then asks about tomorrow. |
+| 💧 **Health nudges** | While you use the PC: a 20-20-20 eye break and stretch every 50 minutes and water every 90 (stepping away resets the clock; quiet at night, in focus and practice mode). Only "seconds since last key/mouse input" is read - nothing is recorded. |
 | 📋 **Planner** | `Ctrl+P` or the 📋 button: tick and add to-dos, add or cancel reminders ("6:30 pm" / "20 min"), quick 1/5/10/25-minute timers and a focus session, run or delete routines. Guardrails and undo apply here too. |
 | 📶 **Connection pill** | Under the clock: Online (with the model), Connecting, Reconnecting or Offline at a glance. |
 | 📅 **Today strip** | Under the orb: next reminder, running timer, open to-dos, streak and badges - click a chip to ask about it. |

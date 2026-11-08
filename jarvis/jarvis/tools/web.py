@@ -33,7 +33,7 @@ def web_search(ctx, query: str, mode: str = "web"):
     ddgs = DDGS()
     if mode == "news":
         rows = ddgs.news(query, max_results=6) or []
-        items = [{"title": r.get("title"), "source": r.get("source"),
+        items = [{"title": r.get("title"), "source": r.get("source"), "url": r.get("url"),
                   "date": r.get("date"), "snippet": r.get("body")} for r in rows]
     else:
         rows = ddgs.text(query, max_results=6) or []
@@ -41,7 +41,7 @@ def web_search(ctx, query: str, mode: str = "web"):
                   "snippet": r.get("body")} for r in rows]
     if not items:
         return "No results found."
-    return {"results": items}
+    return {"results": items, "mode": mode, "query": query}
 
 
 def _geocode(city: str) -> dict | None:

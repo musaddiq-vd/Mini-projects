@@ -171,6 +171,8 @@ class SoundFX:
             self.play("error" if "error" in data.get("result", {}) else "success")
         elif kind == "log" and str(data.get("text", "")).startswith("🔔"):
             self.play("notify")
+        elif kind == "nudge":
+            self.play("notify")
         elif kind == "achievement":
             self.play("fanfare")
         elif kind == "capture":
