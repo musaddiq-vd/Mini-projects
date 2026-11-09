@@ -57,6 +57,7 @@ def test_install_update_uninstall(setup, tmp_path):
     pkg2 = fake_package(tmp_path / "pkg2", "v2")  # an update: the folder is swapped, nothing old is left
     setup.install(target, desktop_icon=False, source=pkg2)
     assert (target / "app" / "marker.txt").read_text(encoding="utf-8") == "v2"
+    assert setup.registry_get(setup.RUN_KEY, "JarvisSetupTest") is None  # unticked on update: removed
     assert not (tmp_path / "links" / "desktop" / "Jarvis.lnk").exists()
     assert sorted(p.name for p in target.parent.iterdir()) == ["Jarvis"]
 

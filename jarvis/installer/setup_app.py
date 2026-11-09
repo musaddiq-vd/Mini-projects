@@ -229,6 +229,10 @@ def install(target: Path, desktop_icon: bool = True, menu_icon: bool = True, aut
             link.unlink(missing_ok=True)
     if autostart:
         registry_set(RUN_KEY, {run_value(): f'"{p["pythonw"]}" {launch_args}'})
+    else:  # unticked on an update: remove our old entry (never someone else's)
+        old_run = registry_get(RUN_KEY, run_value())
+        if old_run and str(target).lower() in old_run.lower():
+            registry_delete(RUN_KEY, run_value())
     progress(96, "Registering…")
     registry_set(uninstall_key(), {
         "DisplayName": APP, "DisplayVersion": version(), "Publisher": PUBLISHER, "InstallLocation": str(target),
@@ -266,8 +270,10 @@ def uninstall(target: Path, delete_data: bool = False) -> None:
     me = Path(sys.executable).resolve()
     if target in me.parents:
         # this setup runs on the installed python, which can't delete its own folder: remove it right after we exit
-        subprocess.Popen(f'cmd /c ping -n 4 127.0.0.1 >nul & rmdir /s /q "{target}"', creationflags=NO_WINDOW,
-                         close_fds=True)
+        env = {**os.environ, "J_REMOVE": str(target)}  # the path is data, never part of the command
+        subprocess.Popen(["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                          "Start-Sleep -Seconds 3; Remove-Item -LiteralPath $env:J_REMOVE -Recurse -Force"],
+                         env=env, creationflags=NO_WINDOW, close_fds=True)
     else:
         shutil.rmtree(target, ignore_errors=True)
 
