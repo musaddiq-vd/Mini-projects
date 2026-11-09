@@ -10,8 +10,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![Gemini Live](https://img.shields.io/badge/Gemini-Live%20API-8E75B2?logo=googlegemini&logoColor=white)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
-![Tools](https://img.shields.io/badge/tools-94-00d4ff)
-![Tests](https://img.shields.io/badge/tests-609%20passing-3ddc97)
+![Tools](https://img.shields.io/badge/tools-96-00d4ff)
+![Tests](https://img.shields.io/badge/tests-653%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
 
@@ -32,6 +32,9 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 📄 **Reads your documents** | Finds files by what is inside them and answers questions about any PDF, Word, Excel or PowerPoint file, with page numbers. |
 | 🕹️ **Moves on command** | Moves, resizes and minimizes its own window by voice, and scrolls the page you are reading until you say stop. |
 | 🪟 **Always within reach** | A floating mini mode with its own chat, a live widget on your wallpaper and a global hotkey. |
+| 🏠 **Smart home** | Lights, plugs, fans and the AC through Home Assistant or Tuya / Smart Life (Wipro, Syska, Havells ...), on your home WiFi. |
+| 📱 **From your phone** | Message your own Telegram bot (text or voice notes). Only your account is obeyed, and risky actions ask Yes / No. |
+| 🎨 **Make it yours** | Robot, cat, anime or minimal avatars, colours taken from your wallpaper, and pop-ups on the screen you are using. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
 | 🎓 **Language coach** | A separate practice mode with a daily plan, quizzes, role-plays, pronunciation tips and progress tracking. |
 | 🛡️ **Private by design** | Cards, OTPs, passwords and keys are never sent or saved. The API key is encrypted, and backups never include it. |
@@ -76,12 +79,26 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Messages & code | "WhatsApp mom: I'll be late" · "Write a Python snake game in a folder called snake" |
 | Memory & data | "Remember my city is Pune" · "What do you know about me?" · "Back up my data" · "Undo" |
 | Language | "Talk to me in Hindi" · "Give reminders in English" |
+| Smart home | "Turn on the bedroom light" · "Set the AC to 24" · "Make the lights warm white" · "Turn off all lights" |
+| Look | "Become a cat" · "Use my wallpaper's colours" · "Put the desktop widget on" |
 
 Press **F1** in the app to see every example by topic. Click one to try it.
 
 ---
 
-## 🚀 Quick start
+## 💿 Install (no Python needed)
+
+1. Download **Jarvis-<version>-windows.zip** from the Releases page and extract it.
+2. Double-click **Install Jarvis.cmd**, choose your options and press **Install**.
+3. Say **"Jarvis"**. Paste your free [Gemini API key](https://aistudio.google.com/apikey) on first start.
+
+No admin rights are needed. Jarvis installs to `%LOCALAPPDATA%\Programs\Jarvis`, adds Start Menu and desktop shortcuts, and can be removed from **Settings → Apps → Installed apps**. Updating keeps your settings and data.
+
+> **Smart App Control.** Jarvis runs on the official, signed Python runtime from python.org. Some of its libraries (for example parts of Qt) are not code-signed, so on a PC where Windows 11 *Smart App Control* is **On** they can be blocked until they are signed with a certificate. On other PCs, and with Smart App Control off or in evaluation mode, everything works.
+
+Build the package yourself with `python installer/build.py` (it downloads the runtime, checks its signature, self-tests the package and writes the zip to `installer/dist`).
+
+## 🚀 Run from source
 
 **You need:** Windows 10/11, Python 3.10+, a microphone and speakers, and a free [Gemini API key](https://aistudio.google.com/apikey).
 
@@ -156,11 +173,12 @@ jarvis/
 │   ├── app.py           settings, memory, tools, events and the system prompt
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
 │   ├── guardrails.py    secret detection and safety checks
-│   ├── tools/           94 tools, one file per area
+│   ├── tools/           96 tools, one file per area
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode
+├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               609 tests
+├── tests/               653 tests
 └── docs/                screenshots and the script that makes them
 ```
 

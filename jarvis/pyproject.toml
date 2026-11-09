@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jarvis-assistant"
-version = "1.0.0"
+version = "1.1.0"
 description = "Jarvis - a real-time voice AI assistant for your computer, powered by Gemini."
 readme = "README.md"
 authors = [{ name = "Musaddiq Khan", email = "musaddiqkhan001@gmail.com" }]
@@ -27,6 +27,8 @@ dependencies = [
     "openpyxl==3.1.5",
     "python-pptx==1.0.2",
     "openwakeword==0.6.0",
+    "tzdata==2025.2",
+    "tinytuya==1.17.4",
 ]
 
 [project.optional-dependencies]

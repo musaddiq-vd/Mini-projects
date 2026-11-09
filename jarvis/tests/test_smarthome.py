@@ -7,7 +7,7 @@ import threading
 
 import pytest
 
-from jarvis.home import Device, Home, HomeAssistant, HomeError, TuyaLocal, color_value
+from jarvis.home import Home, HomeAssistant, HomeError, TuyaLocal, color_value
 
 STATES = [
     {"entity_id": "light.bedroom", "state": "off", "attributes": {"friendly_name": "Bedroom Light"}},

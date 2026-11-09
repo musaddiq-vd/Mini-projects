@@ -46,6 +46,13 @@ def _pythonw() -> str:
     return str(w if w.exists() else exe)
 
 
+def start_command() -> str:
+    """How Windows should start Jarvis: the installed Jarvis.exe, or Python with the launcher in a checkout."""
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}"'
+    return f'"{_pythonw()}" "{LAUNCHER}"'
+
+
 def autostart_enabled() -> bool:
     if OS != "Windows":
         return False
@@ -68,7 +75,7 @@ def set_autostart(enabled: bool) -> None:
         except FileNotFoundError:
             pass
         if enabled:
-            winreg.SetValueEx(key, "Jarvis", 0, winreg.REG_SZ, f'"{_pythonw()}" "{LAUNCHER}"')
+            winreg.SetValueEx(key, "Jarvis", 0, winreg.REG_SZ, start_command())
         else:
             try:
                 winreg.DeleteValue(key, "Jarvis")

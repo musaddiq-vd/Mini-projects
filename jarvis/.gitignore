@@ -34,3 +34,8 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Installer build output
+installer/build/
+installer/dist/
+installer/version_info.txt

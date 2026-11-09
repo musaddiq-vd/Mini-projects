@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import platform
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -17,7 +18,9 @@ from jarvis.state import StateStore
 from jarvis.tools import ToolContext, ToolRegistry, build_registry
 from jarvis.undo import UndoStack
 
-REPO_PLUGINS = Path(__file__).resolve().parent.parent / "plugins"
+# example plugins ship next to the code (inside the installed app when packaged)
+REPO_PLUGINS = (Path(getattr(sys, "_MEIPASS", "")) / "plugins" if getattr(sys, "frozen", False)
+                else Path(__file__).resolve().parent.parent / "plugins")
 
 
 _STATE_FOR_PROMPT: list = []  # set by create_app so the prompt can name saved routines
