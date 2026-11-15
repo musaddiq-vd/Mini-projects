@@ -1894,6 +1894,9 @@ def run_window() -> int:
     if _already_running():
         log.info("already running - brought the open window to the front")
         return 0
+    from jarvis import session
+
+    crashed = session.begin() is not None  # the marker from last time is still there: it never quit cleanly
     bridge = Bridge()
     settings = load_settings()
     app = create_app(settings, ask=make_confirm(bridge))
@@ -1906,9 +1909,13 @@ def run_window() -> int:
     window.start_hotkey()
     for err in app.registry.errors:
         window._add_system(f"⚠ {err}")
+    if crashed:
+        session.recover(app, window._add_system)
     if not app.settings.effective_api_key:
         QTimer.singleShot(200, lambda: window.open_settings(first_run=True) or QMessageBox.information(
             window, "Jarvis", "Jarvis needs a Gemini API key. Open Settings any time to add it."))
     else:
         window.start_assistant()
-    return qt.exec()
+    code = qt.exec()
+    session.end()  # a clean quit; after a crash the marker stays for the next start
+    return code

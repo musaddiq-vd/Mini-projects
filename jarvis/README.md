@@ -36,6 +36,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 📱 **From your phone** | Message your own Telegram bot (text or voice notes). Only your account is obeyed, and risky actions ask Yes / No. |
 | 🎨 **Make it yours** | Robot, cat, anime or minimal avatars, colours taken from your wallpaper, and pop-ups on the screen you are using. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
+| 🩹 **Picks up after a crash** | If Jarvis closed unexpectedly, the next start says so, brings back your recent chat and rings any reminder you missed, once. |
 | 🎓 **Language coach** | A separate practice mode with a daily plan, quizzes, role-plays, pronunciation tips and progress tracking. |
 | 🛡️ **Private by design** | Cards, OTPs, passwords and keys are never sent or saved. The API key is encrypted, and backups never include it. |
 
@@ -172,6 +173,7 @@ Restart Jarvis and say *"say hello to Ali"*. See [`plugins/_example.py`](plugins
 jarvis/
 ├── jarvis/
 │   ├── live.py          voice session: mic, speaker, tools, vision, reconnect, offline mode
+│   ├── session.py       crash recovery: the running marker and catching up after a crash
 │   ├── app.py           settings, memory, tools, events and the system prompt
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
 │   ├── guardrails.py    secret detection and safety checks
@@ -180,7 +182,7 @@ jarvis/
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               653 tests
+├── tests/               670 tests
 └── docs/                screenshots and the script that makes them
 ```
 
