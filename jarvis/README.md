@@ -145,7 +145,8 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **You stay in control.** Shutting down, deleting and sending messages need your click. Every look at the screen or camera flashes the window.
 - **Every action is written down.** An audit log on your PC keeps which tool ran, when, from the PC or the phone, and how it ended (secrets masked). See or delete it in Settings → Privacy.
 - **Phone pairing can't be guessed.** After 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes.
-- **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction.
+- **Permissions per area.** Settings → Privacy → Permissions sets each area to *Allowed*, *Ask me first* or *Off*: camera, screen, files, messages & typing, system (power, WiFi, start with Windows, brightness), smart home and the phone. The defaults keep the usual behaviour (the camera asks first). An area that is off is refused for every request, from the PC or the phone, and Jarvis tells you why.
+- **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction. For two minutes after Jarvis reads such content, actions that type, save or change something (typing, key presses, writing files, the clipboard, opening links, e-mail drafts, routines, memory, smart home, WiFi, auto-start) need your "yes" first, and the question says what Jarvis just read. Text that tries to give orders ("ignore previous instructions", "you are now…", "system prompt") is flagged with a warning so Jarvis tells you about it instead of following it.
 - **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, and weather goes to Open-Meteo. There is no analytics and no tracking.
 
 ---
@@ -174,13 +175,14 @@ jarvis/
 │   ├── live.py          voice session: mic, speaker, tools, vision, reconnect, offline mode
 │   ├── app.py           settings, memory, tools, events and the system prompt
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
-│   ├── guardrails.py    secret detection and safety checks
+│   ├── guardrails.py    secret detection, safety checks and the prompt-injection guard
+│   ├── permissions.py   on / ask / off per area (camera, files, messages, ...)
 │   ├── tools/           96 tools, one file per area
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               653 tests
+├── tests/               693 tests
 └── docs/                screenshots and the script that makes them
 ```
 
