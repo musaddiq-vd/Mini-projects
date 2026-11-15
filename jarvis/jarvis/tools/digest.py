@@ -83,6 +83,14 @@ def daily_digest(ctx, weather: bool = True):
         out["habits"] = [{"habit": h["habit"], "today": h["today"], "streak": h["streak"]}
                          for h in hab.get("habits", [])][:5]
 
+    from jarvis.tools.contacts import upcoming_birthdays
+
+    bdays = _part("birthdays", lambda: upcoming_birthdays(ctx, 7))
+    if isinstance(bdays, dict):
+        out["birthdays"] = [f"{b['name']}: " + ("today! 🎂" if b["in_days"] == 0 else
+                                                 "tomorrow" if b["in_days"] == 1 else b["date"])
+                            for b in bdays["birthdays"]]
+
     spent = _part("money", lambda: expense_summary(ctx, "today"))
     if isinstance(spent, dict):
         out["spent_today"] = spent.get("total")
@@ -90,7 +98,7 @@ def daily_digest(ctx, weather: bool = True):
     if isinstance(month, dict) and month.get("budget"):
         out["budget"] = month["budget"]
 
-    parts = [k for k in ("weather", "meetings", "todos", "reminders", "habits", "spent_today") if out.get(k)]
+    parts = [k for k in ("weather", "meetings", "todos", "reminders", "habits", "birthdays", "spent_today") if out.get(k)]
     if not parts:
         out["result"] = ("A clear day: no meetings, to-dos, reminders or habits yet. Suggest adding a to-do or a "
                          "habit to get started.")

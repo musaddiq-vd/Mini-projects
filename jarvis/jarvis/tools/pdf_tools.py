@@ -221,7 +221,7 @@ def compress_pdf(ctx, path: str):
                     img.replace(img.image, quality=60)
             except Exception:  # noqa: BLE001 - unusual image formats stay as they are
                 pass
-    writer.compress_identical_objects(remove_identicals=True, remove_orphans=True)
+    writer.compress_identical_objects(remove_duplicates=True, remove_unreferenced=True)
     out = _out(ctx, "", src.with_name(f"{src.stem} - smaller.pdf"))
     result = _write(ctx, writer, out, f"save {out.name}")
     before = src.stat().st_size

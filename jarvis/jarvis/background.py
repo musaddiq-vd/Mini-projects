@@ -3,6 +3,7 @@ watched news topics, and a summary of each conversation for next time."""
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -12,6 +13,7 @@ import psutil
 
 from jarvis.app import Jarvis
 
+log = logging.getLogger("jarvis.background")
 HW_CHECK_SECONDS = 30
 TOPIC_CHECK_SECONDS = 3 * 60 * 60
 ALERT_COOLDOWN = 30 * 60
@@ -43,7 +45,7 @@ class BackgroundServices:
     def start(self) -> None:
         for target in (self._hardware_loop, self._topic_loop, self._proactive_loop, self._recap_loop,
                        self._health_loop, self._goal_loop, self._calendar_loop, self._weekly_loop,
-                       self._todo_loop):
+                       self._todo_loop, self._smart_alert_loop):
             threading.Thread(target=target, daemon=True).start()
         from jarvis.tools import clipboard_history
 
@@ -116,6 +118,17 @@ class BackgroundServices:
         if now - self._last_alert.get(key, -ALERT_COOLDOWN) >= ALERT_COOLDOWN:
             self._last_alert[key] = now
             self.say(f"(system: hardware alert) Briefly tell the user: {text}")
+
+    def _smart_alert_loop(self) -> None:
+        """Alerts the user asked for ("tell me when the battery is full")."""
+        from jarvis.tools import smart_alerts
+
+        while not self._stop.wait(smart_alerts.CHECK_SECONDS):
+            try:
+                for text in smart_alerts.check(self.app.state):
+                    self.say(f"(system: alert the user asked for) Tell the user now, briefly: {text}")
+            except Exception:  # noqa: BLE001 - never stop the loop over one bad check
+                log.exception("smart alerts failed")
 
     def _hardware_loop(self) -> None:
         high_cpu_since = None

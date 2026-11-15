@@ -265,6 +265,7 @@ def digest_card(r: dict) -> QFrame | None:
         section("📝", f"Do first ({t.get('open', 0)} open{', ' + ', '.join(extra) if extra else ''})",
                 [f"{i + 1}. {x}" for i, x in enumerate(t["first"])])
     section("⏰", "Reminders", r.get("reminders") or [])
+    section("🎂", "Birthdays", r.get("birthdays") or [])
     section("✅", "Habits", [f"{h['habit']}  {h['today']}  ·  🔥 {h['streak']}" for h in r.get("habits") or []])
     money_lines = [x for x in (f"Spent today: {r['spent_today']}" if r.get("spent_today") else "",
                                f"This month: {r['budget']}" if r.get("budget") else "") if x]
