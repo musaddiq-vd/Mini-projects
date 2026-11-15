@@ -30,7 +30,7 @@ def test_history_keeps_recent_and_skips_secrets_and_repeats():
     assert len(ch.items()) == ch.KEEP
 
 
-def test_history_tools(registry, ctx, monkeypatch):
+def test_history_tools(registry, ctx, monkeypatch, answers):
     board = {"text": "now"}
     monkeypatch.setattr(ch, "_paste", lambda: board["text"])
     monkeypatch.setattr(ch, "_copy", lambda t: board.update(text=t))
@@ -39,10 +39,15 @@ def test_history_tools(registry, ctx, monkeypatch):
     ch.note("second")
     out = registry.call("clipboard_history", {}, ctx)
     assert [i["text"] for i in out["items"]] == ["second", "first"] and "_safety" in out
+    # copied text is outside content: putting it back right after needs a "yes" (prompt-injection guard)
+    assert "Cancelled" in registry.call("copy_from_history", {"number": 2}, ctx)["result"]
+    assert board["text"] == "now"
+    answers.append(True)
     assert "item 2" in registry.call("copy_from_history", {"number": 2}, ctx)["result"]
     assert board["text"] == "first"
     ctx.undo.undo()
     assert board["text"] == "now"
+    answers.append(True)
     assert "error" in registry.call("copy_from_history", {"number": 9}, ctx)
     registry.call("clear_clipboard_history", {}, ctx)
     assert ch.items() == []

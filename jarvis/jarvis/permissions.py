@@ -30,9 +30,11 @@ TOOL_AREAS: dict[str, str] = {
     "read_file": "files", "write_file": "files", "move_file": "files", "delete_file": "files",
     "create_folder": "files", "list_folder": "files", "open_file": "files", "find_files": "files",
     "read_document": "files", "open_document": "files", "ask_document": "files", "explain_code": "files",
-    "write_code": "files",
+    "write_code": "files", "merge_pdfs": "files", "extract_pdf_pages": "files", "rotate_pdf": "files",
+    "compress_pdf": "files", "read_image_text": "files",
     "send_whatsapp": "messaging", "draft_email": "messaging", "type_text": "messaging", "press_keys": "messaging",
-    "write_clipboard": "messaging", "read_clipboard": "messaging",
+    "write_clipboard": "messaging", "read_clipboard": "messaging", "clipboard_history": "messaging",
+    "copy_from_history": "messaging", "clear_clipboard_history": "messaging",
     "power": "system", "wifi": "system", "autostart": "system", "brightness": "system", "dark_mode": "system",
     "smart_home": "smart_home", "smart_devices": "smart_home",
 }
@@ -45,6 +47,8 @@ CHANGING_TOOLS = {
     "open_website", "open_app", "close_app", "window_control", "save_routine", "run_routine", "delete_routine",
     "remember", "forget_memory", "look_at_camera", "look_at_screen", "take_screenshot", "fix_on_screen",
     "volume", "media_control", "play_youtube", "game_launcher", "make_backup", "scroll_screen",
+    "merge_pdfs", "extract_pdf_pages", "rotate_pdf", "compress_pdf", "copy_from_history", "clear_clipboard_history",
+    "save_contact", "delete_contact", "add_alert", "cancel_alert",
 }
 
 
