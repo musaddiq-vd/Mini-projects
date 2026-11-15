@@ -70,6 +70,7 @@ class PrivacyTab(QWidget):
             ("calendar", "📅  Calendar copy (links stay in Settings)", lambda: self._clear_file("calendar")),
             ("cache", "🖼  Copies of what Jarvis looked at", self._clear_cache),
             ("logs", "📄  Logs (for fixing problems)", self._clear_logs),
+            ("audit", "🧾  Audit log (every tool Jarvis ran)", self._clear_audit),
         ]
         for row, (key, title, action) in enumerate(items):
             grid.addWidget(QLabel(title), row, 0)
@@ -138,6 +139,8 @@ class PrivacyTab(QWidget):
 
     # -- facts -----------------------------------------------------------------------------
     def refresh(self) -> None:
+        from jarvis import audit
+
         home = home_dir()
         history = self.app.history
         n_msgs = len(history.recent(100_000)) if history else 0
@@ -151,6 +154,7 @@ class PrivacyTab(QWidget):
             "practice": _human(_size(home / "english.json")) if (home / "english.json").exists() else "nothing yet",
             "cache": f"{_count(len(cache), 'image')} · {_human(sum(_size(f) for f in cache))}",
             "logs": _human(_size(home / "logs")),
+            "audit": f"{_count(len(audit.recent(100_000)), 'action')} · {_human(_size(audit.audit_path()))}",
             "money": self._file_fact("expenses", "items", "expense"),
             "habits": self._file_fact("habits", "habits", "habit"),
             "goals": self._file_fact("goals", "goals", "goal"),
@@ -283,9 +287,14 @@ class PrivacyTab(QWidget):
         if log.exists() and not logging.getLogger("jarvis").handlers:
             log.write_text("", encoding="utf-8")
 
+    def _clear_audit(self) -> None:
+        from jarvis import audit
+
+        audit.clear()
+
     def _clear_all(self) -> None:
         for fn in (self._clear_history, self._clear_memory, self._clear_lists, self._clear_practice,
-                   self._clear_cache, self._clear_logs):
+                   self._clear_cache, self._clear_logs, self._clear_audit):
             fn()
         for name in ("expenses", "habits", "goals", "calendar"):
             self._clear_file(name)

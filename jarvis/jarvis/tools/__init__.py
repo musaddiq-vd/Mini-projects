@@ -44,6 +44,7 @@ class ToolContext:
     # Send an image (JPEG bytes) to the model with the next tool reply; None = not supported
     attach_image: Callable[[bytes], None] | None = None
     assistant: Any = None  # the running LiveAssistant (sleep/wake_up), None in text mode
+    source: str = "pc"  # where requests come from, for the audit log: "pc" or "phone"
     _llm: Any = None
 
     @property
@@ -164,7 +165,17 @@ class ToolRegistry:
         ]
 
     def call(self, name: str, args: dict | None, ctx: ToolContext) -> dict:
-        """Run a tool. Always returns a dict; errors never escape."""
+        """Run a tool. Always returns a dict; errors never escape. Every call is written to the audit log."""
+        import time
+
+        from jarvis import audit
+
+        start = time.monotonic()
+        result = self._run(name, args, ctx)
+        audit.record(name, args or {}, result, getattr(ctx, "source", "pc"), time.monotonic() - start)
+        return result
+
+    def _run(self, name: str, args: dict | None, ctx: ToolContext) -> dict:
         t = self.tools.get(name)
         if t is None:
             return {"error": f"Unknown tool '{name}'."}

@@ -260,3 +260,43 @@ def test_text_chat_trims_at_a_user_message():
     chat.history = [user("a"), call, reply] * 20
     chat._trim(keep=40)
     assert chat.history[0].parts[0].text == "a" and len(chat.history) <= 40
+
+
+def test_wrong_codes_lock_pairing(bridge):
+    b = bridge
+    code = b.begin_pairing()
+    wrong = "000000" if code != "000000" else "111111"
+    for _ in range(4):
+        b.handle(msg(STRANGER, wrong))
+    assert "isn't right" in b.api.texts(STRANGER)[-1]
+    b.handle(msg(STRANGER, wrong))  # 5th wrong code
+    assert "locked" in b.api.texts(STRANGER)[-1]
+    b.handle(msg(ME, code))  # even the right code is refused now: it was cancelled
+    assert not b.paired
+    with pytest.raises(PhoneError, match="locked"):
+        b.begin_pairing()
+    fresh = PhoneBridge(b.app, api=b.api, now=lambda: b.clock["now"])  # Connect again can't skip it
+    with pytest.raises(PhoneError, match="locked"):
+        fresh.begin_pairing()
+    b.clock["now"] += 16 * 60
+    code = b.begin_pairing()
+    b.handle(msg(ME, code))
+    assert b.paired
+
+
+def test_chatting_is_not_a_code_attempt(bridge):
+    b = bridge
+    code = b.begin_pairing()
+    for _ in range(6):
+        b.handle(msg(STRANGER, "hello there"))
+    assert b.pair_locked_for() == 0
+    b.handle(msg(ME, code))
+    assert b.paired
+
+
+def test_phone_tools_are_audited_as_phone(bridge):
+    from jarvis import audit
+
+    ctx, _ = bridge._context(ME)
+    bridge.app.registry.call("get_time", {}, ctx)
+    assert audit.recent(1)[0]["source"] == "phone"

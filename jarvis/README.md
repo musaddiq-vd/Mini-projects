@@ -143,6 +143,8 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Secrets are guarded.** Card numbers, CVV, OTPs, passwords, PINs, Aadhaar, PAN, bank and passport numbers, API keys and recovery phrases are never sent, never saved, and are masked in history and logs.
 - **Encrypted at rest.** The API key and calendar links are encrypted with your Windows account (DPAPI).
 - **You stay in control.** Shutting down, deleting and sending messages need your click. Every look at the screen or camera flashes the window.
+- **Every action is written down.** An audit log on your PC keeps which tool ran, when, from the PC or the phone, and how it ended (secrets masked). See or delete it in Settings → Privacy.
+- **Phone pairing can't be guessed.** After 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes.
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction.
 - **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, and weather goes to Open-Meteo. There is no analytics and no tracking.
 

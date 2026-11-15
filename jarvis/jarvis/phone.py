@@ -2,6 +2,7 @@
 
 Security:
 - only the one Telegram account that paired with a 6-digit code (shown on the PC) is obeyed; others are refused
+- after 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes (no guessing)
 - risky actions (shutdown, deleting, sending messages) ask for a tap on Yes / No in the chat
 - commands that arrived while the PC was off are not run late; Jarvis says it skipped them
 - the bot token is encrypted on disk and never written to logs or error messages
@@ -14,6 +15,7 @@ phone and the live voice session never get in each other's way.
 from __future__ import annotations
 
 import dataclasses
+import hmac
 import logging
 import queue
 import random
@@ -28,6 +30,8 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)  # request URLs contain t
 API = "https://api.telegram.org"
 STALE_S = 10 * 60  # older messages (sent while the PC was off) are not acted on
 PAIR_S = 10 * 60
+PAIR_MAX_WRONG = 5  # wrong pairing codes before pairing is locked
+PAIR_LOCK_S = 15 * 60
 MAX_PER_MIN = 20
 MAX_TEXT = 3900
 CONFIRM_S = 90
@@ -114,6 +118,7 @@ class PhoneBridge:
         self._offset = 0
         self._pair_code = ""
         self._pair_until = 0.0
+        self._pair_wrong = 0
         self._answers: dict[str, threading.Event] = {}
         self._answer_value: dict[str, bool] = {}
         self._times: deque[float] = deque(maxlen=MAX_PER_MIN)
@@ -154,10 +159,40 @@ class PhoneBridge:
         self.bot_name = me.get("username", "")
         return self.bot_name
 
+    def pair_locked_for(self) -> float:
+        """Seconds left on the pairing lockout (0 when pairing is allowed). Kept in state, so a new bridge
+        (pressing Connect again, or a restart) can't be used to skip it."""
+        st = self.app.state
+        until = float(st.get("phone_pair_locked_until", 0) or 0) if st is not None else 0.0
+        return max(0.0, until - self.now())
+
     def begin_pairing(self) -> str:
+        left = self.pair_locked_for()
+        if left:
+            mins = max(1, round(left / 60))
+            raise PhoneError(f"Too many wrong pairing codes were sent to the bot. Pairing is locked for {mins} more "
+                             f"minute{'s' if mins != 1 else ''} - try again then.")
         self._pair_code = f"{random.SystemRandom().randint(0, 999999):06d}"
         self._pair_until = self.now() + PAIR_S
+        self._pair_wrong = 0
         return self._pair_code
+
+    def _wrong_code(self, chat_id: int) -> None:
+        """Count a wrong pairing code; on the 5th the code is cancelled and pairing is locked."""
+        self._pair_wrong += 1
+        log.warning("wrong pairing code (%d of %d)", self._pair_wrong, PAIR_MAX_WRONG)
+        if self._pair_wrong < PAIR_MAX_WRONG:
+            self.send(chat_id, "That code isn't right. Check the code shown in Jarvis on the PC.")
+            return
+        self._pair_code = ""
+        self._pair_until = 0.0
+        self._pair_wrong = 0
+        if self.app.state is not None:
+            self.app.state.set("phone_pair_locked_until", self.now() + PAIR_LOCK_S)
+        self.send(chat_id, "🔒 Too many wrong codes. Pairing is locked for 15 minutes.")
+        self._emit("phone_status", text="Pairing locked for 15 minutes after 5 wrong codes.")
+        self._emit("log", text="🔒 Someone sent 5 wrong pairing codes to your Telegram bot. The code was cancelled "
+                               "and pairing is locked for 15 minutes.")
 
     @property
     def paired(self) -> bool:
@@ -213,11 +248,16 @@ class PhoneBridge:
         who = sender.get("first_name") or sender.get("username") or "you"
         if not self.paired or chat_id != self.s.telegram_chat_id:
             code = text.replace("/pair", "").replace("/start", "").strip()
-            if (not self.paired and self._pair_code and self.now() < self._pair_until
-                    and code == self._pair_code):
+            pairing = bool(not self.paired and self._pair_code and self.now() < self._pair_until
+                           and not self.pair_locked_for())
+            if pairing and code and not code.isdigit():
+                pairing = False  # a normal message, not a code attempt: just the "private assistant" note
+            if pairing and code and hmac.compare_digest(code, self._pair_code):
                 self._save_pair(chat_id, who)
                 self.send(chat_id, f"✅ Connected! I'll only listen to you, {who}.\n\n"
                           + HELP.format(name=self.s.assistant_name))
+            elif pairing and code:
+                self._wrong_code(chat_id)
             elif chat_id not in self._warned:
                 self._warned.add(chat_id)
                 self.send(chat_id, "This is a private assistant. To connect, open Jarvis on the PC → Settings → "
@@ -264,7 +304,7 @@ class PhoneBridge:
     def _context(self, chat_id: int):
         """The tools' context for phone commands: same tools, phone confirmations, own images."""
         images: list[bytes] = []
-        ctx = dataclasses.replace(self.app.ctx, confirm=PhoneConfirm(self),
+        ctx = dataclasses.replace(self.app.ctx, confirm=PhoneConfirm(self), source="phone",
                                   attach_image=images.append,
                                   notify=lambda m: self.send(chat_id, f"🔔 {m}"))
         return ctx, images
