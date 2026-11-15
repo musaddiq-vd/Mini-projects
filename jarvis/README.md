@@ -10,7 +10,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![Gemini Live](https://img.shields.io/badge/Gemini-Live%20API-8E75B2?logo=googlegemini&logoColor=white)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
-![Tools](https://img.shields.io/badge/tools-96-00d4ff)
+![Tools](https://img.shields.io/badge/tools-105-00d4ff)
 ![Tests](https://img.shields.io/badge/tests-653%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
@@ -35,6 +35,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 🏠 **Smart home** | Lights, plugs, fans and the AC through Home Assistant or Tuya / Smart Life (Wipro, Syska, Havells ...), on your home WiFi. |
 | 📱 **From your phone** | Message your own Telegram bot (text or voice notes). Only your account is obeyed, and risky actions ask Yes / No. |
 | 🎨 **Make it yours** | Robot, cat, anime or minimal avatars, colours taken from your wallpaper, and pop-ups on the screen you are using. |
+| 🧮 **Quick answers** | Exact maths, unit and currency conversion, the time anywhere in the world, countdowns to a date, coin, dice and a stopwatch. |
+| 🩺 **PC health** | Checks your internet, finds what is slowing the PC down and how much disk space is left. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
 | 🎓 **Language coach** | A separate practice mode with a daily plan, quizzes, role-plays, pronunciation tips and progress tracking. |
 | 🛡️ **Private by design** | Cards, OTPs, passwords and keys are never sent or saved. The API key is encrypted, and backups never include it. |
@@ -78,6 +80,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Web | "Weather today" · "Top news in two lines" · "Flights from Pune to Delhi next Friday" |
 | Messages & code | "WhatsApp mom: I'll be late" · "Write a Python snake game in a folder called snake" |
 | Memory & data | "Remember my city is Pune" · "What do you know about me?" · "Back up my data" · "Undo" |
+| Quick answers | "18% of 2500" · "100 dollars in rupees" · "Time in London?" · "How many days until 25 December?" · "Flip a coin" |
+| PC health | "Is my internet slow?" · "Why is my PC slow?" · "How much space is left on C drive?" |
 | Language | "Talk to me in Hindi" · "Give reminders in English" |
 | Smart home | "Turn on the bedroom light" · "Set the AC to 24" · "Make the lights warm white" · "Turn off all lights" |
 | Look | "Become a cat" · "Use my wallpaper's colours" · "Put the desktop widget on" |
@@ -146,7 +150,7 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Every action is written down.** An audit log on your PC keeps which tool ran, when, from the PC or the phone, and how it ended (secrets masked). See or delete it in Settings → Privacy.
 - **Phone pairing can't be guessed.** After 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes.
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction.
-- **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, and weather goes to Open-Meteo. There is no analytics and no tracking.
+- **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 
 ---
 
@@ -175,7 +179,7 @@ jarvis/
 │   ├── app.py           settings, memory, tools, events and the system prompt
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
 │   ├── guardrails.py    secret detection and safety checks
-│   ├── tools/           96 tools, one file per area
+│   ├── tools/           105 tools, one file per area
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window

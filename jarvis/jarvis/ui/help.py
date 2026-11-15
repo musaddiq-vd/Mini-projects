@@ -40,6 +40,10 @@ TOPICS: list[tuple[str, str, list[str]]] = [
     ("💬", "Messages", ["WhatsApp mom: I'll be late", "Draft an email to my boss about leave tomorrow"]),
     ("🧠", "Memory & chat", ["Remember that my city is Pune", "What do you know about me?",
                             "Kal maine kya poocha tha?", "Aaj ka recap do", "Undo"]),
+    ("🧮", "Quick answers", ["2500 ka 18 percent kitna hai?", "100 dollars in rupees", "98.6 F in Celsius",
+                            "What time is it in London?", "Exam 15 december ko hai, kitne din bache?",
+                            "Flip a coin", "Start the stopwatch"]),
+    ("🩺", "PC health", ["Is my internet slow?", "Why is my PC slow?", "How much space is left on C drive?"]),
     ("💻", "Code", ["Write a Python snake game in a folder called snake", "Explain main.py"]),
     ("😄", "Fun", ["Tell me a joke", "Thank you Jarvis!", "Sing me a short song about chai"]),
 ]
