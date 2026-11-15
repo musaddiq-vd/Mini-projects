@@ -17,7 +17,7 @@ DONE_KEY = "reminders_done"  # finished tasks, for the evening recap
 
 _timers: dict[int, threading.Timer] = {}
 _mem: dict[int, dict] = {}  # used when there is no state store (tests, text mode)
-_lock = threading.Lock()
+_lock = threading.RLock()  # re-entrant: restore_reminders schedules while holding it
 
 
 def parse_clock(text: str, now: datetime | None = None) -> datetime | None:
@@ -138,16 +138,17 @@ def _schedule(ctx, rid: int, due: float, message: str, missed_due: float | None 
 
 def restore_reminders(ctx, missed_delay: float = 6.0) -> int:
     """Re-arm saved reminders after a restart. Returns how many were restored."""
-    items = _load(ctx)
-    now = time.time()
-    for rid, r in items.items():
-        if rid in _timers:
-            continue
-        if r["due"] <= now:  # came due while Jarvis was closed: tell it right after start
-            # (a repeating one is told once; fire() then books its next time)
-            _schedule(ctx, rid, now + missed_delay, r["message"], missed_due=r["due"])
-        else:
-            _schedule(ctx, rid, r["due"], r["message"])
+    with _lock:  # checked and armed in one go, so a second call (after a crash, then on connect) never doubles one
+        items = _load(ctx)
+        now = time.time()
+        for rid, r in items.items():
+            if rid in _timers:
+                continue
+            if r["due"] <= now:  # came due while Jarvis was closed: tell it right after start
+                # (a repeating one is told once; fire() then books its next time)
+                _schedule(ctx, rid, now + missed_delay, r["message"], missed_due=r["due"])
+            else:
+                _schedule(ctx, rid, r["due"], r["message"])
     return len(items)
 
 

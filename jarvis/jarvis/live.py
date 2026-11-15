@@ -587,12 +587,16 @@ class LiveAssistant:
 
 def run_voice(app: Jarvis) -> None:
     """Terminal voice mode (no window)."""
+    from jarvis import session
     from jarvis.events import console_printer
 
     app.events.subscribe(console_printer(app.settings.assistant_name))
+    if session.begin() is not None:  # the last run never quit cleanly
+        session.recover(app, print)
     assistant = LiveAssistant(app)
     print(f"{app.settings.assistant_name} is listening. Press Ctrl+C to quit.")
     try:
         asyncio.run(assistant.run())
     except KeyboardInterrupt:
         print("\nBye!")
+    session.end()  # Ctrl+C is a clean exit too
