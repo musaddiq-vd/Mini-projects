@@ -140,7 +140,10 @@ def look_at_screen(ctx, monitor: int = 1):
 def look_at_camera(ctx):
     if ctx.attach_image is None:
         return {"error": "Seeing images isn't available in this mode."}
-    if getattr(ctx.settings, "ask_camera", True) and not ctx.confirm.confirm("Let Jarvis take a photo with your camera?"):
+    from jarvis import permissions
+
+    if permissions.level(ctx.settings, "camera") == permissions.ASK and not ctx.confirm.confirm(
+            "Let Jarvis take a photo with your camera?"):
         return "The user didn't allow the camera. Respect that and don't ask again right away."
     try:
         import cv2

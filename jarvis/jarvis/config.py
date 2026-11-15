@@ -119,6 +119,8 @@ class Settings:
     save_history: bool = True  # keep the conversation on this computer (Settings > Privacy)
     history_days: int = 30  # delete saved conversation older than this (0 = keep forever)
     ask_camera: bool = True  # ask before Jarvis takes a photo with the webcam
+    # area -> "on" | "ask" | "off" (see jarvis.permissions); missing areas keep the default
+    permissions: dict = field(default_factory=dict)
     notify_capture: bool = True  # flash + notice whenever Jarvis looks at the screen or camera
     speaking_style: str = "friendly"  # see SPEAKING_STYLES
     reply_language: str = "auto"  # auto (match the user) or a code from jarvis.lang.LANGUAGES

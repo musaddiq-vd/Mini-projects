@@ -140,7 +140,8 @@ def test_privacy_tab_shows_and_deletes(ui):
     assert app.history.recent() == [] and app.memory.all() == [] and app.state.get("notes") == []
     assert app._english is None and not (app.english.path.exists())
     tab.history_days.setValue(7)
-    tab.ask_camera.setChecked(False)
+    camera = tab.permission_boxes["camera"]
+    camera.setCurrentIndex(camera.findData("on"))
     tab.apply_to(s)
     assert s.history_days == 7 and s.ask_camera is False
 

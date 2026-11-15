@@ -7,10 +7,13 @@ from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtWidgets import (
-    QCheckBox, QFileDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QFileDialog, QFormLayout, QFrame, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton, QSpinBox, QVBoxLayout, QWidget,
 )
 
+from jarvis import permissions
 from jarvis.config import home_dir
+
+PERMISSION_CHOICES = (("on", "Allowed"), ("ask", "Ask me first"), ("off", "Off"))
 
 OUTSIDE = (
     "<b>What leaves your computer</b><br>"
@@ -21,6 +24,8 @@ OUTSIDE = (
     "• Nothing else: no analytics, no tracking, no accounts.<br><br>"
     "<b>Protection</b><br>"
     "• Your API key and calendar links are encrypted with your Windows account.<br>"
+    "• Permissions (above) decide what Jarvis may do alone. Right after reading a web page, file or the "
+    "screen, Jarvis asks before typing, saving or changing anything.<br>"
     "• Guardrails never send or save passwords, OTPs, card, bank or ID numbers and keys, and mask them "
     "in history and logs.<br>"
     "• While asleep with the offline wake word, no audio leaves your PC."
@@ -97,13 +102,28 @@ class PrivacyTab(QWidget):
         self.history_days.setSuffix(" days")
         self.history_days.setValue(self.s.history_days)
         form.addRow("Keep conversation for", self.history_days)
-        self.ask_camera = QCheckBox("Ask me before Jarvis uses the camera")
-        self.ask_camera.setChecked(self.s.ask_camera)
-        form.addRow(self.ask_camera)
         self.notify_capture = QCheckBox("Flash and show a notice whenever Jarvis looks at my screen or camera")
         self.notify_capture.setChecked(self.s.notify_capture)
         form.addRow(self.notify_capture)
         v.addLayout(form)
+
+        v.addSpacing(8)
+        v.addWidget(QLabel("PERMISSIONS", objectName="section"))
+        hint = QLabel("Choose what Jarvis may do by itself, what needs your OK first, and what is off. "
+                      "Sending messages, deleting files and shutting down always ask.", objectName="muted")
+        hint.setWordWrap(True)
+        v.addWidget(hint)
+        perms = QFormLayout()
+        self.permission_boxes: dict[str, QComboBox] = {}
+        for area, (title, covers) in permissions.AREAS.items():
+            box = QComboBox()
+            for value, label in PERMISSION_CHOICES:
+                box.addItem(label, value)
+            box.setCurrentIndex(box.findData(permissions.level(self.s, area)))
+            box.setToolTip(f"Covers: {covers}")
+            perms.addRow(title, box)
+            self.permission_boxes[area] = box
+        v.addLayout(perms)
 
         v.addSpacing(8)
         v.addWidget(QLabel("BACKUP", objectName="section"))
@@ -134,7 +154,10 @@ class PrivacyTab(QWidget):
     def apply_to(self, s) -> None:
         s.save_history = self.save_history.isChecked()
         s.history_days = self.history_days.value()
-        s.ask_camera = self.ask_camera.isChecked()
+        for area, box in self.permission_boxes.items():
+            value = box.currentData()
+            if value != permissions.level(s, area):
+                permissions.set_level(s, area, value)
         s.notify_capture = self.notify_capture.isChecked()
 
     # -- facts -----------------------------------------------------------------------------

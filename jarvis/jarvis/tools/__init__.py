@@ -16,9 +16,10 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import inspect
+import logging
 import pkgutil
 import sys
-import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -45,6 +46,9 @@ class ToolContext:
     attach_image: Callable[[bytes], None] | None = None
     assistant: Any = None  # the running LiveAssistant (sleep/wake_up), None in text mode
     source: str = "pc"  # where requests come from, for the audit log: "pc" or "phone"
+    # when (time.monotonic) a tool last brought in outside content (web page, file, screen), and what it was
+    untrusted_at: float = 0.0
+    untrusted_source: str = ""
     _llm: Any = None
 
     @property
@@ -166,8 +170,6 @@ class ToolRegistry:
 
     def call(self, name: str, args: dict | None, ctx: ToolContext) -> dict:
         """Run a tool. Always returns a dict; errors never escape. Every call is written to the audit log."""
-        import time
-
         from jarvis import audit
 
         start = time.monotonic()
@@ -194,6 +196,9 @@ class ToolRegistry:
             if ctx.events is not None:
                 ctx.events.emit("guardrail", action="blocked", tool=name, text=blocked)
             return {"error": blocked}
+        stop = self._permission(name, args, ctx)
+        if stop is not None:
+            return stop
         try:
             result = t.handler(ctx, **args)
         except Exception as exc:
@@ -205,7 +210,40 @@ class ToolRegistry:
         result, hidden = guardrails.guard_result(name, result)
         if hidden and ctx.events is not None:
             ctx.events.emit("guardrail", action="hidden", tool=name, text=guardrails.describe(hidden))
+        if name in guardrails.UNTRUSTED_TOOLS and "error" not in result:
+            ctx.untrusted_at = time.monotonic()
+            ctx.untrusted_source = guardrails.outside_source(name)
+            if "_warning" in result:
+                log.warning("possible prompt injection in %s result", name)
+                if ctx.events is not None:
+                    ctx.events.emit("guardrail", action="injection", tool=name, text=result["_warning"])
         return result
+
+    @staticmethod
+    def _permission(name: str, args: dict, ctx: ToolContext) -> dict | None:
+        """Apply the user's permissions and the outside-content rule. A reply dict stops the call."""
+        from jarvis import guardrails, permissions
+
+        decision, text = permissions.check(name, args, ctx.settings, getattr(ctx, "source", "pc"))
+        if decision == permissions.OFF:
+            log.info("permission off for tool %s", name)
+            if ctx.events is not None:
+                ctx.events.emit("guardrail", action="not_allowed", tool=name, text=text)
+            return {"error": text}
+        question = text if decision == permissions.ASK else None
+        since = time.monotonic() - getattr(ctx, "untrusted_at", 0.0)
+        if (name in guardrails.SIDE_EFFECT_TOOLS and getattr(ctx, "untrusted_at", 0.0) and
+                since < guardrails.TAINT_SECONDS and not permissions.only_checks(args)
+                and not permissions.confirms_itself(name, args, ctx.settings)):
+            source = getattr(ctx, "untrusted_source", "") or "outside content"
+            question = guardrails.tainted_question(source, permissions.describe_call(name, args))
+        if question is None:
+            return None
+        if ctx.confirm.confirm(question):
+            return None
+        log.info("user did not allow tool %s", name)
+        return {"result": "Cancelled - the user did not allow this action. Don't try it another way; "
+                          "ask them what they would like instead."}
 
 
 def build_registry(plugin_dirs: list[Path] | None = None) -> ToolRegistry:
