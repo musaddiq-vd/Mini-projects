@@ -10,7 +10,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![Gemini Live](https://img.shields.io/badge/Gemini-Live%20API-8E75B2?logo=googlegemini&logoColor=white)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
-![Tools](https://img.shields.io/badge/tools-105-00d4ff)
+![Tools](https://img.shields.io/badge/tools-115-00d4ff)
 ![Tests](https://img.shields.io/badge/tests-653%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
@@ -36,6 +36,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 📱 **From your phone** | Message your own Telegram bot (text or voice notes). Only your account is obeyed, and risky actions ask Yes / No. |
 | 🎨 **Make it yours** | Robot, cat, anime or minimal avatars, colours taken from your wallpaper, and pop-ups on the screen you are using. |
 | 🧮 **Quick answers** | Exact maths, unit and currency conversion, the time anywhere in the world, countdowns to a date, coin, dice and a stopwatch. |
+| 📎 **Clipboard & PDFs** | A clipboard history of what you copied (in memory only, secrets never kept), merge, split, rotate and shrink PDFs, and read the text in any picture. |
+| 🌅 **Daily digest** | Weather, meetings, what to do first, reminders, habits and today's spending on one card. |
 | 🩺 **PC health** | Checks your internet, finds what is slowing the PC down and how much disk space is left. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
 | 🎓 **Language coach** | A separate practice mode with a daily plan, quizzes, role-plays, pronunciation tips and progress tracking. |
@@ -81,6 +83,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Messages & code | "WhatsApp mom: I'll be late" · "Write a Python snake game in a folder called snake" |
 | Memory & data | "Remember my city is Pune" · "What do you know about me?" · "Back up my data" · "Undo" |
 | Quick answers | "18% of 2500" · "100 dollars in rupees" · "Time in London?" · "How many days until 25 December?" · "Flip a coin" |
+| Clipboard & PDFs | "What did I copy earlier?" · "Merge these two PDFs" · "Make this PDF smaller" · "Read the text in this photo" |
+| My day | "Show my daily digest" · "Aaj ka plan batao" |
 | PC health | "Is my internet slow?" · "Why is my PC slow?" · "How much space is left on C drive?" |
 | Language | "Talk to me in Hindi" · "Give reminders in English" |
 | Smart home | "Turn on the bedroom light" · "Set the AC to 24" · "Make the lights warm white" · "Turn off all lights" |
@@ -179,7 +183,7 @@ jarvis/
 │   ├── app.py           settings, memory, tools, events and the system prompt
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
 │   ├── guardrails.py    secret detection and safety checks
-│   ├── tools/           105 tools, one file per area
+│   ├── tools/           115 tools, one file per area
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window

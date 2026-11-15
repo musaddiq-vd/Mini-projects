@@ -45,9 +45,15 @@ class BackgroundServices:
                        self._health_loop, self._goal_loop, self._calendar_loop, self._weekly_loop,
                        self._todo_loop):
             threading.Thread(target=target, daemon=True).start()
+        from jarvis.tools import clipboard_history
+
+        clipboard_history.start()  # in memory only; secrets are never kept
 
     def stop(self) -> None:
         self._stop.set()
+        from jarvis.tools import clipboard_history
+
+        clipboard_history.stop()
 
     def on_connected(self) -> None:
         """Called once the first live session is up."""

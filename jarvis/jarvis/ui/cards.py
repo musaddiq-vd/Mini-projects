@@ -223,3 +223,54 @@ def fix_card(r: dict) -> QFrame | None:
         row.addWidget(copy)
         v.addLayout(row)
     return card
+
+
+def digest_card(r: dict) -> QFrame | None:
+    """The daily digest: weather, meetings, to-dos, reminders, habits and money for today."""
+    if not isinstance(r, dict) or "digest" not in r:
+        return None
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(520)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(16, 12, 16, 14)
+    v.setSpacing(6)
+    v.addWidget(QLabel(f"🌅  {html.escape(r.get('greeting', 'Your day'))}  ·  {html.escape(r['digest'])}",
+                       objectName="h2"))
+    accent = theme.readable(theme.ACCENT)
+
+    def section(icon: str, title: str, lines: list[str]) -> None:
+        if not lines:
+            return
+        body = "<br>".join(html.escape(str(x)) for x in lines)
+        lb = QLabel(f"<b style='color:{accent}'>{icon} {title}</b><br><span>{body}</span>")
+        lb.setTextFormat(Qt.TextFormat.RichText)
+        lb.setWordWrap(True)
+        lb.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px 10px;")
+        v.addWidget(lb)
+
+    w = r.get("weather")
+    if w:
+        section(weather_icon(w.get("now", "")), "Weather",
+                [f"{w.get('place', '')}: {w.get('now', '')}, {_num(w.get('temperature_c'))}°C "
+                 f"(max {_num(w.get('today_max_c'))}° / min {_num(w.get('today_min_c'))}°)"
+                 + (f", {w['rain_chance_percent']}% rain" if w.get("rain_chance_percent") else "")])
+    section("📅", "Meetings", [f"{m['time']}  {m['title']}" for m in r.get("meetings") or []])
+    t = r.get("todos") or {}
+    if t.get("first"):
+        extra = []
+        if t.get("overdue"):
+            extra.append(f"{t['overdue']} overdue")
+        if t.get("due_today"):
+            extra.append(f"{t['due_today']} due today")
+        section("📝", f"Do first ({t.get('open', 0)} open{', ' + ', '.join(extra) if extra else ''})",
+                [f"{i + 1}. {x}" for i, x in enumerate(t["first"])])
+    section("⏰", "Reminders", r.get("reminders") or [])
+    section("✅", "Habits", [f"{h['habit']}  {h['today']}  ·  🔥 {h['streak']}" for h in r.get("habits") or []])
+    money_lines = [x for x in (f"Spent today: {r['spent_today']}" if r.get("spent_today") else "",
+                               f"This month: {r['budget']}" if r.get("budget") else "") if x]
+    section("💰", "Money", money_lines)
+    if r.get("result"):
+        lb = QLabel(html.escape(r["result"]), objectName="muted")
+        lb.setWordWrap(True)
+        v.addWidget(lb)
+    return card
