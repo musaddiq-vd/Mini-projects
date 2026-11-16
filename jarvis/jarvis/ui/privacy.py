@@ -19,6 +19,8 @@ OUTSIDE = (
     "<b>What leaves your computer</b><br>"
     "• Your voice and messages go to <b>Google Gemini</b> so Jarvis can answer.<br>"
     "• The screen or camera only when you ask (you'll see a flash and a notice).<br>"
+    "• A meeting you ask Jarvis to record goes to Gemini in pieces to be written down. Voice profiles stay "
+    "on this PC.<br>"
     "• Web and news searches go to <b>DuckDuckGo</b>; weather to <b>Open-Meteo</b> (city name only).<br>"
     "• If you link a calendar, Jarvis downloads it from your calendar provider (nothing is uploaded).<br>"
     "• Nothing else: no analytics, no tracking, no accounts.<br><br>"
@@ -126,6 +128,12 @@ class PrivacyTab(QWidget):
         v.addLayout(perms)
 
         v.addSpacing(8)
+        from jarvis.ui.voices_meetings import VoicesMeetingsBox
+
+        self.voices_meetings = VoicesMeetingsBox(app, settings)  # voice profiles and meeting recordings
+        v.addWidget(self.voices_meetings)
+
+        v.addSpacing(8)
         v.addWidget(QLabel("BACKUP", objectName="section"))
         brow = QHBoxLayout()
         make = QPushButton("💾  Make a backup…")
@@ -159,6 +167,7 @@ class PrivacyTab(QWidget):
             if value != permissions.level(s, area):
                 permissions.set_level(s, area, value)
         s.notify_capture = self.notify_capture.isChecked()
+        self.voices_meetings.apply_to(s)
 
     # -- facts -----------------------------------------------------------------------------
     def refresh(self) -> None:
@@ -189,6 +198,8 @@ class PrivacyTab(QWidget):
 
         autos = sorted(backups_dir().glob("auto-*.zip"))
         when = datetime.fromtimestamp(autos[-1].stat().st_mtime).strftime("%d %b %Y") if autos else "not yet"
+        if hasattr(self, "voices_meetings"):
+            self.voices_meetings.refresh()
         self.backup_info.setText(f"Jarvis also keeps a weekly automatic copy on this PC (last: {when}). "
                                  "Backup files contain personal data - keep them somewhere safe.")
 
@@ -321,6 +332,7 @@ class PrivacyTab(QWidget):
             fn()
         for name in ("expenses", "habits", "goals", "calendar"):
             self._clear_file(name)
+        self.voices_meetings.delete_all()
         for key in ("last_session_summary", "seen_headlines", "watch_topics"):
             self.app.state.set(key, [] if key == "watch_topics" else ({} if key == "seen_headlines" else None))
 

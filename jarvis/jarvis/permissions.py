@@ -21,6 +21,7 @@ AREAS: dict[str, tuple[str, str]] = {
     "system": ("System", "power, WiFi, start with Windows, brightness and dark mode"),
     "smart_home": ("Smart home", "lights, plugs and other smart devices"),
     "phone": ("Phone", "anything you ask for from the phone (Telegram)"),
+    "meetings": ("Meetings", "record meetings (microphone and PC sound) and make notes from them"),
 }
 
 TOOL_AREAS: dict[str, str] = {
@@ -41,6 +42,8 @@ TOOL_AREAS: dict[str, str] = {
     # coding assistant
     "open_project": "files", "debug_code": "files", "apply_fix": "files", "review_code": "files",
     "generate_tests": "files", "run_tests": "files", "refactor_code": "files", "code_search": "files",
+    "start_meeting": "meetings", "meeting_notes": "meetings", "ask_meeting": "meetings",
+    "list_meetings": "meetings", "save_meeting_actions": "meetings",
 }
 
 # Tools that change something. With phone set to "ask", only these need a "yes" from the phone.
@@ -55,6 +58,7 @@ CHANGING_TOOLS = {
     "save_contact", "delete_contact", "add_alert", "cancel_alert",
     "watch_screen", "describe_screen", "click_on", "computer_task",
     "debug_code", "apply_fix", "generate_tests", "run_tests",  # running code counts as a change
+    "start_meeting", "stop_meeting", "delete_meeting", "save_meeting_actions", "enroll_voice", "delete_voice_profile",
 }
 
 
@@ -83,7 +87,8 @@ def set_level(settings, area: str, value: str) -> None:
 def confirms_itself(name: str, args: dict, settings=None) -> bool:
     """True when the tool already asks the user before it does this (so Jarvis doesn't ask twice)."""
     action = str(args.get("action", "")).lower().strip()
-    if name in {"send_whatsapp", "delete_file", "apply_fix", "generate_tests"}:  # they show what changes first
+    if name in {"send_whatsapp", "delete_file", "apply_fix", "generate_tests",  # they show what changes first
+                "delete_meeting", "delete_voice_profile"}:
         return True
     if name == "look_at_camera":  # asks by itself when the camera is set to "ask"
         return settings is not None and level(settings, "camera") == ASK
@@ -108,6 +113,19 @@ def describe_call(name: str, args: dict) -> str:
     return f"{name.replace('_', ' ')}" + (f" ({'; '.join(shown)})" if shown else "")
 
 
+def _guest_block(name: str, settings, source: str) -> str | None:
+    """An unknown voice (voice profiles) can't use WhatsApp, contacts or money tools unless the owner allows it."""
+    if source == "phone" or getattr(settings, "guest_private_tools", False) or not getattr(settings, "voice_id", True):
+        return None
+    from jarvis import voices
+
+    if name in voices.GUEST_TOOLS and voices.is_guest():
+        return ("Not allowed for guests: the voice speaking doesn't match a saved voice profile, so WhatsApp, contacts "
+                "and money are off. Tell them kindly. The owner can say a sentence so I recognise them, or allow "
+                "guests in Settings > Privacy > Voice profiles.")
+    return None
+
+
 def check(name: str, args: dict, settings, source: str = "pc") -> tuple[str, str | None]:
     """What to do with this call: ("on", None), ("ask", question) or ("off", error message)."""
     area = TOOL_AREAS.get(name)
@@ -115,6 +133,9 @@ def check(name: str, args: dict, settings, source: str = "pc") -> tuple[str, str
     if phone == OFF:
         return OFF, ("Not allowed: the user turned off phone control in Settings > Privacy > Permissions. "
                      "Tell them kindly; they can do it on the PC or allow it in Settings.")
+    guest = _guest_block(name, settings, source)
+    if guest:
+        return OFF, guest
     if area is not None and level(settings, area) == OFF:
         title = AREAS[area][0].lower()
         return OFF, (f"Not allowed: the user turned off '{title}' actions for Jarvis in Settings > Privacy > "

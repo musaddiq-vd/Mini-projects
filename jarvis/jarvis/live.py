@@ -93,6 +93,10 @@ class LiveAssistant:
 
         self.offline = OfflineVoice(on_heard=self._offline_heard, name=self.s.assistant_name)
         self._offline_note = False  # "offline - these still work" shown for the current outage
+        from jarvis.voices import VoiceWatcher
+
+        # who is speaking (voice profiles): checked on a background thread after each user turn
+        self.voice_watch = VoiceWatcher(self.s, self.events, on_change=self._voice_changed)
 
     # -- thread-safe controls -------------------------------------------------
     def _call(self, coro_fn, *args) -> None:
@@ -381,6 +385,7 @@ class LiveAssistant:
                 silent = self.muted or self._echo_guard(speaker)
                 if not silent and self.awake:
                     self.events.emit("level", source="mic", value=level(chunk))
+                    self.voice_watch.feed(chunk)
                 await session.send_realtime_input(
                     audio=types.Blob(data=SILENCE if silent else chunk, mime_type=f"audio/pcm;rate={MIC_RATE}")
                 )
@@ -406,7 +411,9 @@ class LiveAssistant:
         """A finished bit of user speech: show it and act on "go to sleep"."""
         text = "".join(heard).strip()
         if not text or not self.awake:
+            self.voice_watch.drop()
             return
+        self.voice_watch.end_turn()  # who said it: checked in the background, never delays the reply
         text, hidden = redact(text)
         self.events.emit("user", text=text)
         if hidden:  # said out loud: the model heard it, so make sure it won't repeat or use it
@@ -416,6 +423,14 @@ class LiveAssistant:
                              "gently remind them to keep it private.)")
         if is_sleep_command(text):
             self.loop.call_later(GOODBYE_SECONDS, lambda: self.sleep("voice"))
+
+    def _voice_changed(self, profile, guest: bool, previous: dict) -> None:
+        """A different voice profile is speaking now: tell the model (not needed for the owner at the start)."""
+        from jarvis.voices import system_note
+
+        if not previous and profile is not None and profile.get("owner"):
+            return
+        self.send_system(system_note(profile, guest, self.s))
 
     async def _receive(self, session) -> None:
         heard, said = [], []

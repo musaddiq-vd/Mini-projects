@@ -33,6 +33,12 @@ def _routines_line(settings: Settings) -> str:
     return f"Saved routines: {', '.join(names)}." if names else ""
 
 
+def _voice_line() -> str:
+    from jarvis.voices import prompt_line
+
+    return prompt_line()
+
+
 def system_prompt(settings: Settings, memory: MemoryStore) -> str:
     from jarvis.lang import prompt_rules
 
@@ -96,6 +102,14 @@ How to act:
   smart_home(device, action, value). "Which devices do I have?" -> smart_devices.
 - Calendar (read-only): "aaj meri meetings", "kal free kab hu", "next meeting kab hai" -> calendar_events(day).
   You can't add or change calendar events: offer a reminder instead. Never say the calendar link aloud.
+- Meetings: "is meeting ke notes lo / record this meeting / take notes" -> start_meeting(title) - ONLY when the user
+  asks; never start it yourself, not even for a calendar meeting (you may ask "Shall I take notes?"). While it records,
+  stay quiet unless spoken to by name. "Meeting khatam / stop recording" -> stop_meeting, then summarise briefly and
+  offer save_meeting_actions (to-dos), set_reminder for due items, and draft_email for the follow-up (draft only,
+  never send). Later: meeting_status, list_meetings, meeting_notes(id), ask_meeting(id, question), delete_meeting.
+- Voice profiles: "learn my voice / meri awaaz pehchano / add Sara's voice" -> enroll_voice(name); "who am I / main
+  kaun hoon" -> who_is_speaking; list_voice_profiles, delete_voice_profile. "(system: voice)" notes tell you who is
+  speaking now: follow them (name, language, manner, which facts). {_voice_line()}
 - Offline (no internet), the app itself handles simple typed / spoken commands; you'll see them in the chat
   marked 📴 - don't redo them when you're back.
 - Your OWN window by voice: jarvis_display minimize / maximize / move ("thoda neeche jao") / glide (keeps

@@ -44,6 +44,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 🩺 **PC health** | Checks your internet, finds what is slowing the PC down and how much disk space is left. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
 | 🩹 **Picks up after a crash** | If Jarvis closed unexpectedly, the next start says so, brings back your recent chat and rings any reminder you missed, once. |
+| 🎙️ **Meeting notes** | On request, records a meeting (your mic plus the PC's sound when Windows offers it), writes it down piece by piece, and ends with a summary, decisions, action items with owners and dates, open questions and a follow-up e-mail draft. A red REC pill shows while it records. |
+| 🗣️ **Knows your voice** | Voice profiles tell family members apart and switch the name, language, speaking style and which saved facts Jarvis uses. Unknown voices are guests: no WhatsApp, contacts or money unless you allow it. |
 | 🎓 **Language coach** | A separate practice mode with a daily plan, quizzes, role-plays, pronunciation tips and progress tracking. |
 | 🛡️ **Private by design** | Cards, OTPs, passwords and keys are never sent or saved. The API key is encrypted, and backups never include it. |
 
@@ -80,6 +82,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Time | "Remind me in 20 minutes to call mom" · "Every weekday at 9 remind me to stand up" · "5 minute timer" · "Focus for 25 minutes" |
 | To-dos | "Add pay the bill by tomorrow, it's urgent" · "What should I do first?" · "Milk is done" |
 | Calendar | "What meetings do I have today?" · "When am I free tomorrow?" · "When is my next meeting?" |
+| Meetings | "Take notes of this meeting, call it weekly sync" · "Stop the meeting" · "Add the action items to my list" · "What did Priya say about the budget?" |
+| Voice profiles | "Learn my voice" · "Add my wife's voice as Sara, she likes Hindi" · "Who am I?" · "Delete Sara's voice profile" |
 | Money & habits | "I spent 450 on a cab" · "How much did I spend this month?" · "Make gym a daily habit" |
 | Goals & reports | "Help me learn Python in 3 months" · "Show my weekly report" · "Recap my day" |
 | Files & documents | "Find yesterday's PDF that had an invoice" · "What's the total in this document?" |
@@ -165,6 +169,8 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Watching and using the screen.** "Watch my screen" looks every few seconds, skips frames that didn't change and speaks only about important changes (an error, a finished download, a failed build, a new message), at most once a minute; it stops after 30 minutes or when Jarvis sleeps. "Click …" and small computer tasks show every step in the chat, ask before anything that sends, buys, deletes, submits or signs in, never type passwords, OTPs or card numbers, ignore instructions written on the screen, and stop at once when you say "stop".
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction. For two minutes after Jarvis reads such content, actions that type, save or change something (typing, key presses, writing files, the clipboard, opening links, e-mail drafts, routines, memory, smart home, WiFi, auto-start) need your "yes" first, and the question says what Jarvis just read. Text that tries to give orders ("ignore previous instructions", "you are now…", "system prompt") is flagged with a warning so Jarvis tells you about it instead of following it.
 - **Your code stays in your hands.** The coding assistant only runs your project's own test runner (pytest, unittest, npm test, go test, cargo test) or a Python / JavaScript file you name, inside the project, without a shell and with a time limit; it never runs a command the model wrote. Code changes are shown as a diff and written only after you say yes, with a backup in `~/.jarvis/code_backups` and undo.
+- **Meetings are recorded only when you ask.** Jarvis never starts a recording by itself; for a calendar meeting it may only ask "Shall I take notes?". While recording, the window shows a red REC pill and Jarvis says "recording started" once. The audio, transcript and notes stay in `~/.jarvis/meetings/` until you delete them (by voice or in Settings → Privacy); the *Meetings* permission turns recording off completely. The audio goes to Gemini in pieces only to be written down, and the follow-up e-mail is only ever a draft.
+- **Voice profiles keep no recordings.** Enrollment keeps a small set of voice numbers in `~/.jarvis/voices/`, not the audio. Recognition uses classic MFCC statistics on your CPU (no extra download): reliable for clearly different voices in a quiet room, easily confused by similar voices, noise or another microphone. It picks the right name and language; it is not a security check. Unknown voices are guests and can't use WhatsApp, contacts or money unless you allow it in Settings → Privacy.
 - **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 
 ---
@@ -196,6 +202,8 @@ jarvis/
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
 │   ├── guardrails.py    secret detection, safety checks and the prompt-injection guard
 │   ├── permissions.py   on / ask / off per area (camera, files, messages, ...)
+│   ├── meetings.py      meeting recorder: mic + PC sound in chunks, transcripts and notes
+│   ├── voices.py        voice profiles: MFCC voice prints and who-is-speaking checks
 │   ├── tools/           123 tools, one file per area
 │   ├── coding/          the coding assistant: project map, runner, diffs, prompts
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard

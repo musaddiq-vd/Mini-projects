@@ -386,3 +386,50 @@ def code_card(r: dict) -> QFrame | None:
         title = d.get("title", "Change") + (f"  ·  {d['fix_id']}" if d.get("fix_id") else "")
         code_block(title, d["diff"], "diff", copy_label="Copy diff")
     return card
+
+
+def meeting_card(r: dict) -> QFrame | None:
+    """Meeting notes: summary, decisions, action items (owner, due), open questions and the e-mail draft."""
+    m = r.get("meeting_notes") if isinstance(r, dict) else None
+    if not isinstance(m, dict) or not m.get("title"):
+        return None
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(540)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(16, 12, 16, 14)
+    v.setSpacing(6)
+    v.addWidget(QLabel(f"🎙  {html.escape(m['title'])}", objectName="h2"))
+    sources = " + ".join(m.get("sources") or [])
+    v.addWidget(QLabel(html.escape(m.get("when", "") + (f"  ·  {sources}" if sources else "")), objectName="muted"))
+    accent = theme.readable(theme.ACCENT)
+
+    def section(icon: str, title: str, lines: list[str]) -> None:
+        if not lines:
+            return
+        body = "<br>".join(lines)
+        lb = QLabel(f"<b style='color:{accent}'>{icon} {title}</b><br><span>{body}</span>")
+        lb.setTextFormat(Qt.TextFormat.RichText)
+        lb.setWordWrap(True)
+        lb.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        lb.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px 10px;")
+        v.addWidget(lb)
+
+    if m.get("summary"):
+        section("📋", "Summary", [html.escape(m["summary"])])
+    section("✅", "Decisions", [f"• {html.escape(x)}" for x in m.get("decisions") or []])
+    actions = []
+    for a in m.get("action_items") or []:
+        extra = " · ".join(x for x in (html.escape(a.get("owner", "")), f"due {html.escape(a['due'])}"
+                                       if a.get("due") else "") if x)
+        actions.append(f"☐ {html.escape(a.get('task', ''))}"
+                       + (f" <span style='color:{theme.MUTED}'>({extra})</span>" if extra else ""))
+    section("📌", "Action items", actions)
+    section("❓", "Open questions", [f"• {html.escape(x)}" for x in m.get("open_questions") or []])
+    email = m.get("email") or {}
+    if email.get("body"):
+        body = html.escape(email["body"][:600] + ("…" if len(email["body"]) > 600 else "")).replace("\n", "<br>")
+        section("✉", "Follow-up e-mail (draft)", [f"<b>{html.escape(email.get('subject', ''))}</b>", body])
+    hint = QLabel("Say “add the action items to my list” or “draft the follow-up e-mail”.", objectName="muted")
+    hint.setWordWrap(True)
+    v.addWidget(hint)
+    return card
