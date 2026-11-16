@@ -10,8 +10,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![Gemini Live](https://img.shields.io/badge/Gemini-Live%20API-8E75B2?logo=googlegemini&logoColor=white)
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
-![Tools](https://img.shields.io/badge/tools-123-00d4ff)
-![Tests](https://img.shields.io/badge/tests-748%20passing-3ddc97)
+![Tools](https://img.shields.io/badge/tools-171-00d4ff)
+![Tests](https://img.shields.io/badge/tests-968%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
 
@@ -219,13 +219,13 @@ jarvis/
 │   ├── meetings.py      meeting recorder: mic + PC sound in chunks, transcripts and notes
 │   ├── voices.py        voice profiles: MFCC voice prints and who-is-speaking checks
 │   ├── agents/          agent team (planner + specialists), workflows and the web researcher
-│   ├── tools/           123 tools, one file per area
+│   ├── tools/           171 tools, one file per area
 │   ├── coding/          the coding assistant: project map, runner, diffs, prompts
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               748 tests
+├── tests/               968 tests
 └── docs/                screenshots and the script that makes them
 ```
 
