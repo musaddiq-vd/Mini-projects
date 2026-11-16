@@ -40,6 +40,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 🌅 **Daily digest** | Weather, meetings, what to do first, reminders, habits and today's spending on one card. |
 | 👥 **Contacts** | Names with numbers, e-mail, relation and birthdays. Jarvis reminds you of birthdays and offers to send a wish. |
 | 🔔 **Tell me when** | "Tell me when the battery is full", "when the internet is back", "when Chrome closes" or "when C drive is almost full". |
+| 🧩 **Agents & workflows** | A planner hands bigger jobs to a researcher, coder, system and writer agent, with a live plan card. Workflows run real tool calls with conditions, waits and schedules. |
+| 📑 **Web research** | Reads a few pages about a topic (politely, read-only), collects facts with their sources and saves a markdown report. |
 | 🩺 **PC health** | Checks your internet, finds what is slowing the PC down and how much disk space is left. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
 | 🩹 **Picks up after a crash** | If Jarvis closed unexpectedly, the next start says so, brings back your recent chat and rings any reminder you missed, once. |
@@ -91,6 +93,8 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Contacts | "Save mom's number 98765 43210" · "Ali's birthday is 12 March" · "Whose birthday is coming up?" |
 | Tell me when | "Tell me when the battery is full" · "Let me know when the internet is back" |
 | Focus | "How much did I focus this week?" |
+| Agents & workflows | "Research budget laptops and write me a short report" · "Agent status" · "Cancel agents" · "Work mode" · "Every weekday at 9 run study mode" |
+| Web research | "Read about solar panels on the web and make a report" · "Deep research on Python 3.14, depth 3" |
 | PC health | "Is my internet slow?" · "Why is my PC slow?" · "How much space is left on C drive?" |
 | Language | "Talk to me in Hindi" · "Give reminders in English" |
 | Smart home | "Turn on the bedroom light" · "Set the AC to 24" · "Make the lights warm white" · "Turn off all lights" |
@@ -161,6 +165,7 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Phone pairing can't be guessed.** After 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes.
 - **Permissions per area.** Settings → Privacy → Permissions sets each area to *Allowed*, *Ask me first* or *Off*: camera, screen, files, messages & typing, system (power, WiFi, start with Windows, brightness), smart home and the phone. The defaults keep the usual behaviour (the camera asks first). An area that is off is refused for every request, from the PC or the phone, and Jarvis tells you why.
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction. For two minutes after Jarvis reads such content, actions that type, save or change something (typing, key presses, writing files, the clipboard, opening links, e-mail drafts, routines, memory, smart home, WiFi, auto-start) need your "yes" first, and the question says what Jarvis just read. Text that tries to give orders ("ignore previous instructions", "you are now…", "system prompt") is flagged with a warning so Jarvis tells you about it instead of following it.
+- **Agents, workflows and web research follow the same rules.** Every tool call an agent or a workflow makes goes through the same permissions, guardrails, confirmations and audit log as a voice request. The agent team has hard limits (steps, tool calls, five minutes) and "stop" cancels it. A workflow stops at the first error or when you say no. The web researcher only reads public pages with plain requests (no logins, forms or purchases), respects robots.txt, names itself only "Jarvis" and asks before saving a report to `Documents/Jarvis Reports`.
 - **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 
 ---
@@ -192,6 +197,7 @@ jarvis/
 │   ├── background.py    briefing, reminders, calendar, nudges, weekly report
 │   ├── guardrails.py    secret detection, safety checks and the prompt-injection guard
 │   ├── permissions.py   on / ask / off per area (camera, files, messages, ...)
+│   ├── agents/          agent team (planner + specialists), workflows and the web researcher
 │   ├── tools/           123 tools, one file per area
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode

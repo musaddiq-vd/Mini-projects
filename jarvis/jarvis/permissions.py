@@ -49,6 +49,7 @@ CHANGING_TOOLS = {
     "volume", "media_control", "play_youtube", "game_launcher", "make_backup", "scroll_screen",
     "merge_pdfs", "extract_pdf_pages", "rotate_pdf", "compress_pdf", "copy_from_history", "clear_clipboard_history",
     "save_contact", "delete_contact", "add_alert", "cancel_alert",
+    "run_agents", "create_workflow", "edit_workflow", "delete_workflow", "run_workflow", "browse_and_report",
 }
 
 

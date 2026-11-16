@@ -50,9 +50,15 @@ class BackgroundServices:
         from jarvis.tools import clipboard_history
 
         clipboard_history.start()  # in memory only; secrets are never kept
+        from jarvis.agents.workflows import Scheduler
+
+        self.workflows = Scheduler(self.app.ctx, self.app.registry)
+        self.workflows.start()  # daily / weekdays / startup workflows
 
     def stop(self) -> None:
         self._stop.set()
+        if getattr(self, "workflows", None) is not None:
+            self.workflows.stop()
         from jarvis.tools import clipboard_history
 
         clipboard_history.stop()
