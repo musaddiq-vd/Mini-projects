@@ -50,12 +50,18 @@ class BackgroundServices:
         from jarvis.tools import clipboard_history
 
         clipboard_history.start()  # in memory only; secrets are never kept
+        from jarvis import kb
+
+        kb.start_watcher(self.app.ctx)  # re-indexes changed files of the sources the user added (if any)
 
     def stop(self) -> None:
         self._stop.set()
         from jarvis.tools import clipboard_history
 
         clipboard_history.stop()
+        from jarvis import kb
+
+        kb.stop_watcher()
 
     def on_connected(self) -> None:
         """Called once the first live session is up."""

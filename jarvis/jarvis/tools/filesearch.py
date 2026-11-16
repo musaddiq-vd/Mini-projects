@@ -126,6 +126,20 @@ def find_files(ctx, query: str = "", file_type: str = "any", modified: str = "",
     roots = search_roots(ctx)
     if not roots:
         return {"error": "There are no folders I'm allowed to search."}
+    cands = match_files(roots, words, exts, rng, look_inside)
+    if not cands:
+        where = ", ".join(r.name for r in roots)
+        return f"No matching files found in {where}."
+    rows = [{"name": c[0].name, "path": str(c[0]), "folder": str(c[0].parent),
+             "modified": datetime.fromtimestamp(c[1]).strftime("%d %b %Y %I:%M %p"),
+             "size_kb": round(c[2] / 1024), "matched": c[4] or "type/date"} for c in cands[:10]]
+    return {"found": len(cands), "files": rows,
+            "tip": "Questions about a file -> ask_document(path=...). Showing it on screen -> open_file only if asked."}
+
+
+def match_files(roots: list[Path], words: list[str], exts: set[str] | None, rng: tuple[date, date] | None,
+                look_inside: bool = True) -> list[list]:
+    """Matching files, best first: [path, modified, size, score, how it matched]."""
     files = _walk(roots)
     cands = []
     for path, mtime, size in files:
@@ -158,11 +172,4 @@ def find_files(ctx, query: str = "", file_type: str = "any", modified: str = "",
     if words:
         cands = [c for c in cands if c[3] > 0]
     cands.sort(key=lambda c: (-c[3], -c[1]))
-    if not cands:
-        where = ", ".join(r.name for r in roots)
-        return f"No matching files found in {where}."
-    rows = [{"name": c[0].name, "path": str(c[0]), "folder": str(c[0].parent),
-             "modified": datetime.fromtimestamp(c[1]).strftime("%d %b %Y %I:%M %p"),
-             "size_kb": round(c[2] / 1024), "matched": c[4] or "type/date"} for c in cands[:10]]
-    return {"found": len(cands), "files": rows,
-            "tip": "Questions about a file -> ask_document(path=...). Showing it on screen -> open_file only if asked."}
+    return cands

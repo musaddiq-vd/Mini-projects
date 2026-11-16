@@ -30,6 +30,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | ⏰ **Never forgets** | Reminders that pop up at the side of the screen with Done / Snooze, timers, smart to-dos with deadlines and priorities, and calendar sync with meeting alerts. |
 | 📊 **Knows your week** | Expenses, habits, goals, focus time and a weekly report card, plus a dashboard with charts. |
 | 📄 **Reads your documents** | Finds files by what is inside them and answers questions about any PDF, Word, Excel or PowerPoint file, with page numbers. |
+| 📚 **Knowledge base & search** | Learns only from the folders and files you pick, answers from them with the file, page and a quote, and one search finds files, chats, notes, reminders, contacts and more at once. |
 | 🕹️ **Moves on command** | Moves, resizes and minimizes its own window by voice, and scrolls the page you are reading until you say stop. |
 | 🪟 **Always within reach** | A floating mini mode with its own chat, a live widget on your wallpaper and a global hotkey. |
 | 🏠 **Smart home** | Lights, plugs, fans and the AC through Home Assistant or Tuya / Smart Life (Wipro, Syska, Havells ...), on your home WiFi. |
@@ -82,6 +83,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Money & habits | "I spent 450 on a cab" · "How much did I spend this month?" · "Make gym a daily habit" |
 | Goals & reports | "Help me learn Python in 3 months" · "Show my weekly report" · "Recap my day" |
 | Files & documents | "Find yesterday's PDF that had an invoice" · "What's the total in this document?" |
+| Knowledge & search | "Learn from my college notes folder" · "What do my notes say about Newton's laws?" · "Search everything for Goa trip last week" |
 | Web | "Weather today" · "Top news in two lines" · "Flights from Pune to Delhi next Friday" |
 | Messages & code | "WhatsApp mom: I'll be late" · "Write a Python snake game in a folder called snake" |
 | Memory & data | "Remember my city is Pune" · "What do you know about me?" · "Back up my data" · "Undo" |
@@ -161,7 +163,8 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Phone pairing can't be guessed.** After 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes.
 - **Permissions per area.** Settings → Privacy → Permissions sets each area to *Allowed*, *Ask me first* or *Off*: camera, screen, files, messages & typing, system (power, WiFi, start with Windows, brightness), smart home and the phone. The defaults keep the usual behaviour (the camera asks first). An area that is off is refused for every request, from the PC or the phone, and Jarvis tells you why.
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction. For two minutes after Jarvis reads such content, actions that type, save or change something (typing, key presses, writing files, the clipboard, opening links, e-mail drafts, routines, memory, smart home, WiFi, auto-start) need your "yes" first, and the question says what Jarvis just read. Text that tries to give orders ("ignore previous instructions", "you are now…", "system prompt") is flagged with a warning so Jarvis tells you about it instead of following it.
-- **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
+- **The knowledge base learns only what you pick.** Nothing is indexed until you name a folder or file and confirm. Files with passwords or keys are skipped, secrets in documents are masked before indexing, and the index lives in `~/.jarvis/kb` (see its size or delete it in Settings → Privacy; backups leave it out). Unchanged files are never sent twice.
+- **What leaves your PC:** your voice and messages go to Google Gemini (and the text of files you add to the knowledge base goes to its embedding service), searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 
 ---
 

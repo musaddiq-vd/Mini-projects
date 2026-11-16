@@ -275,3 +275,63 @@ def digest_card(r: dict) -> QFrame | None:
         lb.setWordWrap(True)
         v.addWidget(lb)
     return card
+
+
+SEARCH_ICONS = {"files": "📄", "chats": "💬", "notes": "📝", "memory": "🧠", "contacts": "👤", "reminders": "⏰",
+                "meetings": "📅", "knowledge": "📚"}
+
+
+def open_local(path: str) -> bool:
+    """Open a search result: files with their app, programs and scripts only by showing their folder."""
+    from pathlib import Path
+
+    from jarvis.tools.files import RUNNABLE_EXT
+
+    p = Path(path)
+    if not p.exists():
+        return False
+    target = p.parent if p.is_file() and p.suffix.lower() in RUNNABLE_EXT else p
+    return QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
+
+
+def search_card(r: dict, per_group: int = 4) -> QFrame | None:
+    """search_everything results: one section per kind, each hit with a date and a snippet; files open on click."""
+    groups = r.get("groups") if isinstance(r, dict) else None
+    if not groups:
+        return None
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(600)
+    card.setMinimumWidth(420)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(14, 10, 14, 12)
+    v.setSpacing(6)
+    when = r.get("range") or r.get("when") or ""
+    head = f"🔎 {html.escape(str(r.get('query') or 'Search'))}" + (f"  ·  {html.escape(str(when))}" if when else "")
+    v.addWidget(QLabel(f"{head}  ·  {int(r.get('found', 0))} found", objectName="section"))
+    accent = theme.readable(theme.ACCENT)
+    for g in groups:
+        kind = str(g.get("kind", ""))
+        title = QLabel(f"<b style='color:{accent}'>{SEARCH_ICONS.get(kind, '•')} {html.escape(str(g.get('title')))}"
+                       f"</b> <span style='color:{theme.MUTED}; font-size:10px;'>{int(g.get('count', 0))}</span>")
+        title.setTextFormat(Qt.TextFormat.RichText)
+        v.addWidget(title)
+        for item in (g.get("items") or [])[:per_group]:
+            name = html.escape(str(item.get("title") or ""))[:90]
+            path = item.get("path")
+            if path:
+                name = (f'<a href="open:{html.escape(str(path))}" style="color:{accent}; text-decoration:none;">'
+                        f"{name}</a>")
+            meta = html.escape(str(item.get("date") or ""))
+            snip = html.escape(str(item.get("snippet") or ""))[:160]
+            lab = QLabel(f"{name}" + (f"  <span style='color:{theme.MUTED}; font-size:10px;'>{meta}</span>"
+                                      if meta else "")
+                         + (f"<br><span style='font-size:11px;'>{snip}</span>" if snip else ""))
+            lab.setTextFormat(Qt.TextFormat.RichText)
+            lab.setWordWrap(True)
+            lab.setOpenExternalLinks(False)
+            lab.setContentsMargins(14, 0, 0, 0)
+            if path:
+                lab.setToolTip(f"Click to open · {path}")
+                lab.linkActivated.connect(lambda link: open_local(link.removeprefix("open:")))
+            v.addWidget(lab)
+    return card

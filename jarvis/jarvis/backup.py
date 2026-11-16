@@ -2,7 +2,8 @@
 
 In the backup: memory, chat history, notes / reminders / app state, expenses, habits, goals, practice
 progress and your settings. Left out: the API key and calendar links (they are encrypted for this Windows
-account and wouldn't work on another PC anyway), logs, image cache and plugins (code is never restored).
+account and wouldn't work on another PC anyway), logs, image cache, plugins (code is never restored) and the
+knowledge base index in kb/ (its vectors are rebuilt from your files when you add them again).
 
 Restoring checks the file first (only known names, size limits, valid JSON), saves a copy of the current
 data to ~/.jarvis/backups, then writes the new files. The app then restarts so every part reloads.

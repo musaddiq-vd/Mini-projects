@@ -32,6 +32,8 @@ TOOL_AREAS: dict[str, str] = {
     "read_document": "files", "open_document": "files", "ask_document": "files", "explain_code": "files",
     "write_code": "files", "merge_pdfs": "files", "extract_pdf_pages": "files", "rotate_pdf": "files",
     "compress_pdf": "files", "read_image_text": "files",
+    "kb_add": "files", "kb_remove": "files", "kb_reindex": "files", "kb_ask": "files", "kb_sources": "files",
+    "kb_status": "files",
     "send_whatsapp": "messaging", "draft_email": "messaging", "type_text": "messaging", "press_keys": "messaging",
     "write_clipboard": "messaging", "read_clipboard": "messaging", "clipboard_history": "messaging",
     "copy_from_history": "messaging", "clear_clipboard_history": "messaging",
@@ -49,6 +51,7 @@ CHANGING_TOOLS = {
     "volume", "media_control", "play_youtube", "game_launcher", "make_backup", "scroll_screen",
     "merge_pdfs", "extract_pdf_pages", "rotate_pdf", "compress_pdf", "copy_from_history", "clear_clipboard_history",
     "save_contact", "delete_contact", "add_alert", "cancel_alert",
+    "kb_add", "kb_remove", "kb_reindex",
 }
 
 
@@ -77,7 +80,7 @@ def set_level(settings, area: str, value: str) -> None:
 def confirms_itself(name: str, args: dict, settings=None) -> bool:
     """True when the tool already asks the user before it does this (so Jarvis doesn't ask twice)."""
     action = str(args.get("action", "")).lower().strip()
-    if name in {"send_whatsapp", "delete_file"}:
+    if name in {"send_whatsapp", "delete_file", "kb_add"}:
         return True
     if name == "look_at_camera":  # asks by itself when the camera is set to "ask"
         return settings is not None and level(settings, "camera") == ASK
