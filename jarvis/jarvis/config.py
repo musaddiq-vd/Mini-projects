@@ -129,6 +129,12 @@ class Settings:
     voice_id: bool = True  # recognise who is speaking from the voice profiles (if any are saved)
     guest_private_tools: bool = False  # unknown voices may use WhatsApp, contacts and money tools
     meeting_offer: bool = True  # ask "shall I take notes?" when a calendar meeting starts (never records by itself)
+    # proactive suggestions (jarvis.proactive): offers of help before being asked
+    proactive_suggestions: bool = True
+    suggestions_per_hour: int = 2
+    quiet_hours: str = "22-8"  # no suggestions from 22:00 to 08:00 ("" = none)
+    battery_saver_percent: int = 25  # on battery at or below this, offer power saver + lower brightness
+    organize_watch: bool = False  # suggest organizing Downloads when it gets messy
 
     @property
     def effective_api_key(self) -> str:

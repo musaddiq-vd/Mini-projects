@@ -45,6 +45,9 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 🧩 **Agents & workflows** | A planner hands bigger jobs to a researcher, coder, system and writer agent, with a live plan card. Workflows run real tool calls with conditions, waits and schedules. |
 | 📑 **Web research** | Reads a few pages about a topic (politely, read-only), collects facts with their sources and saves a markdown report. |
 | 🩺 **PC health** | Checks your internet, finds what is slowing the PC down and how much disk space is left. |
+| 💡 **Helps before you ask** | Notices a to-do with no reminder, a meeting with a join link, low battery or disk, a habit not done yet, a budget running out, a birthday tomorrow or actions you keep repeating, and offers help on a small card with Accept / Dismiss. Limited per hour, quiet at night and in focus mode; "not useful" mutes that kind. |
+| 🔋 **Energy manager** | Battery health and charge cycles, how fast it drains, power-hungry apps, brightness and the Windows power plan, with tips and rough savings. Settings change only after you say yes. |
+| 🗂️ **Tidy folders** | Sorts Downloads, Documents or Pictures into folders: by type, documents by content (invoices, receipts, tickets, resumes, notes) and pictures by date. Shows the plan first, never deletes, and "undo" puts every file back. |
 | 📴 **Works offline** | No internet? Timers, reminders, notes, apps and volume still work, answered in the built-in Windows voice. |
 | 🩹 **Picks up after a crash** | If Jarvis closed unexpectedly, the next start says so, brings back your recent chat and rings any reminder you missed, once. |
 | 🎙️ **Meeting notes** | On request, records a meeting (your mic plus the PC's sound when Windows offers it), writes it down piece by piece, and ends with a summary, decisions, action items with owners and dates, open questions and a follow-up e-mail draft. A red REC pill shows while it records. |
@@ -104,6 +107,9 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Agents & workflows | "Research budget laptops and write me a short report" · "Agent status" · "Cancel agents" · "Work mode" · "Every weekday at 9 run study mode" |
 | Web research | "Read about solar panels on the web and make a report" · "Deep research on Python 3.14, depth 3" |
 | PC health | "Is my internet slow?" · "Why is my PC slow?" · "How much space is left on C drive?" |
+| Battery & power | "How is my battery health?" · "Switch to power saver" · "Give me battery saving tips" |
+| Organize files | "Organize my downloads" · "Sort my pictures by date" · "Undo" |
+| Suggestions | "Why did you suggest that?" · "At most one suggestion an hour" · "Turn off proactive suggestions" |
 | Language | "Talk to me in Hindi" · "Give reminders in English" |
 | Smart home | "Turn on the bedroom light" · "Set the AC to 24" · "Make the lights warm white" · "Turn off all lights" |
 | Look | "Become a cat" · "Use my wallpaper's colours" · "Put the desktop widget on" |

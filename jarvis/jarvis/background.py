@@ -40,12 +40,19 @@ class BackgroundServices:
             self.last_activity = time.monotonic()
         elif kind == "state":
             self.sleeping = data["state"] == "sleeping"
+        elif kind == "tool":
+            try:
+                from jarvis import proactive
+
+                proactive.observe(self.app.state, data.get("name", ""), data.get("args") or {}, data.get("result"))
+            except Exception:  # noqa: BLE001 - learning is optional
+                log.exception("proactive observe failed")
 
     # -- lifecycle -----------------------------------------------------------
     def start(self) -> None:
         for target in (self._hardware_loop, self._topic_loop, self._proactive_loop, self._recap_loop,
                        self._health_loop, self._goal_loop, self._calendar_loop, self._weekly_loop,
-                       self._todo_loop, self._smart_alert_loop):
+                       self._todo_loop, self._smart_alert_loop, self._suggestion_loop):
             threading.Thread(target=target, daemon=True).start()
         from jarvis.tools import clipboard_history
 
@@ -396,6 +403,37 @@ class BackgroundServices:
                 self.say("(system: check-in) The user has been quiet for a while. Make ONE short, friendly, "
                          "useful check-in based on the time of day and what you know about them "
                          "(their projects, plans, reminders). Don't repeat earlier check-ins.")
+
+    # -- proactive suggestions (jarvis.proactive) -------------------------------------------
+    SUGGESTION_TICK = 60
+
+    def suggestion_tick(self, now: datetime | None = None) -> dict | None:
+        """Pick at most one suggestion: shown as a card, spoken briefly only when awake (and not quiet hours)."""
+        from jarvis import proactive
+
+        proactive.flush(self.app.state)
+        if not self.s.proactive_suggestions:
+            return None
+        snap = proactive.gather(self.app.ctx, now)
+        entry = proactive.pick(self.app.state, self.s, snap, busy=self._focusing() or self._practicing())
+        if entry is None:
+            return None
+        self.app.events.emit("suggestion", id=entry["id"], text=entry["title"], icon=entry.get("icon", "💡"),
+                             action=entry.get("action", ""), rule=entry["rule"])
+        if not self.sleeping and entry.get("speak_ok", True):
+            self.say(proactive.spoken(entry))
+        return entry
+
+    def _suggestion_loop(self) -> None:
+        if self._stop.wait(90):  # let startup settle
+            return
+        while True:
+            try:
+                self.suggestion_tick()
+            except Exception:  # noqa: BLE001 - one bad tick must not end the loop
+                log.exception("proactive suggestions failed")
+            if self._stop.wait(self.SUGGESTION_TICK):
+                return
 
     # -- session summary -------------------------------------------------------
     def save_summary(self) -> str | None:

@@ -66,6 +66,13 @@ TOPICS: list[tuple[str, str, list[str]]] = [
     ("🧩", "Agents & workflows", ["Research budget laptops and write me a short report", "Agent status",
                                   "Cancel agents", "Work mode", "Study mode", "Show my workflows",
                                   "Read about solar panels on the web and make a report"]),
+    ("🔋", "Battery & power", ["How is my battery health?", "Battery jaldi khatam ho rahi hai",
+                              "Switch to power saver", "Give me battery saving tips"]),
+    ("🗂", "Organize files", ["Organize my downloads", "Documents ko type ke hisaab se saaf karo",
+                             "Sort my pictures by date", "Undo"]),
+    ("💡", "Suggestions", ["Why did you suggest that?", "At most one suggestion an hour",
+                          "Quiet hours 10 pm to 8 am", "Turn off proactive suggestions",
+                          "Watch my downloads folder"]),
     ("😄", "Fun", ["Tell me a joke", "Thank you Jarvis!", "Sing me a short song about chai"]),
 ]
 
