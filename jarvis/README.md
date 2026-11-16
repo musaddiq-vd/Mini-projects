@@ -27,6 +27,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 🌐 **Your language** | English, Hindi, Urdu, Hinglish and 10 more. Pick one for Jarvis and another for reminders, or let it follow you. |
 | 🖥️ **Runs your PC** | Opens and closes apps and tabs, volume, brightness, media, WiFi, windows, keyboard, files and WhatsApp. |
 | 👁️ **Sees your screen** | Reads what is on screen and turns an error into a fix card: the problem, the cause, the steps and the corrected code. Can watch the screen and speak up when something important happens, and click or do small tasks for you step by step. |
+| 🧑‍💻 **Coding assistant** | Opens your project, explains code at beginner, normal or expert level with analogies and a code card, debugs crashes and failing tests down to the root cause, reviews code, writes and runs tests, and proposes fixes as diffs it applies only after you say yes (with undo). |
 | ⏰ **Never forgets** | Reminders that pop up at the side of the screen with Done / Snooze, timers, smart to-dos with deadlines and priorities, and calendar sync with meeting alerts. |
 | 📊 **Knows your week** | Expenses, habits, goals, focus time and a weekly report card, plus a dashboard with charts. |
 | 📄 **Reads your documents** | Finds files by what is inside them and answers questions about any PDF, Word, Excel or PowerPoint file, with page numbers. |
@@ -84,6 +85,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Files & documents | "Find yesterday's PDF that had an invoice" · "What's the total in this document?" |
 | Web | "Weather today" · "Top news in two lines" · "Flights from Pune to Delhi next Friday" |
 | Messages & code | "WhatsApp mom: I'll be late" · "Write a Python snake game in a folder called snake" |
+| Coding | "Open project desktop/myapp" · "Explain parse simply" · "Run the tests" · "Why does this test fail?" · "Review app.py" · "Write tests for utils.py" |
 | Memory & data | "Remember my city is Pune" · "What do you know about me?" · "Back up my data" · "Undo" |
 | Quick answers | "18% of 2500" · "100 dollars in rupees" · "Time in London?" · "How many days until 25 December?" · "Flip a coin" |
 | Clipboard & PDFs | "What did I copy earlier?" · "Merge these two PDFs" · "Make this PDF smaller" · "Read the text in this photo" |
@@ -162,6 +164,7 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Permissions per area.** Settings → Privacy → Permissions sets each area to *Allowed*, *Ask me first* or *Off*: camera, screen, files, messages & typing, system (power, WiFi, start with Windows, brightness), smart home and the phone. The defaults keep the usual behaviour (the camera asks first). An area that is off is refused for every request, from the PC or the phone, and Jarvis tells you why.
 - **Watching and using the screen.** "Watch my screen" looks every few seconds, skips frames that didn't change and speaks only about important changes (an error, a finished download, a failed build, a new message), at most once a minute; it stops after 30 minutes or when Jarvis sleeps. "Click …" and small computer tasks show every step in the chat, ask before anything that sends, buys, deletes, submits or signs in, never type passwords, OTPs or card numbers, ignore instructions written on the screen, and stop at once when you say "stop".
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction. For two minutes after Jarvis reads such content, actions that type, save or change something (typing, key presses, writing files, the clipboard, opening links, e-mail drafts, routines, memory, smart home, WiFi, auto-start) need your "yes" first, and the question says what Jarvis just read. Text that tries to give orders ("ignore previous instructions", "you are now…", "system prompt") is flagged with a warning so Jarvis tells you about it instead of following it.
+- **Your code stays in your hands.** The coding assistant only runs your project's own test runner (pytest, unittest, npm test, go test, cargo test) or a Python / JavaScript file you name, inside the project, without a shell and with a time limit; it never runs a command the model wrote. Code changes are shown as a diff and written only after you say yes, with a backup in `~/.jarvis/code_backups` and undo.
 - **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 
 ---
@@ -194,6 +197,7 @@ jarvis/
 │   ├── guardrails.py    secret detection, safety checks and the prompt-injection guard
 │   ├── permissions.py   on / ask / off per area (camera, files, messages, ...)
 │   ├── tools/           123 tools, one file per area
+│   ├── coding/          the coding assistant: project map, runner, diffs, prompts
 │   ├── ui/              window, orb, mini mode, widget, pop-ups, cards, dashboard
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window

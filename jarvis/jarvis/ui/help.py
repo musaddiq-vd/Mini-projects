@@ -54,7 +54,9 @@ TOPICS: list[tuple[str, str, list[str]]] = [
     ("🔔", "Tell me when", ["Batana jab battery full ho jaye", "Tell me when the internet is back",
                            "Let me know when Chrome closes", "Warn me when C drive has less than 10 GB"]),
     ("🩺", "PC health", ["Is my internet slow?", "Why is my PC slow?", "How much space is left on C drive?"]),
-    ("💻", "Code", ["Write a Python snake game in a folder called snake", "Explain main.py"]),
+    ("💻", "Code", ["Write a Python snake game in a folder called snake", "Open project desktop/myapp",
+                   "Explain main.py simply", "Run the tests", "Why does this test fail?", "Review app.py",
+                   "Write tests for utils.py", "Where is load_config used?"]),
     ("😄", "Fun", ["Tell me a joke", "Thank you Jarvis!", "Sing me a short song about chai"]),
 ]
 
