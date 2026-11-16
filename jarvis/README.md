@@ -26,7 +26,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | 🎙️ **Natural voice** | Low-latency, two-way conversation on the Gemini Live API. Say its name to wake it, interrupt it, or just type. |
 | 🌐 **Your language** | English, Hindi, Urdu, Hinglish and 10 more. Pick one for Jarvis and another for reminders, or let it follow you. |
 | 🖥️ **Runs your PC** | Opens and closes apps and tabs, volume, brightness, media, WiFi, windows, keyboard, files and WhatsApp. |
-| 👁️ **Sees your screen** | Reads what is on screen and turns an error into a fix card: the problem, the cause, the steps and the corrected code. |
+| 👁️ **Sees your screen** | Reads what is on screen and turns an error into a fix card: the problem, the cause, the steps and the corrected code. Can watch the screen and speak up when something important happens, and click or do small tasks for you step by step. |
 | ⏰ **Never forgets** | Reminders that pop up at the side of the screen with Done / Snooze, timers, smart to-dos with deadlines and priorities, and calendar sync with meeting alerts. |
 | 📊 **Knows your week** | Expenses, habits, goals, focus time and a weekly report card, plus a dashboard with charts. |
 | 📄 **Reads your documents** | Finds files by what is inside them and answers questions about any PDF, Word, Excel or PowerPoint file, with page numbers. |
@@ -75,7 +75,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 |---|---|
 | Apps & windows | "Open Spotify" · "Close YouTube" · "Put Chrome on the left half" · "Minimize everything" |
 | Jarvis itself | "Move to the right corner" · "Keep moving left slowly" … "stop" · "Get smaller" · "Night mode" |
-| Screen | "What's on my screen?" · "Fix this error" · "Keep scrolling down" … "stop" · "Take a screenshot" |
+| Screen | "What's on my screen?" · "Fix this error" · "Keep scrolling down" … "stop" · "Take a screenshot" · "Watch my screen and tell me when the build finishes" · "Click the Download button" · "Open Notepad and write a shopping list" … "stop" |
 | Time | "Remind me in 20 minutes to call mom" · "Every weekday at 9 remind me to stand up" · "5 minute timer" · "Focus for 25 minutes" |
 | To-dos | "Add pay the bill by tomorrow, it's urgent" · "What should I do first?" · "Milk is done" |
 | Calendar | "What meetings do I have today?" · "When am I free tomorrow?" · "When is my next meeting?" |
@@ -160,6 +160,7 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Every action is written down.** An audit log on your PC keeps which tool ran, when, from the PC or the phone, and how it ended (secrets masked). See or delete it in Settings → Privacy.
 - **Phone pairing can't be guessed.** After 5 wrong pairing codes the code is cancelled and pairing is locked for 15 minutes.
 - **Permissions per area.** Settings → Privacy → Permissions sets each area to *Allowed*, *Ask me first* or *Off*: camera, screen, files, messages & typing, system (power, WiFi, start with Windows, brightness), smart home and the phone. The defaults keep the usual behaviour (the camera asks first). An area that is off is refused for every request, from the PC or the phone, and Jarvis tells you why.
+- **Watching and using the screen.** "Watch my screen" looks every few seconds, skips frames that didn't change and speaks only about important changes (an error, a finished download, a failed build, a new message), at most once a minute; it stops after 30 minutes or when Jarvis sleeps. "Click …" and small computer tasks show every step in the chat, ask before anything that sends, buys, deletes, submits or signs in, never type passwords, OTPs or card numbers, ignore instructions written on the screen, and stop at once when you say "stop".
 - **Outside content is only data.** Text from web pages, files, screens and calendar invites is never followed as an instruction. For two minutes after Jarvis reads such content, actions that type, save or change something (typing, key presses, writing files, the clipboard, opening links, e-mail drafts, routines, memory, smart home, WiFi, auto-start) need your "yes" first, and the question says what Jarvis just read. Text that tries to give orders ("ignore previous instructions", "you are now…", "system prompt") is flagged with a warning so Jarvis tells you about it instead of following it.
 - **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 

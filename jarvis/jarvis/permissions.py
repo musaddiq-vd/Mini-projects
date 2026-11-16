@@ -27,6 +27,7 @@ TOOL_AREAS: dict[str, str] = {
     "look_at_camera": "camera",
     "look_at_screen": "screen", "take_screenshot": "screen", "fix_on_screen": "screen",
     "latest_screenshot": "screen",
+    "watch_screen": "screen", "describe_screen": "screen", "click_on": "screen", "computer_task": "screen",
     "read_file": "files", "write_file": "files", "move_file": "files", "delete_file": "files",
     "create_folder": "files", "list_folder": "files", "open_file": "files", "find_files": "files",
     "read_document": "files", "open_document": "files", "ask_document": "files", "explain_code": "files",
@@ -49,6 +50,7 @@ CHANGING_TOOLS = {
     "volume", "media_control", "play_youtube", "game_launcher", "make_backup", "scroll_screen",
     "merge_pdfs", "extract_pdf_pages", "rotate_pdf", "compress_pdf", "copy_from_history", "clear_clipboard_history",
     "save_contact", "delete_contact", "add_alert", "cancel_alert",
+    "watch_screen", "describe_screen", "click_on", "computer_task",
 }
 
 

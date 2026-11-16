@@ -127,11 +127,14 @@ def scroll_screen(ctx, direction: str, amount: str = "little", keep_going: bool 
 
 @tool(
     "stop_moving",
-    "Stop scrolling or moving right now ('ruko', 'bas', 'stop', 'thamo') - stops the screen scroll and your own "
-    "window gliding.",
+    "Stop scrolling or moving right now ('ruko', 'bas', 'stop', 'thamo') - stops the screen scroll, your own "
+    "window gliding and a running computer_task.",
 )
 def stop_moving(ctx):
+    from jarvis.tools import computer_agent
+
     was = stop_scrolling()
+    was = computer_agent.stop_agent() or was
     if ctx.events is not None:
         ctx.events.emit("ui_command", action="stop")
     return "Stopped." if was else "Stopped (nothing was scrolling)."
