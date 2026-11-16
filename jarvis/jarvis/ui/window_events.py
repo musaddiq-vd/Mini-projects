@@ -107,6 +107,15 @@ class EventsMixin:
                 self.tray.showMessage(self.app.settings.assistant_name, data.get("text", ""))
             if data.get("kind") in ("eyes", "water"):
                 self.orb.transform("happy", 2.0)
+        elif kind == "suggestion":
+            self._show_suggestion(data)
+        elif kind == "suggestion_answered":
+            card = getattr(self, "_suggestion_cards", {}).get(data.get("id"))
+            if card is not None:
+                try:
+                    card.mark(data.get("outcome", ""))
+                except RuntimeError:
+                    pass
         elif kind == "ui_command":
             self.ui_command(data.get("action", ""), data.get("theme", ""), data)
         elif kind == "achievement":
@@ -216,9 +225,38 @@ class EventsMixin:
                 return fix_card(result)
             if name == "daily_digest":
                 return digest_card(result)
+            if name == "organize_folder":
+                from jarvis.ui.cards import organize_card
+
+                return organize_card(result)
         except Exception:
             log.exception("couldn't draw a card for %s", name)
         return None
+
+    def _show_suggestion(self, data: dict) -> None:
+        """A proactive suggestion: a small card with Accept / Dismiss / Not useful, and a toast."""
+        from jarvis import proactive
+        from jarvis.ui.cards import suggestion_card
+
+        sid = data.get("id")
+
+        def answer(outcome: str) -> None:
+            try:
+                proactive.feedback(self.app.state, sid, outcome)
+            except Exception:
+                log.exception("suggestion feedback failed")
+            if outcome == "accepted" and data.get("action"):
+                self._send(data["action"])
+
+        card = suggestion_card(data, answer)
+        cards = getattr(self, "_suggestion_cards", None)
+        if cards is None:
+            cards = self._suggestion_cards = {}
+        cards[sid] = card
+        while len(cards) > 20:
+            cards.pop(next(iter(cards)))
+        self.chat._add_row(card, "left", text=f"suggestion {data.get('text', '')}")
+        self.toast(data.get("icon", "💡"), data.get("text", ""), theme.ACCENT, 8)
 
     _joke_pending = False
     _offline_toast = False

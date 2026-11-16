@@ -37,6 +37,8 @@ TOOL_AREAS: dict[str, str] = {
     "copy_from_history": "messaging", "clear_clipboard_history": "messaging",
     "power": "system", "wifi": "system", "autostart": "system", "brightness": "system", "dark_mode": "system",
     "smart_home": "smart_home", "smart_devices": "smart_home",
+    "energy_report": "system", "power_mode": "system", "battery_saver_tips": "system",
+    "organize_folder": "files",
 }
 
 # Tools that change something. With phone set to "ask", only these need a "yes" from the phone.
@@ -49,6 +51,7 @@ CHANGING_TOOLS = {
     "volume", "media_control", "play_youtube", "game_launcher", "make_backup", "scroll_screen",
     "merge_pdfs", "extract_pdf_pages", "rotate_pdf", "compress_pdf", "copy_from_history", "clear_clipboard_history",
     "save_contact", "delete_contact", "add_alert", "cancel_alert",
+    "power_mode", "organize_folder", "proactive_settings",
 }
 
 
@@ -83,6 +86,8 @@ def confirms_itself(name: str, args: dict, settings=None) -> bool:
         return settings is not None and level(settings, "camera") == ASK
     if name == "power":
         return action != "lock"
+    if name in {"power_mode", "organize_folder"}:  # power_mode always asks; organize_folder asks before moving
+        return True
     if name == "wifi":
         return action == "disconnect"
     return False

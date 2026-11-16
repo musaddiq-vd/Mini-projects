@@ -275,3 +275,70 @@ def digest_card(r: dict) -> QFrame | None:
         lb.setWordWrap(True)
         v.addWidget(lb)
     return card
+
+
+def suggestion_card(data: dict, answer) -> QFrame:
+    """A proactive suggestion with Accept / Dismiss / Not useful. `answer(outcome)` gets the click;
+    `card.mark(outcome)` shows the answer (also when it was given by voice)."""
+    from PyQt6.QtWidgets import QPushButton
+
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(520)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(14, 10, 14, 12)
+    v.setSpacing(6)
+    text = QLabel(f"{html.escape(data.get('icon', '💡'))}  {html.escape(data.get('text', ''))}")
+    text.setTextFormat(Qt.TextFormat.RichText)
+    text.setWordWrap(True)
+    v.addWidget(text)
+    row = QHBoxLayout()
+    buttons = []
+    for label, outcome in (("✓  Accept", "accepted"), ("Dismiss", "dismissed"), ("Not useful", "not_useful")):
+        b = QPushButton(label, objectName="chip")
+        b.setCursor(Qt.CursorShape.PointingHandCursor)
+        b.clicked.connect(lambda _, o=outcome: (card.mark(o), answer(o)))
+        row.addWidget(b)
+        buttons.append(b)
+    row.addStretch(1)
+    v.addLayout(row)
+    status = QLabel("", objectName="muted")
+    status.hide()
+    v.addWidget(status)
+
+    def mark(outcome: str) -> None:
+        for b in buttons:
+            b.setEnabled(False)
+        status.setText({"accepted": "✓ Accepted", "dismissed": "Dismissed",
+                        "not_useful": "Muted - you won't see this kind again"}.get(outcome, outcome))
+        status.show()
+
+    card.mark = mark
+    return card
+
+
+def organize_card(r: dict) -> QFrame | None:
+    """The organize plan (or result): "N files -> folders"."""
+    if not isinstance(r, dict) or not r.get("folders"):
+        return None
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(520)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(16, 12, 16, 14)
+    v.setSpacing(4)
+    done = "moved" in r
+    count = r.get("moved", r.get("files", 0))
+    name = html.escape(str(r.get("folder", "")).replace("\\", "/").rstrip("/").split("/")[-1])
+    v.addWidget(QLabel(f"🗂  {'Organized' if done else 'Plan for'} {name}  ·  {count} files → "
+                       f"{len(r['folders'])} folders", objectName="h2"))
+    accent = theme.readable(theme.ACCENT)
+    for dest, n in list(r["folders"].items())[:10]:
+        lb = QLabel(f"<b style='color:{accent}'>{n}</b>  →  {html.escape(dest)}")
+        lb.setTextFormat(Qt.TextFormat.RichText)
+        v.addWidget(lb)
+    if len(r["folders"]) > 10:
+        v.addWidget(QLabel(f"… and {len(r['folders']) - 10} more folders", objectName="muted"))
+    skipped = sum((r.get("skipped") or {}).values())
+    foot = ("Say “undo” to put everything back." if done else "Nothing has moved yet - say “yes, do it”.")
+    v.addWidget(QLabel((f"{skipped} skipped (in use, hidden or unknown).  " if skipped else "") + foot,
+                       objectName="muted"))
+    return card

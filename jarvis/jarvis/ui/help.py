@@ -52,6 +52,13 @@ TOPICS: list[tuple[str, str, list[str]]] = [
     ("🔔", "Tell me when", ["Batana jab battery full ho jaye", "Tell me when the internet is back",
                            "Let me know when Chrome closes", "Warn me when C drive has less than 10 GB"]),
     ("🩺", "PC health", ["Is my internet slow?", "Why is my PC slow?", "How much space is left on C drive?"]),
+    ("🔋", "Battery & power", ["How is my battery health?", "Battery jaldi khatam ho rahi hai",
+                              "Switch to power saver", "Give me battery saving tips"]),
+    ("🗂", "Organize files", ["Organize my downloads", "Documents ko type ke hisaab se saaf karo",
+                             "Sort my pictures by date", "Undo"]),
+    ("💡", "Suggestions", ["Why did you suggest that?", "At most one suggestion an hour",
+                          "Quiet hours 10 pm to 8 am", "Turn off proactive suggestions",
+                          "Watch my downloads folder"]),
     ("💻", "Code", ["Write a Python snake game in a folder called snake", "Explain main.py"]),
     ("😄", "Fun", ["Tell me a joke", "Thank you Jarvis!", "Sing me a short song about chai"]),
 ]

@@ -126,6 +126,12 @@ class Settings:
     reply_language: str = "auto"  # auto (match the user) or a code from jarvis.lang.LANGUAGES
     reminder_language: str = "same"  # same (as Jarvis), auto, or a language code
     expressive_voice: bool = True  # the voice follows the mood of the conversation (affective dialog)
+    # proactive suggestions (jarvis.proactive): offers of help before being asked
+    proactive_suggestions: bool = True
+    suggestions_per_hour: int = 2
+    quiet_hours: str = "22-8"  # no suggestions from 22:00 to 08:00 ("" = none)
+    battery_saver_percent: int = 25  # on battery at or below this, offer power saver + lower brightness
+    organize_watch: bool = False  # suggest organizing Downloads when it gets messy
 
     @property
     def effective_api_key(self) -> str:
