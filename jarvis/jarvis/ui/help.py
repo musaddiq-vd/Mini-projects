@@ -63,6 +63,9 @@ TOPICS: list[tuple[str, str, list[str]]] = [
     ("💻", "Code", ["Write a Python snake game in a folder called snake", "Open project desktop/myapp",
                    "Explain main.py simply", "Run the tests", "Why does this test fail?", "Review app.py",
                    "Write tests for utils.py", "Where is load_config used?"]),
+    ("🧩", "Agents & workflows", ["Research budget laptops and write me a short report", "Agent status",
+                                  "Cancel agents", "Work mode", "Study mode", "Show my workflows",
+                                  "Read about solar panels on the web and make a report"]),
     ("😄", "Fun", ["Tell me a joke", "Thank you Jarvis!", "Sing me a short song about chai"]),
 ]
 

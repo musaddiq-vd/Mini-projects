@@ -53,9 +53,15 @@ class BackgroundServices:
         from jarvis import kb
 
         kb.start_watcher(self.app.ctx)  # re-indexes changed files of the sources the user added (if any)
+        from jarvis.agents.workflows import Scheduler
+
+        self.workflows = Scheduler(self.app.ctx, self.app.registry)
+        self.workflows.start()  # daily / weekdays / startup workflows
 
     def stop(self) -> None:
         self._stop.set()
+        if getattr(self, "workflows", None) is not None:
+            self.workflows.stop()
         from jarvis.tools import clipboard_history
 
         clipboard_history.stop()

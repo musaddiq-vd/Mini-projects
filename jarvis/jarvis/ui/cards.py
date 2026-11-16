@@ -76,14 +76,14 @@ def links_card(r: dict, limit: int = 5) -> QFrame | None:
     results = r.get("results") if isinstance(r, dict) else None
     if not results:
         return None
-    news = r.get("mode") == "news"
     card = QFrame(objectName="card")
     card.setMaximumWidth(580)
     card.setMinimumWidth(420)
     v = QVBoxLayout(card)
     v.setContentsMargins(14, 10, 14, 12)
     v.setSpacing(8)
-    head = f"{'📰 News' if news else '🔎 Web'}  ·  {html.escape(str(r.get('query', '')))}"
+    label = {"news": "📰 News", "report": "📑 Report sources"}.get(r.get("mode"), "🔎 Web")
+    head = f"{label}  ·  {html.escape(str(r.get('query', '')))}"
     v.addWidget(QLabel(head, objectName="section"))
     for item in results[:limit]:
         url = _safe_url(item.get("url"))
@@ -493,3 +493,76 @@ def search_card(r: dict, per_group: int = 4) -> QFrame | None:
                 lab.linkActivated.connect(lambda link: open_local(link.removeprefix("open:")))
             v.addWidget(lab)
     return card
+
+
+STEP_MARKS = {"waiting": ("○", "MUTED"), "running": ("◐", "ACCENT"), "done": ("✓", "OK"), "failed": ("✗", "DANGER"),
+              "skipped": ("–", "MUTED"), "cancelled": ("■", "WARN")}
+RUN_LABELS = {"planning": "Planning…", "running": "Working…", "done": "Done", "failed": "Stopped at an error",
+              "cancelled": "Cancelled", "stopped": "Stopped at a limit"}
+
+
+class PlanCard(QFrame):
+    """The agent team's (or a workflow's) plan, one line per step, updated live as the steps run."""
+
+    def __init__(self, r: dict):
+        super().__init__(objectName="card")
+        self.setMaximumWidth(580)
+        self.setMinimumWidth(420)
+        self.run_id = r.get("run_id", "")
+        self._v = QVBoxLayout(self)
+        self._v.setContentsMargins(14, 10, 14, 12)
+        self._v.setSpacing(5)
+        self._head = QLabel(objectName="section")
+        self._head.setWordWrap(True)
+        self._v.addWidget(self._head)
+        self._rows: list[QLabel] = []
+        self._foot = QLabel(objectName="muted")
+        self._foot.setWordWrap(True)
+        self._v.addWidget(self._foot)
+        self.update_plan(r)
+
+    def update_plan(self, r: dict) -> None:
+        workflow = r.get("kind") == "workflow"
+        status = str(r.get("status", ""))
+        icon = "⚙" if workflow else "🧩"
+        what = "Workflow" if workflow else "Agent team"
+        self._head.setText(f"{icon} {what}  ·  {html.escape(str(r.get('goal', ''))[:120])}  ·  "
+                           f"{RUN_LABELS.get(status, status)}")
+        steps = r.get("steps") or []
+        while len(self._rows) < len(steps):
+            lab = QLabel()
+            lab.setTextFormat(Qt.TextFormat.RichText)
+            lab.setWordWrap(True)
+            self._v.insertWidget(self._v.count() - 1, lab)
+            self._rows.append(lab)
+        for lab, step in zip(self._rows, steps):
+            mark, color_name = STEP_MARKS.get(step.get("status"), ("•", "MUTED"))
+            color = theme.readable(getattr(theme, color_name, theme.MUTED))
+            who = "" if workflow else f"{step.get('icon', '')} <b>{html.escape(str(step.get('title', '')))}</b> · "
+            tools = step.get("tools") or []
+            extra = f"<br><span style='color:{theme.MUTED}; font-size:10px;'>" \
+                    f"{html.escape(', '.join(dict.fromkeys(tools)))[:120]}</span>" if tools and not workflow else ""
+            out = str(step.get("output") or "") if workflow and step.get("status") in ("skipped", "failed") else ""
+            if out:
+                extra += f"<br><span style='color:{theme.MUTED}; font-size:10px;'>{html.escape(out[:140])}</span>"
+            lab.setText(f"<span style='color:{color}; font-weight:700'>{mark}</span>  {who}"
+                        f"{html.escape(str(step.get('task', ''))[:200])}{extra}")
+        bits = []
+        if r.get("steps"):
+            bits.append(f"{r.get('done_steps', 0)}/{len(steps)} steps")
+        if not workflow:
+            limits = r.get("limits") or {}
+            bits.append(f"{r.get('tool_calls', 0)}/{limits.get('tool_calls', '?')} tool calls")
+        bits.append(f"{int(float(r.get('seconds', 0) or 0))} s")
+        foot = "  ·  ".join(bits)
+        if r.get("problem"):
+            foot += f"  ·  {r['problem'][:160]}"
+        elif status in ("planning", "running"):
+            foot += "  ·  say “stop” to cancel"
+        self._foot.setText(foot)
+
+
+def plan_card(r: dict) -> PlanCard | None:
+    if not isinstance(r, dict) or "run_id" not in r or "steps" not in r:
+        return None
+    return PlanCard(r)

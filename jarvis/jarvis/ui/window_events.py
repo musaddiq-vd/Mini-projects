@@ -193,6 +193,8 @@ class EventsMixin:
             if image and Path(image).exists():
                 caption = Path(image).name if "Screenshot" in Path(image).name else "What I saw"
                 self.chat.add_image(image, f"🖼  {caption}  ·  click to open", self.accent)
+        elif kind == "agents":
+            self._on_plan(data)
         elif kind == "crash":
             self._add_system(f"⚠ Something went wrong: {data['text']}  (details in the log: tray → Open logs folder)")
             self.toast("⚠", "Something went wrong - details are in the log.", DANGER)
@@ -212,11 +214,36 @@ class EventsMixin:
             if text.startswith("🔔") and self.tray and not self.isActiveWindow():
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
 
+    def _on_plan(self, data: dict) -> None:
+        """The agent team's / a workflow's live plan card: drawn once per run, then updated in place."""
+        from jarvis.ui.cards import plan_card
+
+        cards = self.__dict__.setdefault("_plan_cards", {})
+        card = cards.get(data.get("run_id"))
+        try:
+            if card is not None:
+                card.update_plan(data)
+                return
+            card = plan_card(data)
+        except RuntimeError:  # the card was cleared from the chat
+            card = plan_card(data)
+        except Exception:
+            log.exception("couldn't draw the plan card")
+            return
+        if card is not None:
+            cards.clear()  # only the newest run is updated live
+            cards[data.get("run_id")] = card
+            self.chat._add_row(card, "left", text=f"plan {data.get('goal', '')}")
+
     def _rich_card(self, name: str, result: dict):
         from jarvis.ui.cards import (CODE_CARD_TOOLS, code_card, digest_card, fix_card, links_card, meeting_card,
-                                     report_card, search_card, weather_card)
+                                     plan_card, report_card, search_card, weather_card)
 
         try:
+            if name == "browse_and_report":
+                return links_card(result)
+            if name == "agent_status":
+                return plan_card(result)
             if name == "get_weather":
                 return weather_card(result)
             if name == "web_search":

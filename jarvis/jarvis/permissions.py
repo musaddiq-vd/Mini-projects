@@ -62,6 +62,7 @@ CHANGING_TOOLS = {
     "debug_code", "apply_fix", "generate_tests", "run_tests",  # running code counts as a change
     "start_meeting", "stop_meeting", "delete_meeting", "save_meeting_actions", "enroll_voice", "delete_voice_profile",
     "kb_add", "kb_remove", "kb_reindex",
+    "run_agents", "create_workflow", "edit_workflow", "delete_workflow", "run_workflow", "browse_and_report",
 }
 
 
