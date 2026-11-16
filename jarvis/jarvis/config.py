@@ -126,6 +126,9 @@ class Settings:
     reply_language: str = "auto"  # auto (match the user) or a code from jarvis.lang.LANGUAGES
     reminder_language: str = "same"  # same (as Jarvis), auto, or a language code
     expressive_voice: bool = True  # the voice follows the mood of the conversation (affective dialog)
+    voice_id: bool = True  # recognise who is speaking from the voice profiles (if any are saved)
+    guest_private_tools: bool = False  # unknown voices may use WhatsApp, contacts and money tools
+    meeting_offer: bool = True  # ask "shall I take notes?" when a calendar meeting starts (never records by itself)
 
     @property
     def effective_api_key(self) -> str:

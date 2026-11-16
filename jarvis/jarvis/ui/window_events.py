@@ -87,6 +87,16 @@ class EventsMixin:
                 self._add_bubble("📱 You", text, mine=True)
             else:
                 self._add_bubble(f"{self.app.settings.assistant_name} → 📱", text)
+        elif kind == "meeting":
+            self.meeting_pill.on_event(data)
+            if data.get("state") == "recording":
+                self.toast("🔴", f"Recording started: {data.get('title', 'Meeting')}", DANGER, 5)
+        elif kind == "voice_profile":
+            who = "a guest (unknown voice)" if data.get("guest") else data.get("name", "")
+            self.toast("🗣", f"Speaking now: {who}", theme.ACCENT, 4)
+        elif kind == "voice_enroll" and data.get("phrase"):
+            self.toast("🎙", f"Read aloud ({data.get('step')}/{data.get('total')}): “{data['phrase']}”",
+                       theme.ACCENT, 5)
         elif kind == "phone_paired" and data.get("who"):
             self.toast("📱", f"Phone connected: {data['who']}", OK, 5)
         elif kind == "restart_requested":
@@ -203,7 +213,7 @@ class EventsMixin:
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
 
     def _rich_card(self, name: str, result: dict):
-        from jarvis.ui.cards import digest_card, fix_card, links_card, report_card, weather_card
+        from jarvis.ui.cards import digest_card, fix_card, links_card, meeting_card, report_card, weather_card
 
         try:
             if name == "get_weather":
@@ -216,6 +226,8 @@ class EventsMixin:
                 return fix_card(result)
             if name == "daily_digest":
                 return digest_card(result)
+            if name in ("stop_meeting", "meeting_notes"):
+                return meeting_card(result)
         except Exception:
             log.exception("couldn't draw a card for %s", name)
         return None

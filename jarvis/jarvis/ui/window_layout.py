@@ -51,6 +51,10 @@ class LayoutMixin:
         self.net_pill = QLabel("")
         self.net_pill.setToolTip("Connection to the AI")
         pill_row.addWidget(self.net_pill)
+        from jarvis.ui.meeting_pill import MeetingPill
+
+        self.meeting_pill = MeetingPill()  # red REC pill while a meeting is recorded
+        pill_row.addWidget(self.meeting_pill)
         pill_row.addStretch(1)
         lv.addLayout(pill_row)
         self._set_net("offline" if not self.app.settings.effective_api_key else "connecting")
