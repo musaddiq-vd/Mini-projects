@@ -1,4 +1,4 @@
-"""Rich cards in the chat for some results: weather, and web / news links you can click."""
+"""Rich cards in the chat for some results: weather, web / news links you can click, fixes and code."""
 
 from __future__ import annotations
 
@@ -274,4 +274,115 @@ def digest_card(r: dict) -> QFrame | None:
         lb = QLabel(html.escape(r["result"]), objectName="muted")
         lb.setWordWrap(True)
         v.addWidget(lb)
+    return card
+
+
+# tools whose results carry a "card" for code_card
+CODE_CARD_TOOLS = {"open_project", "explain_code", "debug_code", "review_code", "generate_tests", "run_tests",
+                   "refactor_code", "code_search"}
+
+
+def _code_colors() -> dict[str, str]:
+    light = theme.P.light
+    return {"keyword": "#7c3aed" if light else "#c792ea", "string": "#a15c00" if light else "#c3e88d",
+            "comment": theme.P.muted, "number": "#b4235a" if light else "#f78c6c",
+            "call": theme.readable(theme.ACCENT), "added": "#11804f" if light else theme.OK,
+            "removed": "#c0283a" if light else theme.DANGER}
+
+
+def _code_box(code: str, language: str, start_line: int = 0, max_lines: int = 220):
+    """A selectable, syntax-highlighted code block (line numbers when `start_line` is given)."""
+    from jarvis.coding.highlight import to_html
+
+    lines = code.splitlines()
+    shown = "\n".join(lines[:max_lines]) + ("\n…" if len(lines) > max_lines else "")
+    body = to_html(shown, language, _code_colors())
+    if start_line:
+        width = len(str(start_line + min(len(lines), max_lines)))
+        muted = theme.P.muted
+        body = "\n".join(f"<span style='color:{muted}'>{str(n).rjust(width)}  </span>{row}"
+                         for n, row in enumerate(body.split("\n"), start_line))
+    box = QLabel(f"<pre style='margin:0; white-space:pre-wrap'>{body}</pre>")
+    box.setTextFormat(Qt.TextFormat.RichText)
+    box.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    box.setWordWrap(True)
+    box.setStyleSheet(f"background:{theme.P.bg}; border:1px solid {theme.MUTED}; border-radius:8px; "
+                      "padding:8px; font-family: Consolas, 'Cascadia Mono', monospace; font-size: 12px;")
+    return box
+
+
+def _copy_button(label: str, text: str):
+    from PyQt6.QtWidgets import QApplication, QPushButton
+
+    button = QPushButton(f"📋  {label}", objectName="chip")
+    button.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def do_copy():
+        QApplication.clipboard().setText(text)
+        button.setText("✓  Copied")
+
+    button.clicked.connect(do_copy)
+    return button
+
+
+def code_card(r: dict) -> QFrame | None:
+    """The coding assistant's card: an explanation, debug result, review, tests, refactor diffs or search hits.
+
+    Reads ``r["card"]``: icon, title, subtitle, summary, tone (ok / bad), sections [{title, items}], code with
+    language / start_line / code_title, an example, and diffs [{title, why, diff, fix_id}]."""
+    c = r.get("card") if isinstance(r, dict) else None
+    if not isinstance(c, dict) or not c.get("title"):
+        return None
+    accent = theme.readable(theme.ACCENT)
+    card = QFrame(objectName="card")
+    card.setMaximumWidth(640)
+    v = QVBoxLayout(card)
+    v.setContentsMargins(16, 12, 16, 14)
+    v.setSpacing(6)
+    v.addWidget(QLabel(f"{html.escape(c.get('icon', '💻'))}  {html.escape(c['title'])}", objectName="h2"))
+    if c.get("subtitle"):
+        sub = QLabel(html.escape(c["subtitle"]), objectName="muted")
+        sub.setWordWrap(True)
+        v.addWidget(sub)
+    if c.get("summary"):
+        color = {"bad": theme.DANGER, "ok": theme.OK}.get(c.get("tone", ""), theme.P.text)
+        summary = QLabel(f"<b style='color:{color}'>{_inline_code(c['summary'])}</b>")
+        summary.setTextFormat(Qt.TextFormat.RichText)
+        summary.setWordWrap(True)
+        v.addWidget(summary)
+    for section in c.get("sections") or []:
+        items = [str(x) for x in section.get("items") or [] if str(x).strip()]
+        if not items:
+            continue
+        rows = "<br>".join(f"• {_inline_code(x)}" for x in items)
+        lb = QLabel(f"<b style='color:{accent}'>{html.escape(section.get('title', ''))}</b><br>{rows}")
+        lb.setTextFormat(Qt.TextFormat.RichText)
+        lb.setWordWrap(True)
+        lb.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px 10px;")
+        v.addWidget(lb)
+
+    def code_block(title: str, code: str, language: str, start: int = 0, copy_label: str = "Copy code") -> None:
+        row = QHBoxLayout()
+        row.addWidget(QLabel(f"<b style='color:{accent}'>{html.escape(title)}</b>"))
+        row.addStretch(1)
+        if language:
+            row.addWidget(QLabel(html.escape(language), objectName="muted"))
+        row.addWidget(_copy_button(copy_label, code))
+        v.addLayout(row)
+        v.addWidget(_code_box(code, language, start))
+
+    if c.get("code"):
+        code_block(c.get("code_title") or "The code", c["code"], c.get("language", ""), int(c.get("start_line") or 0))
+    if c.get("example"):
+        code_block("Example", c["example"], c.get("language", ""))
+    for d in c.get("diffs") or []:
+        if not d.get("diff"):
+            continue
+        if d.get("why"):
+            why = QLabel(_inline_code(d["why"]), objectName="muted")
+            why.setTextFormat(Qt.TextFormat.RichText)
+            why.setWordWrap(True)
+            v.addWidget(why)
+        title = d.get("title", "Change") + (f"  ·  {d['fix_id']}" if d.get("fix_id") else "")
+        code_block(title, d["diff"], "diff", copy_label="Copy diff")
     return card

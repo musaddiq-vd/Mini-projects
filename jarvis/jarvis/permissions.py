@@ -37,6 +37,9 @@ TOOL_AREAS: dict[str, str] = {
     "copy_from_history": "messaging", "clear_clipboard_history": "messaging",
     "power": "system", "wifi": "system", "autostart": "system", "brightness": "system", "dark_mode": "system",
     "smart_home": "smart_home", "smart_devices": "smart_home",
+    # coding assistant
+    "open_project": "files", "debug_code": "files", "apply_fix": "files", "review_code": "files",
+    "generate_tests": "files", "run_tests": "files", "refactor_code": "files", "code_search": "files",
 }
 
 # Tools that change something. With phone set to "ask", only these need a "yes" from the phone.
@@ -49,6 +52,7 @@ CHANGING_TOOLS = {
     "volume", "media_control", "play_youtube", "game_launcher", "make_backup", "scroll_screen",
     "merge_pdfs", "extract_pdf_pages", "rotate_pdf", "compress_pdf", "copy_from_history", "clear_clipboard_history",
     "save_contact", "delete_contact", "add_alert", "cancel_alert",
+    "debug_code", "apply_fix", "generate_tests", "run_tests",  # running code counts as a change
 }
 
 
@@ -77,7 +81,7 @@ def set_level(settings, area: str, value: str) -> None:
 def confirms_itself(name: str, args: dict, settings=None) -> bool:
     """True when the tool already asks the user before it does this (so Jarvis doesn't ask twice)."""
     action = str(args.get("action", "")).lower().strip()
-    if name in {"send_whatsapp", "delete_file"}:
+    if name in {"send_whatsapp", "delete_file", "apply_fix", "generate_tests"}:  # they show what changes first
         return True
     if name == "look_at_camera":  # asks by itself when the camera is set to "ask"
         return settings is not None and level(settings, "camera") == ASK

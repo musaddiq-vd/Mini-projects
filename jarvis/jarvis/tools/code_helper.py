@@ -83,21 +83,4 @@ def write_code(ctx, description: str, folder: str):
     }
 
 
-@tool(
-    "explain_code",
-    "Explain, review or find bugs in a code file and suggest fixes.",
-    {"path": {"type": "string"}, "question": {"type": "string", "description": "What to look for"}},
-    required=["path"],
-    slow=True,
-)
-def explain_code(ctx, path: str, question: str = "Explain this code and point out bugs."):
-    try:
-        file = resolve(ctx, path)
-    except PathNotAllowed as exc:
-        return {"error": str(exc)}
-    if not file.is_file():
-        return {"error": f"File not found: {file}"}
-    code = file.read_text(encoding="utf-8", errors="replace")[:40_000]
-    answer = ctx.llm.ask(f"{question}\n\nFile {file.name}:\n{code}",
-                         system="You are a senior engineer. Be concise and concrete.")
-    return {"answer": answer}
+# explain_code, review_code, debug_code and the other coding tools live in jarvis/tools/coding.py.
