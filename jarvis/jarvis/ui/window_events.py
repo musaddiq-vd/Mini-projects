@@ -213,8 +213,8 @@ class EventsMixin:
                 self.tray.showMessage(self.app.settings.assistant_name, text[1:].strip())
 
     def _rich_card(self, name: str, result: dict):
-        from jarvis.ui.cards import (CODE_CARD_TOOLS, code_card, digest_card, fix_card, links_card,
-                                     meeting_card, report_card, weather_card)
+        from jarvis.ui.cards import (CODE_CARD_TOOLS, code_card, digest_card, fix_card, links_card, meeting_card,
+                                     report_card, search_card, weather_card)
 
         try:
             if name == "get_weather":
@@ -231,6 +231,8 @@ class EventsMixin:
                 return code_card(result)
             if name in ("stop_meeting", "meeting_notes"):
                 return meeting_card(result)
+            if name == "search_everything":
+                return search_card(result)
         except Exception:
             log.exception("couldn't draw a card for %s", name)
         return None

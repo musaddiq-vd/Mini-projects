@@ -126,3 +126,40 @@ def period_range(period: str | None, today: date | None = None) -> tuple[date, d
     if p in {"all", "ever"}:
         return date(2000, 1, 1), today, "all time"
     return today.replace(day=1), today, today.strftime("%B")
+
+
+def when_range(text: str | None, today: date | None = None) -> tuple[date, date] | None:
+    """A span of past days from everyday words, for searching: 'last week', 'kal', 'pichhle mahine',
+    'last 3 days', 'march', '12 nov'. None when empty or not understood."""
+    today = today or date.today()
+    t = " ".join((text or "").lower().replace(",", " ").split())
+    t = re.sub(r"^(?:in|on|from|during|se|mein|me)\s+", "", t)
+    if not t or t in {"any", "anytime", "ever", "all", "kabhi bhi", "kabhi"}:
+        return None
+    monday = today - timedelta(days=today.weekday())
+    if t in {"this week", "is hafte", "is week", "week", "hafta"}:
+        return monday, today
+    if t in {"last week", "pichhle hafte", "pichle hafte", "pichhla hafta", "previous week"}:
+        return monday - timedelta(days=7), monday - timedelta(days=1)
+    if t in {"this month", "is mahine", "month", "mahina"}:
+        return today.replace(day=1), today
+    if t in {"last month", "pichhle mahine", "pichle mahine", "pichhla mahina", "previous month"}:
+        first = add_months(today.replace(day=1), -1)
+        return first, today.replace(day=1) - timedelta(days=1)
+    if t in {"this year", "is saal", "saal"}:
+        return date(today.year, 1, 1), today
+    if t in {"last year", "pichhle saal", "pichle saal"}:
+        return date(today.year - 1, 1, 1), date(today.year - 1, 12, 31)
+    if t in {"recently", "recent", "lately", "haal hi mein"}:
+        return today - timedelta(days=14), today
+    m = re.fullmatch(r"(?:last|past|pichhle|pichle)\s+(\d+)\s+(\w+)", t) or \
+        re.fullmatch(r"(\d+)\s+(\w+)\s+(?:se|mein|me)", t)
+    if m and m.group(2) in UNITS:
+        n, unit = int(m.group(1)), m.group(2)
+        start = add_months(today, -n) if UNITS[unit] == 30 else today - timedelta(days=n * UNITS[unit])
+        return start, today
+    if t in MONTHS:  # "march": the last one that has started
+        year = today.year if MONTHS[t] <= today.month else today.year - 1
+        return date(year, MONTHS[t], 1), date(year, MONTHS[t], calendar.monthrange(year, MONTHS[t])[1])
+    day = parse_day(t, today, past=True)
+    return (day, day) if day else None

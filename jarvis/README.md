@@ -31,6 +31,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | ⏰ **Never forgets** | Reminders that pop up at the side of the screen with Done / Snooze, timers, smart to-dos with deadlines and priorities, and calendar sync with meeting alerts. |
 | 📊 **Knows your week** | Expenses, habits, goals, focus time and a weekly report card, plus a dashboard with charts. |
 | 📄 **Reads your documents** | Finds files by what is inside them and answers questions about any PDF, Word, Excel or PowerPoint file, with page numbers. |
+| 📚 **Knowledge base & search** | Learns only from the folders and files you pick, answers from them with the file, page and a quote, and one search finds files, chats, notes, reminders, contacts and more at once. |
 | 🕹️ **Moves on command** | Moves, resizes and minimizes its own window by voice, and scrolls the page you are reading until you say stop. |
 | 🪟 **Always within reach** | A floating mini mode with its own chat, a live widget on your wallpaper and a global hotkey. |
 | 🏠 **Smart home** | Lights, plugs, fans and the AC through Home Assistant or Tuya / Smart Life (Wipro, Syska, Havells ...), on your home WiFi. |
@@ -87,6 +88,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 | Money & habits | "I spent 450 on a cab" · "How much did I spend this month?" · "Make gym a daily habit" |
 | Goals & reports | "Help me learn Python in 3 months" · "Show my weekly report" · "Recap my day" |
 | Files & documents | "Find yesterday's PDF that had an invoice" · "What's the total in this document?" |
+| Knowledge & search | "Learn from my college notes folder" · "What do my notes say about Newton's laws?" · "Search everything for Goa trip last week" |
 | Web | "Weather today" · "Top news in two lines" · "Flights from Pune to Delhi next Friday" |
 | Messages & code | "WhatsApp mom: I'll be late" · "Write a Python snake game in a folder called snake" |
 | Coding | "Open project desktop/myapp" · "Explain parse simply" · "Run the tests" · "Why does this test fail?" · "Review app.py" · "Write tests for utils.py" |
@@ -171,7 +173,8 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Your code stays in your hands.** The coding assistant only runs your project's own test runner (pytest, unittest, npm test, go test, cargo test) or a Python / JavaScript file you name, inside the project, without a shell and with a time limit; it never runs a command the model wrote. Code changes are shown as a diff and written only after you say yes, with a backup in `~/.jarvis/code_backups` and undo.
 - **Meetings are recorded only when you ask.** Jarvis never starts a recording by itself; for a calendar meeting it may only ask "Shall I take notes?". While recording, the window shows a red REC pill and Jarvis says "recording started" once. The audio, transcript and notes stay in `~/.jarvis/meetings/` until you delete them (by voice or in Settings → Privacy); the *Meetings* permission turns recording off completely. The audio goes to Gemini in pieces only to be written down, and the follow-up e-mail is only ever a draft.
 - **Voice profiles keep no recordings.** Enrollment keeps a small set of voice numbers in `~/.jarvis/voices/`, not the audio. Recognition uses classic MFCC statistics on your CPU (no extra download): reliable for clearly different voices in a quiet room, easily confused by similar voices, noise or another microphone. It picks the right name and language; it is not a security check. Unknown voices are guests and can't use WhatsApp, contacts or money unless you allow it in Settings → Privacy.
-- **What leaves your PC:** your voice and messages go to Google Gemini, searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
+- **What leaves your PC:** your voice and messages go to Google Gemini (and the text of files you add to the knowledge base goes to its embedding service), searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
+- **The knowledge base learns only what you pick.** Nothing is indexed until you name a folder or file and confirm. Files with passwords or keys are skipped, secrets in documents are masked before indexing, and the index lives in `~/.jarvis/kb` (see its size or delete it in Settings → Privacy; backups leave it out). Unchanged files are never sent twice.
 
 ---
 

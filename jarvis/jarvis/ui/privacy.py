@@ -75,6 +75,7 @@ class PrivacyTab(QWidget):
             ("habits", "✅  Habits", lambda: self._clear_file("habits")),
             ("goals", "🎯  Goals", lambda: self._clear_file("goals")),
             ("calendar", "📅  Calendar copy (links stay in Settings)", lambda: self._clear_file("calendar")),
+            ("kb", "📚  Knowledge base (index of the files you added)", self._clear_kb),
             ("cache", "🖼  Copies of what Jarvis looked at", self._clear_cache),
             ("logs", "📄  Logs (for fixing problems)", self._clear_logs),
             ("audit", "🧾  Audit log (every tool Jarvis ran)", self._clear_audit),
@@ -191,6 +192,7 @@ class PrivacyTab(QWidget):
             "habits": self._file_fact("habits", "habits", "habit"),
             "goals": self._file_fact("goals", "goals", "goal"),
             "calendar": self._file_fact("calendar", "events", "event"),
+            "kb": self._kb_fact(),
         }
         for key, (info, btn) in self.rows.items():
             info.setText(facts[key])
@@ -211,6 +213,21 @@ class PrivacyTab(QWidget):
         if not st.exists():
             return "nothing yet"
         return f"{_count(len(st.load()[key]), word)} · {_human(_size(st.path))}"
+
+    @staticmethod
+    def _kb_fact() -> str:
+        from jarvis import kb
+
+        try:
+            return kb.size_text()
+        except Exception:
+            return "unknown"
+
+    @staticmethod
+    def _clear_kb() -> None:
+        from jarvis import kb
+
+        kb.clear_all()
 
     @staticmethod
     def _clear_file(name: str) -> None:
@@ -328,7 +345,7 @@ class PrivacyTab(QWidget):
 
     def _clear_all(self) -> None:
         for fn in (self._clear_history, self._clear_memory, self._clear_lists, self._clear_practice,
-                   self._clear_cache, self._clear_logs, self._clear_audit):
+                   self._clear_cache, self._clear_logs, self._clear_audit, self._clear_kb):
             fn()
         for name in ("expenses", "habits", "goals", "calendar"):
             self._clear_file(name)
