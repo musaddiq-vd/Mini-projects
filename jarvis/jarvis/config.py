@@ -125,7 +125,8 @@ class Settings:
     speaking_style: str = "friendly"  # see SPEAKING_STYLES
     reply_language: str = "auto"  # auto (match the user) or a code from jarvis.lang.LANGUAGES
     reminder_language: str = "same"  # same (as Jarvis), auto, or a language code
-    voice_effect: str = "robot"  # off / light / robot / strong: the movie-AI sound of the replies (jarvis.voicefx)
+    voice_effect: str = "off"  # off (natural, default) / light / robot / strong: an optional effect on the spoken voice
+    sound_style: str = "robot"  # robot (default) or classic: how the action / wake / success sounds are made
     expressive_voice: bool = True  # the voice follows the mood of the conversation (affective dialog)
     voice_id: bool = True  # recognise who is speaking from the voice profiles (if any are saved)
     guest_private_tools: bool = False  # unknown voices may use WhatsApp, contacts and money tools

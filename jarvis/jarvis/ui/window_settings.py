@@ -129,6 +129,12 @@ class SettingsMixin:
             self.app.history.prune(self.app.settings.history_days)
         if self.assistant is not None and "power_up_wake" in changed:
             self.assistant.sfx.power_up = self.app.settings.power_up_wake
+        if self.assistant is not None and "sound_style" in changed:
+            from jarvis.sfx import build_sounds
+
+            self.assistant.sfx.style = self.app.settings.sound_style
+            self.assistant.sfx.sounds = build_sounds(self.app.settings.sound_style)
+            self.assistant.sfx.play("action")  # let the user hear the new style
         if self.assistant is not None and changed & {"sound_effects", "sound_volume"}:
             self.assistant.sfx.enabled = self.app.settings.sound_effects
             self.assistant.sfx.volume = self.app.settings.sound_volume

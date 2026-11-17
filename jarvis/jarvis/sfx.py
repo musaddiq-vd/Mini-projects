@@ -72,7 +72,55 @@ def _pad(sound: np.ndarray, before: float) -> np.ndarray:
     return np.concatenate([np.zeros(int(RATE * before)), sound])
 
 
-def build_sounds() -> dict[str, np.ndarray]:
+def _square(freq: float, dur: float, release: float = 0.03, duty: float = 0.5) -> np.ndarray:
+    """A pulse wave blip: the classic computer / robot beep."""
+    n = int(RATE * dur)
+    t = np.arange(n) / RATE
+    wave = np.where((t * freq) % 1.0 < duty, 1.0, -1.0) * 0.55
+    return wave * _env(n, attack=0.002, release=release)
+
+
+def _chirps(freqs, step: float = 0.035, gap: float = 0.008) -> np.ndarray:
+    """Quick robot "data" chatter: a run of square blips."""
+    return _seq(*[_square(f, step, release=step / 2.5) for f in freqs], gap=gap)
+
+
+def robotize(sound: np.ndarray, carrier: float = 75.0, bits: int = 6, hold: int = 3) -> np.ndarray:
+    """Make any sound metallic and digital: ring modulation, sample-and-hold and a few bits of resolution."""
+    t = np.arange(len(sound)) / RATE
+    ringed = 0.55 * sound + 0.45 * sound * np.sin(2 * np.pi * carrier * t) * 1.6
+    held = np.repeat(ringed[::hold], hold)[: len(sound)]  # lower sample rate: a retro computer edge
+    levels = 2 ** (bits - 1)
+    return np.round(held * levels) / levels
+
+
+def build_sounds(style: str = "robot") -> dict[str, np.ndarray]:
+    """style "robot" (default): digital, metallic sounds for actions; "classic": the soft chimes."""
+    sounds = _classic_sounds()
+    if style != "classic":
+        sounds.update(_robot_sounds(sounds))
+    for k, v in sounds.items():
+        peak = float(np.max(np.abs(v))) or 1.0
+        sounds[k] = (v / peak * 0.6).astype(np.float32)
+    return sounds
+
+
+def _robot_sounds(classic: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    out = {name: robotize(sound) for name, sound in classic.items()}
+    out.update({
+        "action": _chirps([1760, 2349, 1568, 2637], step=0.028, gap=0.006),  # "processing" chatter
+        "success": robotize(_seq(_square(988, 0.06), _square(1480, 0.1, release=0.05), gap=0.01), carrier=60),
+        "error": robotize(_seq(_square(220, 0.12, release=0.08, duty=0.3), _square(147, 0.2, release=0.12, duty=0.3),
+                               gap=0.02), carrier=40, bits=5),
+        "wake": _mix(_chirps([523, 784, 1046, 1568], step=0.04, gap=0.004), robotize(classic["wake"]) * 0.5),
+        "sleep": _chirps([1568, 1046, 784, 523], step=0.05, gap=0.006),
+        "alert": robotize(_seq(_square(880, 0.08), _square(880, 0.08), _square(1320, 0.12), gap=0.05)),
+        "notify": _seq(_chirps([1318, 1760], step=0.05), robotize(classic["notify"]) * 0.7, gap=0.02),
+    })
+    return out
+
+
+def _classic_sounds() -> dict[str, np.ndarray]:
     s = {
         "startup": _mix(_tone(260, 0.55, release=0.3, sweep_to=1040), _sparkle(0.55) * 0.6),
         "wake": _seq(_tone(660, 0.09, release=0.06), _tone(990, 0.16, release=0.1), gap=0.015),
@@ -104,21 +152,19 @@ def build_sounds() -> dict[str, np.ndarray]:
         "alert": _seq(_tone(880, 0.09, release=0.05), _tone(880, 0.09, release=0.05),
                       _tone(1175, 0.18, release=0.1), gap=0.06),
     }
-    for k, v in s.items():
-        peak = float(np.max(np.abs(v))) or 1.0
-        s[k] = (v / peak * 0.6).astype(np.float32)
     return s
 
 
 class SoundFX:
     """Plays effects one after another on a background thread. Never raises."""
 
-    def __init__(self, enabled: bool = True, volume: int = 60, device: int | None = None):
+    def __init__(self, enabled: bool = True, volume: int = 60, device: int | None = None, style: str = "robot"):
         self.enabled = enabled
         self.volume = volume
         self.power_up = True  # the big wake-up sound instead of the short chime
         self.device = device
-        self.sounds = build_sounds()
+        self.style = style
+        self.sounds = build_sounds(style)
         self.busy_until = 0.0  # monotonic time until an effect is audible (echo guard)
         self._q: queue.Queue[str | None] = queue.Queue(maxsize=8)
         self._thread: threading.Thread | None = None

@@ -103,8 +103,8 @@ class SettingsDialog(QDialog):
         self.style.setCurrentIndex(max(0, self.style.findData(s.speaking_style)))
         form.addRow("Speaking style", self.style)
         self.voice_fx = QComboBox()
-        for key, text in (("robot", "Robot - the classic AI sound (default)"), ("light", "Light - a hint of machine"),
-                          ("strong", "Strong - fully synthetic"), ("off", "Off - a natural human voice")):
+        for key, text in (("off", "Off - natural voice (default)"), ("light", "Light - a hint of machine"),
+                          ("robot", "Robot - movie-AI voice"), ("strong", "Strong - fully synthetic")):
             self.voice_fx.addItem(text, key)
         self.voice_fx.setCurrentIndex(max(0, self.voice_fx.findData(s.voice_effect)))
         form.addRow("Voice effect", self.voice_fx)
@@ -360,6 +360,11 @@ class SettingsDialog(QDialog):
         self.sfx_volume.setSuffix(" %")
         self.sfx_volume.setValue(s.sound_volume)
         form.addRow("Effects volume", self.sfx_volume)
+        self.sfx_style = QComboBox()
+        self.sfx_style.addItem("Robot - digital beeps and chatter (default)", "robot")
+        self.sfx_style.addItem("Classic - soft chimes", "classic")
+        self.sfx_style.setCurrentIndex(max(0, self.sfx_style.findData(s.sound_style)))
+        form.addRow("Effects style", self.sfx_style)
         return w
 
     def _features_tab(self) -> QWidget:
@@ -537,7 +542,7 @@ class SettingsDialog(QDialog):
         s.voice = self.voice.currentData() or "Charon"
         s.speaking_style = self.style.currentData() or "friendly"
         s.expressive_voice = self.expressive.isChecked()
-        s.voice_effect = self.voice_fx.currentData() or "robot"
+        s.voice_effect = self.voice_fx.currentData() or "off"
         s.reply_language = self.reply_lang.currentData() or "auto"
         s.reminder_language = self.reminder_lang.currentData() or "same"
         s.city = self.city.text().strip()
@@ -556,6 +561,7 @@ class SettingsDialog(QDialog):
         s.name_wake = self.name_wake.isChecked()
         s.sound_effects = self.sfx.isChecked()
         s.sound_volume = self.sfx_volume.value()
+        s.sound_style = self.sfx_style.currentData() or "robot"
         s.orb_face = self.orb_face.isChecked()
         s.avatar = self.avatar.currentData() or "ai"
         s.power_up_wake = self.power_up.isChecked()

@@ -11,7 +11,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Tools](https://img.shields.io/badge/tools-171-00d4ff)
-![Tests](https://img.shields.io/badge/tests-975%20passing-3ddc97)
+![Tests](https://img.shields.io/badge/tests-976%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
 
@@ -23,7 +23,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 
 | | |
 |---|---|
-| 🎙️ **AI voice** | Low-latency, two-way conversation on the Gemini Live API, with a robotic movie-AI sound (Settings → Voice effect: robot, light, strong or off). Say its name to wake it, interrupt it, or just type. |
+| 🎙️ **Natural voice** | Low-latency, two-way conversation on the Gemini Live API in a natural voice, with robotic beeps and chatter when it wakes, works and finishes an action (Settings → Effects style). Say its name to wake it, interrupt it, or just type. |
 | 🌐 **Your language** | English, Hindi, Urdu, Hinglish and 10 more. Pick one for Jarvis and another for reminders, or let it follow you. |
 | 🖥️ **Runs your PC** | Opens and closes apps and tabs, volume, brightness, media, WiFi, windows, keyboard, files and WhatsApp. |
 | 👁️ **Sees your screen** | Reads what is on screen and turns an error into a fix card: the problem, the cause, the steps and the corrected code. Can watch the screen and speak up when something important happens, and click or do small tasks for you step by step. |
@@ -225,7 +225,7 @@ jarvis/
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               975 tests
+├── tests/               976 tests
 └── docs/                screenshots and the script that makes them
 ```
 

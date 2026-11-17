@@ -104,7 +104,21 @@ def test_speaker_applies_and_survives_a_broken_effect(monkeypatch):
     spk.close()
 
 
-def test_default_setting_is_robot():
+def test_default_voice_is_natural_and_sounds_are_robotic():
     from jarvis.config import Settings
 
-    assert Settings().voice_effect == "robot"
+    assert Settings().voice_effect == "off" and Settings().sound_style == "robot"
+
+
+def test_robot_sound_effects():
+    import numpy as np
+
+    from jarvis import sfx
+
+    robot, classic = sfx.build_sounds("robot"), sfx.build_sounds("classic")
+    assert set(robot) == set(classic)  # every event still has a sound
+    for name in ("action", "success", "error", "wake", "sleep", "alert", "notify"):
+        assert not np.array_equal(robot[name], classic[name]), name
+    for v in robot.values():
+        assert v.dtype == np.float32 and np.abs(v).max() <= 0.61  # same loudness cap as before
+    assert sfx.SoundFX(enabled=False, style="classic").style == "classic"
