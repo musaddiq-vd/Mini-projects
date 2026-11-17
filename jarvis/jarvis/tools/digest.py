@@ -47,7 +47,9 @@ def daily_digest(ctx, weather: bool = True):
     from jarvis.tools.reminders import list_reminders
 
     now = datetime.now()
-    name = getattr(ctx.settings, "user_name", "") or ""
+    words = (getattr(ctx.settings, "user_name", "") or "").split()
+    name = words[0] if words else ""  # the first name is friendlier: "musaddique khan" -> "Musaddique"
+    name = name[:1].upper() + name[1:] if name.islower() else name
     out: dict = {"digest": now.strftime("%A %d %B"), "greeting": f"{greeting(now.hour)}{', ' + name if name else ''}"}
 
     city = _city(ctx)

@@ -102,19 +102,65 @@ def test_headlines_use_the_feeds(registry, ctx, monkeypatch):
 
 
 def test_topic_news_is_local_retried_and_falls_back_worldwide(registry, ctx, monkeypatch):
+    from datetime import date, timedelta
+
     from ddgs import DDGS  # noqa: F401 - make sure the real package exists before faking it
 
     monkeypatch.setattr(web, "home_region", lambda: "in-en")
-    row = {"title": "Cricket win", "source": "X", "url": "u", "date": "2026-11-17", "body": "India won the match."}
+    monkeypatch.setattr(web, "_topic_feed", lambda q, r: [])  # no network
+    today = date.today().isoformat()
+    row = {"title": "Cricket win", "source": "X", "url": "u", "date": today, "body": "India won the match."}
     calls = _fake_ddgs(monkeypatch, [RuntimeError("No results found."), [row]])
     out = registry.call("web_search", {"query": "cricket score", "mode": "news"}, ctx)
     assert out["results"][0]["title"] == "Cricket win" and calls[0][2]["region"] == "in-en"
-    assert calls[0][2]["timelimit"] == "d" and len(calls) == 2  # retried once after an empty answer
+    assert len(calls) == 2 and "note" not in out  # retried once after an empty answer
 
-    calls = _fake_ddgs(monkeypatch, [[], [], [], [], [row]])
+    calls = _fake_ddgs(monkeypatch, [[], [], [row]])
     out = registry.call("web_search", {"query": "cricket score", "mode": "news"}, ctx)
     assert out["region"] == "wt-wt" and calls[-1][2]["region"] == "wt-wt"
 
     _fake_ddgs(monkeypatch, [])
     out = registry.call("web_search", {"query": "zzqx", "mode": "web"}, ctx)
     assert "No results" in out["result"]
+
+
+def test_old_stories_are_dated_or_replaced_by_the_topic_newsroom(registry, ctx, monkeypatch):
+    from datetime import date, timedelta
+
+    monkeypatch.setattr(web, "home_region", lambda: "in-en")
+    old = (date.today() - timedelta(days=20)).isoformat()
+    stale = [{"title": f"Old {i}", "source": "X", "url": "u", "date": old, "body": "Sensex rose."} for i in range(4)]
+    _fake_ddgs(monkeypatch, [stale, stale])
+    monkeypatch.setattr(web, "_topic_feed", lambda q, r: [])
+    out = registry.call("web_search", {"query": "sensex today", "mode": "news"}, ctx)
+    assert old in out["note"]  # honest about the date
+    fresh = [{"title": "Sensex up today", "source": "Economic Times", "url": "u",
+              "date": date.today().isoformat(), "snippet": "Markets rallied."}]
+    _fake_ddgs(monkeypatch, [stale, stale])
+    monkeypatch.setattr(web, "_topic_feed", lambda q, r: fresh)
+    out = registry.call("web_search", {"query": "sensex today", "mode": "news"}, ctx)
+    assert out["results"][0]["title"] == "Sensex up today" and "note" not in out
+
+
+def test_topic_feed_matches_keywords(monkeypatch):
+    monkeypatch.setattr(web, "_feed_items", lambda url: [{"title": url, "_ts": 1.0, "source": "S", "url": "",
+                                                          "date": "", "snippet": ""}])
+    assert "economictimes" in web._topic_feed("sensex nifty today", "in-en")[0]["title"]
+    assert "4719148" in web._topic_feed("India cricket", "in-en")[0]["title"]
+    assert web._topic_feed("weather", "in-en") == [] and web._topic_feed("cricket", "us-en") == []
+
+
+def test_weather_spelling_and_home_city(registry, ctx, monkeypatch):
+    asked = []
+
+    def lookup(name):
+        asked.append(name)
+        return {"name": name, "latitude": 1, "longitude": 2} if name in ("Bengaluru", "Pune") else None
+
+    monkeypatch.setattr(web, "_lookup", lookup)
+    assert web._geocode("banglore")["name"] == "Bengaluru"
+    assert web._geocode("Bengaloor")["name"] == "Bengaluru"  # close spelling of a known city
+    assert web._geocode("Xyzabadqq") is None and web._geocode("") is None
+    assert "Which city" in registry.call("get_weather", {}, ctx)["error"]
+    ctx.memory.remember("city", "Pune")
+    assert web.home_city(ctx) == "Pune"

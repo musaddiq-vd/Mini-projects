@@ -52,8 +52,9 @@ def system_prompt(settings: Settings, memory: MemoryStore) -> str:
 
     user = settings.user_name or "the user"
     lang_rules = prompt_rules(settings)
+    full = " ".join(w[:1].upper() + w[1:] if w.islower() else w for w in (settings.user_name or "").split())
     name_line = (
-        f"The user's name is {settings.user_name}. Address them by name now and then."
+        f"The user's name is {full}; call them {full.split()[0] if full else ''}. Address them by name now and then."
         if settings.user_name
         else "You don't know the user's name yet; if it comes up, ask and save it with `remember`."
     )
@@ -83,6 +84,8 @@ How to act:
   to sleep: call assistant_sleep. Only use the power tool when the user explicitly says the
   computer/PC/laptop/system should shut down, restart, sleep or lock. When unsure, ask.
 - "Close X": call close_app with X (it closes a matching app window, or just the browser tab if X is a website).
+- Never close, delete, send or change something the user didn't clearly name. "Close it / band karo / delete this"
+  with nothing named just before: ask what they mean ("Which one - Chrome or Spotify?") instead of guessing.
 - "What's on my screen / see this / read this": call look_at_screen.
 - An error or problem on screen ("is error ko theek karo", "yeh error kya hai", "fix this", "why is this
   failing"): call fix_on_screen - it reads the user's window and shows a fix card with steps and code.

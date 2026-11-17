@@ -74,3 +74,43 @@ def test_tool_round_and_image_attachment(ctx, registry, monkeypatch):
     tools_seen = []
     assert chat.send("what's on my screen", on_tool=lambda n, a, r: tools_seen.append(n)) == "I see your screen"
     assert tools_seen == ["look_at_screen"]
+
+
+def test_a_failed_model_is_skipped_after_a_restart(ctx, registry, monkeypatch):
+    import time
+
+    from jarvis import llm
+
+    quota = errors.ClientError(429, {"error": {"code": 429, "message": "quota", "status": "RESOURCE_EXHAUSTED"}})
+    chat = _chat(ctx, registry, {"broken-model": quota, "good-model": _reply("hi")})
+    assert chat.send("hello") == "hi"
+    # a new start: the quota-hit model goes to the back, so nobody waits for it again
+    assert llm.usable_order(["broken-model", "good-model"]) == ["good-model", "broken-model"]
+    later = time.time() + 31 * 60  # the cool-down is over: back in front
+    assert llm.usable_order(["broken-model", "good-model"], now=later) == ["broken-model", "good-model"]
+    llm.mark_failed("gone-model", 404)
+    assert llm.usable_order(["gone-model", "x"], now=time.time() + 3600) == ["x", "gone-model"]
+
+
+def test_the_last_model_gets_one_more_try_when_busy(ctx, registry, monkeypatch):
+    from jarvis import llm
+
+    monkeypatch.setattr(llm.time, "sleep", lambda s: None)
+    busy = errors.ServerError(504, {"error": {"code": 504, "message": "deadline", "status": "DEADLINE_EXCEEDED"}})
+    answers = iter([busy, _reply("hi")])
+    chat = _chat(ctx, registry, {"good-model": lambda contents: next(answers)})
+    chat.model.models = ["good-model"]
+    assert chat.send("hello") == "hi" and chat.model.client.models.calls == ["good-model", "good-model"]
+
+
+def test_all_models_out_of_quota_gives_a_clear_message(ctx, registry):
+    from jarvis.llm import QuotaReached
+
+    quota = errors.ClientError(429, {"error": {"code": 429, "message": "quota", "status": "RESOURCE_EXHAUSTED"}})
+    chat = _chat(ctx, registry, {"broken-model": quota, "good-model": quota})
+    try:
+        chat.send("hello")
+        raise AssertionError("expected QuotaReached")
+    except QuotaReached as exc:
+        assert "usage limit" in str(exc)
+    assert chat.history == []

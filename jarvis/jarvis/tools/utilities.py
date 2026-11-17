@@ -37,7 +37,8 @@ def _prepare(expr: str) -> str:
     text = re.sub(r"\s+(?:kitna hai|kitna hota hai|kitna hoga|kya hai|hota hai|is what)$", "", text)
     text = re.sub(r"\s*(?:percent|pratishat)\b", "%", text)
     text = re.sub(r"(\d+(?:\.\d+)?)\s*(?:ka|ki|ke)\s*(\d+(?:\.\d+)?)\s*%", r"\1*(\2/100)", text)  # "2500 ka 18%"
-    text = re.sub(r"(\d+(?:\.\d+)?)\s*%\s*(?:of|ka|ki|ke)\s*", r"(\1/100)*", text)  # "18% of 2500"
+    text = re.sub(r"(\d+(?:\.\d+)?)\s*%\s*(?:tip\s+|discount\s+|tax\s+|gst\s+)?(?:of|on|ka|ki|ke|par|pe)\s*",
+                  r"(\1/100)*", text)  # "18% of 2500", "15% tip on 1840"
     text = re.sub(r"(\d+(?:\.\d+)?)\s*%", r"(\1/100)", text)
     for pattern, sym in _WORDS:
         text = re.sub(pattern, sym, text)

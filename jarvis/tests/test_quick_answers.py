@@ -113,3 +113,18 @@ def test_currency(registry, ctx, monkeypatch):
 def test_helpers_are_not_tool_arguments(registry):
     for name in ("internet_check", "convert_currency", "stopwatch"):
         assert set(registry.tools[name].parameters) <= {"action", "amount", "from_currency", "to_currency"}
+
+
+@pytest.mark.parametrize("expr, want", [("15% tip on 1840", 276), ("18 percent gst on 1000", 180),
+                                         ("2500 ka 18 percent kitna hai?", 450), ("20% discount on 999", 199.8)])
+def test_spoken_percentages(expr, want):
+    assert calc(expr) == pytest.approx(want)
+
+
+def test_digest_greets_by_first_name(registry, ctx):
+    from jarvis.state import StateStore
+
+    ctx.state = StateStore(ctx.memory.path.parent / "state.json")
+    ctx.settings.user_name = "musaddique khan"
+    out = registry.call("daily_digest", {"weather": False}, ctx)
+    assert out["greeting"].endswith(", Musaddique")

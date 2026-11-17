@@ -11,7 +11,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Tools](https://img.shields.io/badge/tools-171-00d4ff)
-![Tests](https://img.shields.io/badge/tests-988%20passing-3ddc97)
+![Tests](https://img.shields.io/badge/tests-999%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
 
@@ -225,7 +225,7 @@ jarvis/
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               988 tests
+├── tests/               999 tests
 └── docs/                screenshots and the script that makes them
 ```
 

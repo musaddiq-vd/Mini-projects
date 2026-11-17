@@ -331,7 +331,10 @@ class PhoneBridge:
                 self.send(chat_id, f"⚠ {exc}")
             except Exception as exc:
                 log.exception("phone job failed")
-                self.send(chat_id, f"⚠ Something went wrong ({type(exc).__name__}).")
+                from jarvis.llm import QuotaReached
+
+                self.send(chat_id, f"⚠ {exc}" if isinstance(exc, QuotaReached)
+                          else f"⚠ Something went wrong ({type(exc).__name__}).")
 
     def _do(self, kind: str, chat_id: int, payload: str) -> None:
         self._action(chat_id, "typing")

@@ -76,7 +76,16 @@ _GENERIC_NEWS = {"top", "news", "headline", "headlines", "today", "today's", "to
                  "of", "day", "main", "big", "aaj", "ki", "ke", "ka", "khabar", "khabrein", "samachar", "taaza",
                  "current", "events", "world", "national", "india", "indian", "in"}
 MAX_FEED_BYTES = 3_000_000
-FEED_NAMES = {"thehindu.com": "The Hindu", "timesofindia": "Times of India", "ndtv": "NDTV",
+# topic newsrooms for when a search only finds old stories: region -> [(keywords, feed)]
+TOPIC_FEEDS = {
+    "in-en": [({"sensex", "nifty", "stock", "stocks", "share", "shares", "market", "markets", "ipo", "bse", "nse"},
+               "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms"),
+              ({"business", "economy", "rupee", "gst", "rbi", "budget", "inflation"},
+               "https://timesofindia.indiatimes.com/rssfeeds/1898055.cms"),
+              ({"cricket", "ipl", "sports", "sport", "football", "match", "test", "odi", "t20", "hockey"},
+               "https://timesofindia.indiatimes.com/rssfeeds/4719148.cms")],
+}
+FEED_NAMES = {"thehindu.com": "The Hindu", "timesofindia": "Times of India", "economictimes": "Economic Times", "ndtv": "NDTV",
               "indianexpress.com": "Indian Express", "bbci.co.uk": "BBC", "npr.org": "NPR"}
 
 
@@ -147,6 +156,41 @@ def top_headlines(region: str, limit: int = 6) -> list[dict]:
     return picked[:limit]
 
 
+def _topic_feed(query: str, region: str, limit: int = 6) -> list[dict]:
+    """Newest stories from a newsroom feed that matches the query's topic (sensex -> markets), or []."""
+    import re
+
+    words = set(re.findall(r"[a-z0-9]+", (query or "").lower()))
+    for keywords, url in TOPIC_FEEDS.get(region, []):
+        if words & keywords:
+            try:
+                items = sorted(_feed_items(url), key=lambda x: -x["_ts"])[:limit]
+            except Exception:  # noqa: BLE001
+                return []
+            for x in items:
+                x.pop("_ts", None)
+            return items
+    return []
+
+
+def _fresh(rows: list[dict], days: int = 3) -> bool:
+    """True when at least one row is from the last few days."""
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()[:10]
+    return any(str(r.get("date") or "")[:10] >= cutoff for r in rows)
+
+
+def _recent(rows: list[dict], days: int = 7, keep: int = 3) -> list[dict]:
+    """News rows newest first; older than `days` only when there aren't `keep` recent ones."""
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()[:10]
+    rows = sorted(rows, key=lambda r: str(r.get("date") or ""), reverse=True)
+    fresh = [r for r in rows if str(r.get("date") or "")[:10] >= cutoff]
+    return fresh if len(fresh) >= keep else rows
+
+
 @tool(
     "web_search",
     "Search the web for current information. Use mode 'news' for recent news. News and results come from the "
@@ -169,12 +213,21 @@ def web_search(ctx, query: str, mode: str = "web", region: str = ""):
                     "tip": "These headlines are shown to the user as a card. Summarise the three most important "
                            "in a few spoken sentences."}
     rows = []
-    if kind == "news":  # today's news first, then this week's
-        rows = _search(kind, query, region, timelimit="d") or _search(kind, query, region, timelimit="w")
+    if kind == "news":
+        rows = _recent(_search(kind, query, region))
+        if rows and not _fresh(rows) and "latest" not in query.lower():  # only old stories: ask for the latest
+            newer = _recent(_search(kind, f"{query} latest", region))
+            rows = newer if _fresh(newer) else rows
+        if not _fresh(rows):  # still old: the matching newsroom feed has today's stories
+            topical = _topic_feed(query, region)
+            if topical:
+                rows = [{"title": x["title"], "source": x["source"], "url": x["url"], "date": x["date"],
+                         "body": x["snippet"]} for x in topical]
     else:
         rows = _search(kind, query, region)
     if not rows and region != "wt-wt":
-        rows = _search(kind, query, "wt-wt", timelimit="w" if kind == "news" else None)  # nothing local: worldwide
+        rows = _search(kind, query, "wt-wt")  # nothing local: try worldwide
+        rows = _recent(rows) if kind == "news" else rows
         region = "wt-wt"
     if mode == "news":
         items = [{"title": r.get("title"), "source": r.get("source"), "url": r.get("url"),
@@ -185,32 +238,79 @@ def web_search(ctx, query: str, mode: str = "web", region: str = ""):
     items = [x for x in items if x.get("title")][:6]
     if not items:
         return "No results found right now. Offer to try again or to search a more specific topic."
-    return {"results": items, "mode": mode, "query": query, "region": region,
-            "tip": "These results are shown to the user as a card. Summarise the most important ones briefly; "
-                   "don't say there are no results."}
+    out = {"results": items, "mode": mode, "query": query, "region": region,
+           "tip": "These results are shown to the user as a card. Summarise the most important ones briefly; "
+                  "don't say there are no results."}
+    if mode == "news" and not _fresh(items):
+        newest = str(items[0].get("date") or "")[:10]
+        out["note"] = (f"These are older stories (the newest is from {newest or 'an unknown date'}). Say the date "
+                       "so the user knows it isn't today's news.")
+    return out
 
 
-def _geocode(city: str) -> dict | None:
-    r = requests.get(
-        "https://geocoding-api.open-meteo.com/v1/search",
-        params={"name": city, "count": 1}, timeout=TIMEOUT,
-    )
+# old names and common spellings -> the name the weather service knows
+CITY_ALIASES = {"bangalore": "Bengaluru", "banglore": "Bengaluru", "bengalore": "Bengaluru", "bombay": "Mumbai",
+                "bambai": "Mumbai", "calcutta": "Kolkata", "madras": "Chennai", "gurgaon": "Gurugram",
+                "poona": "Pune", "baroda": "Vadodara", "trivandrum": "Thiruvananthapuram", "cochin": "Kochi",
+                "benaras": "Varanasi", "banaras": "Varanasi", "dilli": "Delhi", "new dehli": "New Delhi",
+                "dehli": "Delhi", "hydrabad": "Hyderabad", "ahmadabad": "Ahmedabad", "allahabad": "Prayagraj",
+                "mysore": "Mysuru", "mangalore": "Mangaluru", "simla": "Shimla", "pondicherry": "Puducherry"}
+KNOWN_CITIES = sorted(set(CITY_ALIASES.values()) | {
+    "Agra", "Ahmedabad", "Amritsar", "Aurangabad", "Bhopal", "Bhubaneswar", "Chandigarh", "Coimbatore",
+    "Dehradun", "Goa", "Guwahati", "Indore", "Jaipur", "Jammu", "Jodhpur", "Kanpur", "Kota", "Lucknow", "Ludhiana",
+    "Madurai", "Meerut", "Nagpur", "Nashik", "Noida", "Patna", "Raipur", "Rajkot", "Ranchi", "Srinagar", "Surat",
+    "Thane", "Udaipur", "Vijayawada", "Visakhapatnam", "Karachi", "Lahore", "Islamabad", "Dhaka", "Kathmandu",
+    "Colombo", "Dubai", "Abu Dhabi", "Riyadh", "Jeddah", "Doha", "Muscat", "London", "Paris", "Berlin",
+    "New York", "San Francisco", "Los Angeles", "Chicago", "Toronto", "Sydney", "Melbourne", "Singapore",
+    "Tokyo", "Bangkok", "Kuala Lumpur", "Hong Kong", "Istanbul", "Cairo", "Nairobi", "Johannesburg"})
+
+
+def _lookup(name: str) -> dict | None:
+    r = requests.get("https://geocoding-api.open-meteo.com/v1/search", params={"name": name, "count": 1},
+                     timeout=TIMEOUT)
     r.raise_for_status()
     results = r.json().get("results") or []
     return results[0] if results else None
 
 
+def _geocode(city: str) -> dict | None:
+    """A place for the weather service, forgiving old names and small spelling mistakes."""
+    import difflib
+
+    city = " ".join((city or "").split())
+    if not city:
+        return None
+    place = _lookup(CITY_ALIASES.get(city.lower(), city))
+    if place:
+        return place
+    close = difflib.get_close_matches(city.title(), KNOWN_CITIES, n=1, cutoff=0.75)
+    return _lookup(close[0]) if close else None
+
+
+def home_city(ctx) -> str:
+    """The user's city: Settings first, then memory."""
+    if getattr(ctx.settings, "city", ""):
+        return ctx.settings.city
+    for key in ("city", "home_city"):
+        fact = ctx.memory.get(key) if ctx.memory is not None else None
+        if fact:
+            return fact.value
+    return ""
+
+
 @tool(
     "get_weather",
     "Current weather and today's forecast for a city. If no city is given, use the user's city from memory.",
-    {"city": {"type": "string"}},
-    required=["city"],
+    {"city": {"type": "string", "description": "leave empty for the user's own city"}},
     slow=True,
 )
-def get_weather(ctx, city: str):
+def get_weather(ctx, city: str = ""):
+    city = (city or "").strip() or home_city(ctx)
+    if not city:
+        return {"error": "Which city? Ask the user, and remember it with `remember` as 'city' for next time."}
     place = _geocode(city)
     if not place:
-        return {"error": f"Could not find a place called '{city}'."}
+        return {"error": f"Could not find a place called '{city}'. Ask the user to spell it or name a nearby city."}
     r = requests.get(
         "https://api.open-meteo.com/v1/forecast",
         params={
