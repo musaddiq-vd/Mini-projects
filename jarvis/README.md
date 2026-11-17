@@ -11,7 +11,7 @@ Talk to your PC like a person. Jarvis listens, answers out loud and gets things 
 ![PyQt6](https://img.shields.io/badge/UI-PyQt6-41CD52?logo=qt&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![Tools](https://img.shields.io/badge/tools-171-00d4ff)
-![Tests](https://img.shields.io/badge/tests-976%20passing-3ddc97)
+![Tests](https://img.shields.io/badge/tests-988%20passing-3ddc97)
 
 <img src="docs/screenshots/main-dark.png" alt="Jarvis main window" width="900">
 
@@ -183,7 +183,7 @@ Without headphones, Jarvis mutes your mic while it speaks so it doesn't hear its
 - **Your code stays in your hands.** The coding assistant only runs your project's own test runner (pytest, unittest, npm test, go test, cargo test) or a Python / JavaScript file you name, inside the project, without a shell and with a time limit; it never runs a command the model wrote. Code changes are shown as a diff and written only after you say yes, with a backup in `~/.jarvis/code_backups` and undo.
 - **Meetings are recorded only when you ask.** Jarvis never starts a recording by itself; for a calendar meeting it may only ask "Shall I take notes?". While recording, the window shows a red REC pill and Jarvis says "recording started" once. The audio, transcript and notes stay in `~/.jarvis/meetings/` until you delete them (by voice or in Settings → Privacy); the *Meetings* permission turns recording off completely. The audio goes to Gemini in pieces only to be written down, and the follow-up e-mail is only ever a draft.
 - **Voice profiles keep no recordings.** Enrollment keeps a small set of voice numbers in `~/.jarvis/voices/`, not the audio. Recognition uses classic MFCC statistics on your CPU (no extra download): reliable for clearly different voices in a quiet room, easily confused by similar voices, noise or another microphone. It picks the right name and language; it is not a security check. Unknown voices are guests and can't use WhatsApp, contacts or money unless you allow it in Settings → Privacy.
-- **What leaves your PC:** your voice and messages go to Google Gemini (and the text of files you add to the knowledge base goes to its embedding service), searches go to DuckDuckGo, weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
+- **What leaves your PC:** your voice and messages go to Google Gemini (and the text of files you add to the knowledge base goes to its embedding service), searches go to DuckDuckGo, top headlines are read from the public RSS feeds of well-known newsrooms (The Hindu, Times of India, NDTV, Indian Express; BBC or NPR elsewhere), weather goes to Open-Meteo, and currency conversion asks Frankfurter (European Central Bank rates). The internet check only opens a connection to Cloudflare, Google DNS and Quad9 and sends nothing. There is no analytics and no tracking.
 - **The knowledge base learns only what you pick.** Nothing is indexed until you name a folder or file and confirm. Files with passwords or keys are skipped, secrets in documents are masked before indexing, and the index lives in `~/.jarvis/kb` (see its size or delete it in Settings → Privacy; backups leave it out). Unchanged files are never sent twice.
 - **Agents, workflows and web research follow the same rules.** Every tool call an agent or a workflow makes goes through the same permissions, guardrails, confirmations and audit log as a voice request. The agent team has hard limits (steps, tool calls, five minutes) and "stop" cancels it. A workflow stops at the first error or when you say no. The web researcher only reads public pages with plain requests (no logins, forms or purchases), respects robots.txt, names itself only "Jarvis" and asks before saving a report to `Documents/Jarvis Reports`.
 
@@ -225,7 +225,7 @@ jarvis/
 │   └── english/         the language practice mode
 ├── installer/           builds the Windows package and its setup window
 ├── plugins/             your own tools
-├── tests/               976 tests
+├── tests/               988 tests
 └── docs/                screenshots and the script that makes them
 ```
 
