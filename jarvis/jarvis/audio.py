@@ -51,8 +51,9 @@ def level(pcm16: bytes) -> float:
 class Speaker:
     """Plays PCM chunks on a background thread; can be flushed on interruption."""
 
-    def __init__(self, device: int | None = None, on_level=None):
+    def __init__(self, device: int | None = None, on_level=None, fx=None):
         self._on_level = on_level  # called with 0..1 loudness of each chunk played
+        self.fx = fx  # optional voice effect (jarvis.voicefx), applied to every chunk before it plays
         self._q: queue.Queue[bytes | None] = queue.Queue()
         self._stream = sd.RawOutputStream(samplerate=SPEAKER_RATE, channels=1, dtype="int16", device=device)
         self._busy = threading.Event()
@@ -68,6 +69,12 @@ class Speaker:
             if chunk is None:
                 return
             self._busy.set()
+            if self.fx is not None:
+                try:
+                    chunk = self.fx.process(chunk)
+                except Exception:  # noqa: BLE001 - a broken effect must never silence Jarvis
+                    logging.getLogger("jarvis.audio").exception("voice effect failed; plain voice from now on")
+                    self.fx = None
             if self._on_level:
                 self._on_level(level(chunk))
             self._stream.write(chunk)
@@ -86,6 +93,8 @@ class Speaker:
                 self._q.get_nowait()
         except queue.Empty:
             pass
+        if self.fx is not None:
+            self.fx.reset()
         self._busy.clear()
 
     @property

@@ -15,6 +15,19 @@ WEATHER_ICONS = [("thunder", "⛈"), ("snow", "❄"), ("rain", "🌧"), ("drizzl
                  ("fog", "🌫"), ("overcast", "☁"), ("partly", "⛅"), ("mainly clear", "🌤"), ("clear", "☀")]
 
 
+def _panel(label: QLabel) -> QFrame:
+    """A rounded panel around a wrapped label. The padding lives on the frame's layout, not on the label:
+    a QLabel with stylesheet padding gets a wrong height when the card is narrower than usual and clips text."""
+    box = QFrame()
+    box.setObjectName("panel")
+    box.setStyleSheet(f"QFrame#panel {{ background: {theme.P.panel2}; border-radius: 10px; }}")
+    lay = QVBoxLayout(box)
+    lay.setContentsMargins(10, 6, 10, 6)
+    label.setStyleSheet("background: transparent;")
+    lay.addWidget(label)
+    return box
+
+
 def weather_icon(condition: str) -> str:
     c = (condition or "").lower()
     return next((icon for key, icon in WEATHER_ICONS if key in c), "🌡")
@@ -83,8 +96,11 @@ def links_card(r: dict, limit: int = 5) -> QFrame | None:
     v.setContentsMargins(14, 10, 14, 12)
     v.setSpacing(8)
     label = {"news": "📰 News", "report": "📑 Report sources"}.get(r.get("mode"), "🔎 Web")
-    head = f"{label}  ·  {html.escape(str(r.get('query', '')))}"
-    v.addWidget(QLabel(head, objectName="section"))
+    v.addWidget(QLabel(label.replace(" ", "  ", 1), objectName="h2"))
+    if r.get("query"):
+        query = QLabel(html.escape(str(r["query"])), objectName="muted")
+        query.setWordWrap(True)
+        v.addWidget(query)
     for item in results[:limit]:
         url = _safe_url(item.get("url"))
         title = html.escape(str(item.get("title") or "Untitled"))
@@ -245,8 +261,7 @@ def digest_card(r: dict) -> QFrame | None:
         lb = QLabel(f"<b style='color:{accent}'>{icon} {title}</b><br><span>{body}</span>")
         lb.setTextFormat(Qt.TextFormat.RichText)
         lb.setWordWrap(True)
-        lb.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px 10px;")
-        v.addWidget(lb)
+        v.addWidget(_panel(lb))
 
     w = r.get("weather")
     if w:
@@ -358,8 +373,7 @@ def code_card(r: dict) -> QFrame | None:
         lb = QLabel(f"<b style='color:{accent}'>{html.escape(section.get('title', ''))}</b><br>{rows}")
         lb.setTextFormat(Qt.TextFormat.RichText)
         lb.setWordWrap(True)
-        lb.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px 10px;")
-        v.addWidget(lb)
+        v.addWidget(_panel(lb))
 
     def code_block(title: str, code: str, language: str, start: int = 0, copy_label: str = "Copy code") -> None:
         row = QHBoxLayout()
@@ -411,8 +425,7 @@ def meeting_card(r: dict) -> QFrame | None:
         lb.setTextFormat(Qt.TextFormat.RichText)
         lb.setWordWrap(True)
         lb.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        lb.setStyleSheet(f"background: {theme.P.panel2}; border-radius: 10px; padding: 6px 10px;")
-        v.addWidget(lb)
+        v.addWidget(_panel(lb))
 
     if m.get("summary"):
         section("📋", "Summary", [html.escape(m["summary"])])
@@ -464,8 +477,10 @@ def search_card(r: dict, per_group: int = 4) -> QFrame | None:
     v.setContentsMargins(14, 10, 14, 12)
     v.setSpacing(6)
     when = r.get("range") or r.get("when") or ""
-    head = f"🔎 {html.escape(str(r.get('query') or 'Search'))}" + (f"  ·  {html.escape(str(when))}" if when else "")
-    v.addWidget(QLabel(f"{head}  ·  {int(r.get('found', 0))} found", objectName="section"))
+    v.addWidget(QLabel(f"🔎  {html.escape(str(r.get('query') or 'Search'))}", objectName="h2"))
+    found = int(r.get("found", 0))
+    v.addWidget(QLabel(" · ".join(x for x in (html.escape(str(when)) if when else "",
+                                              f"{found} result{'s' if found != 1 else ''}") if x), objectName="muted"))
     accent = theme.readable(theme.ACCENT)
     for g in groups:
         kind = str(g.get("kind", ""))
@@ -512,9 +527,11 @@ class PlanCard(QFrame):
         self._v = QVBoxLayout(self)
         self._v.setContentsMargins(14, 10, 14, 12)
         self._v.setSpacing(5)
-        self._head = QLabel(objectName="section")
-        self._head.setWordWrap(True)
+        self._head = QLabel(objectName="h2")
         self._v.addWidget(self._head)
+        self._goal = QLabel(objectName="muted")
+        self._goal.setWordWrap(True)
+        self._v.addWidget(self._goal)
         self._rows: list[QLabel] = []
         self._foot = QLabel(objectName="muted")
         self._foot.setWordWrap(True)
@@ -526,8 +543,8 @@ class PlanCard(QFrame):
         status = str(r.get("status", ""))
         icon = "⚙" if workflow else "🧩"
         what = "Workflow" if workflow else "Agent team"
-        self._head.setText(f"{icon} {what}  ·  {html.escape(str(r.get('goal', ''))[:120])}  ·  "
-                           f"{RUN_LABELS.get(status, status)}")
+        self._head.setText(f"{icon}  {what}  ·  {RUN_LABELS.get(status, status)}")
+        self._goal.setText(html.escape(str(r.get("goal", ""))[:160]))
         steps = r.get("steps") or []
         while len(self._rows) < len(steps):
             lab = QLabel()

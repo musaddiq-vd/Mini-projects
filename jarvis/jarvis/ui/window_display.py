@@ -238,7 +238,7 @@ class DisplayMixin:
             glow.set_color(self.accent)
         name = self.app.settings.assistant_name
         self.title.setText(name.upper() + ("  ·  TUTOR" if self.practicing else ""))
-        self.setWindowTitle(name)
+        self.setWindowTitle(name[:1].upper() + name[1:] if name.islower() else name)  # 'jarvis' -> 'Jarvis'
         icon = app_icon(self.accent)
         self.setWindowIcon(icon)
         if self.tray:

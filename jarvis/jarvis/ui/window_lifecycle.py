@@ -25,7 +25,9 @@ class LifecycleMixin:
         if self._booting:
             return
         self._booting = True
-        self._add_system(f"Starting... say \"{self.app.settings.assistant_name}\", or type below.")
+        s = self.app.settings
+        call = s.wake_word.replace("_", " ") if s.wake_word else s.assistant_name  # the same words as the wake hint
+        self._add_system(f"Starting... say \"{call}\", or type below.")
 
         def build():
             try:

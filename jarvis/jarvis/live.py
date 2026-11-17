@@ -497,7 +497,9 @@ class LiveAssistant:
 
     async def _session_once(self) -> None:
         if self.speaker is None:
-            self.speaker = Speaker(find_device(self.s.output_device, "output"),
+            from jarvis import voicefx
+
+            self.speaker = Speaker(find_device(self.s.output_device, "output"), fx=voicefx.make(self.s.voice_effect),
                                    on_level=lambda v: self.events.emit("level", source="speaker", value=v))
             self.speaker.start()
         self._session_mode = self.mode
@@ -562,8 +564,13 @@ class LiveAssistant:
         try:
             while not self._stopping:
                 if self._reload_wake:
-                    await asyncio.to_thread(self._load_wake_word)
-                    self._emit_state()
+                    # in the background: the first start downloads the model (can take ~20 s) and the
+                    # conversation must not wait for it
+                    self._reload_wake = False
+                    wake_task = asyncio.ensure_future(asyncio.to_thread(self._load_wake_word))
+                    wake_task.add_done_callback(lambda _t: self._emit_state())
+                    self._tasks.add(wake_task)
+                    wake_task.add_done_callback(self._tasks.discard)
                 self._session_task = asyncio.create_task(self._session_once())
                 try:
                     await self._session_task

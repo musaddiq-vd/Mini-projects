@@ -39,3 +39,6 @@ Thumbs.db
 installer/build/
 installer/dist/
 installer/version_info.txt
+
+# Local voice-effect demos (made on your PC)
+docs/voice-demo/

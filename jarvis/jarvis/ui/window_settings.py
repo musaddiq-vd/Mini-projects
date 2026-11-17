@@ -133,6 +133,10 @@ class SettingsMixin:
             self.assistant.sfx.enabled = self.app.settings.sound_effects
             self.assistant.sfx.volume = self.app.settings.sound_volume
             self.assistant.sfx.play("success")
+        if self.assistant is not None and "voice_effect" in changed and self.assistant.speaker is not None:
+            from jarvis import voicefx
+
+            self.assistant.speaker.fx = voicefx.make(self.app.settings.voice_effect)  # takes effect at once
         if self.assistant is None:
             self.start_assistant()
         elif changed & RESTART_KEYS:

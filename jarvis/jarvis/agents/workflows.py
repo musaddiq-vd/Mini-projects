@@ -530,9 +530,15 @@ class Scheduler:
         self.notify(f"Workflow '{key}' ran on its {trigger} trigger: {out.get('result') or out.get('error')}")
 
     def tick(self, now: datetime | None = None) -> list[str]:
+        now = now or datetime.now()
         ran = due(self.ctx.state, now)
         for key in ran:
             self._run(key, "scheduled")
+            state = self.ctx.state
+            if state is not None:  # count the run on the day it was due (matters just after midnight, and in tests)
+                last = dict(state.get(LAST_RUN_KEY, {}) or {})
+                last[key] = {**(last.get(key) or {}), "date": now.date().isoformat()}
+                state.set(LAST_RUN_KEY, last)
         return ran
 
     def _loop(self) -> None:
